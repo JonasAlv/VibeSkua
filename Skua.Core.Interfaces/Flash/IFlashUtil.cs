@@ -1,4 +1,4 @@
-﻿using Newtonsoft.Json;
+using Newtonsoft.Json;
 using System.Xml.Linq;
 
 namespace Skua.Core.Interfaces;
@@ -98,6 +98,17 @@ public interface IFlashUtil : IDisposable
         return Call("getGameObject", path);
     }
 
+    private static readonly JsonSerializerSettings SafeJsonSettings = new()
+    {
+        NullValueHandling = NullValueHandling.Ignore,
+        MissingMemberHandling = MissingMemberHandling.Ignore,
+        Error = (sender, args) =>
+        {
+            System.Diagnostics.Trace.WriteLine($"[JSON Warning] {args.ErrorContext.Path}: {args.ErrorContext.Error.Message}");
+            args.ErrorContext.Handled = true;
+        }
+    };
+
     /// <summary>
     /// Gets an actionscript object at the given location and deserializes it as JSON to the given type.
     /// </summary>
@@ -109,10 +120,14 @@ public interface IFlashUtil : IDisposable
     {
         try
         {
-            return JsonConvert.DeserializeObject<T>(GetGameObject(path)!) ?? def;
+            string? raw = GetGameObject(path);
+            if (string.IsNullOrWhiteSpace(raw))
+                return def;
+            return JsonConvert.DeserializeObject<T>(raw, SafeJsonSettings) ?? def;
         }
-        catch
+        catch (Exception ex)
         {
+            System.Diagnostics.Trace.WriteLine($"GetGameObject<{typeof(T)}>('{path}') error: {ex.Message}");
             return def;
         }
     }
@@ -138,10 +153,14 @@ public interface IFlashUtil : IDisposable
     {
         try
         {
-            return JsonConvert.DeserializeObject<T>(GetGameObjectStatic(path)!);
+            string? raw = GetGameObjectStatic(path);
+            if (string.IsNullOrWhiteSpace(raw))
+                return def;
+            return JsonConvert.DeserializeObject<T>(raw, SafeJsonSettings) ?? def;
         }
-        catch
+        catch (Exception ex)
         {
+            System.Diagnostics.Trace.WriteLine($"GetGameObjectStatic<{typeof(T)}>('{path}') error: {ex.Message}");
             return def;
         }
     }
@@ -185,10 +204,14 @@ public interface IFlashUtil : IDisposable
     {
         try
         {
-            return JsonConvert.DeserializeObject<T>(CallGameFunction(path, args)!);
+            string? raw = CallGameFunction(path, args);
+            if (string.IsNullOrWhiteSpace(raw))
+                return default;
+            return JsonConvert.DeserializeObject<T>(raw, SafeJsonSettings);
         }
-        catch
+        catch (Exception ex)
         {
+            System.Diagnostics.Trace.WriteLine($"CallGameFunction<{typeof(T)}>('{path}') error: {ex.Message}");
             return default;
         }
     }
@@ -216,10 +239,14 @@ public interface IFlashUtil : IDisposable
     {
         try
         {
-            return JsonConvert.DeserializeObject<T>(GetArrayObject(path, index)!);
+            string? raw = GetArrayObject(path, index);
+            if (string.IsNullOrWhiteSpace(raw))
+                return def;
+            return JsonConvert.DeserializeObject<T>(raw, SafeJsonSettings) ?? def;
         }
-        catch
+        catch (Exception ex)
         {
+            System.Diagnostics.Trace.WriteLine($"GetArrayObject<{typeof(T)}>('{path}', {index}) error: {ex.Message}");
             return def;
         }
     }
@@ -235,10 +262,14 @@ public interface IFlashUtil : IDisposable
     {
         try
         {
-            return JsonConvert.DeserializeObject<List<T>>(Call("selectArrayObjects", path, selector)!)!;
+            string? raw = Call("selectArrayObjects", path, selector);
+            if (string.IsNullOrWhiteSpace(raw))
+                return new List<T>();
+            return JsonConvert.DeserializeObject<List<T>>(raw, SafeJsonSettings) ?? new List<T>();
         }
-        catch
+        catch (Exception ex)
         {
+            System.Diagnostics.Trace.WriteLine($"SelectArrayObjects<{typeof(T)}>('{path}', '{selector}') error: {ex.Message}");
             return new List<T>();
         }
     }

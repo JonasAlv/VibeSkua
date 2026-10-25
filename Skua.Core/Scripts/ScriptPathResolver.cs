@@ -1,6 +1,9 @@
+using Newtonsoft.Json;
 using Skua.Core.Interfaces.Services;
 using Skua.Core.Models;
+using Skua.Core.Models.GitHub;
 using Skua.Core.Models.Scripts;
+using Skua.Core.Utils;
 using System.Collections.Concurrent;
 
 namespace Skua.Core.Scripts;
@@ -10,6 +13,8 @@ public sealed class ScriptPathResolver : IScriptPathResolver
     private readonly ICustomScriptService _customScripts;
     private readonly string _repositoryRoot = Canonicalize(ClientFileSources.SkuaScriptsDIR);
     private readonly ConcurrentDictionary<(string? ownerFile, string specifier), ScriptPathResolution> _resolutionCache = new();
+    private readonly object _remoteIndexLock = new();
+    private Dictionary<string, ScriptInfo>? _remoteScriptsByPath;
 
     public ScriptPathResolver(ICustomScriptService customScripts)
     {
@@ -110,14 +115,186 @@ public sealed class ScriptPathResolver : IScriptPathResolver
         List<string> existing = candidates
             .Select(Canonicalize)
             .Distinct(StringComparer.OrdinalIgnoreCase)
-            .Where(File.Exists)
+            .Select(ResolveExistingFile)
+            .Where(p => p is not null)
+            .Select(p => p!)
+            .Distinct(StringComparer.Ordinal)
             .ToList();
+
+        if (existing.Count == 0 && normalizedSpecifier.StartsWith($"Scripts{Path.DirectorySeparatorChar}", StringComparison.OrdinalIgnoreCase))
+        {
+            string subPath = normalizedSpecifier[("Scripts".Length + 1)..];
+            string? downloaded = TryDownloadMissingInclude(subPath);
+            if (!string.IsNullOrEmpty(downloaded) && File.Exists(downloaded))
+                existing.Add(Canonicalize(downloaded));
+        }
 
         ScriptPathResolution resolution = new(existing.FirstOrDefault(), existing);
         if (resolution.SelectedPath != null)
             _resolutionCache[cacheKey] = resolution;
 
         return resolution;
+    }
+
+    private static string? ResolveExistingFile(string path)
+    {
+        if (File.Exists(path))
+            return path;
+
+        if (OperatingSystem.IsWindows())
+            return null;
+
+        try
+        {
+            string fullPath = Path.GetFullPath(path);
+            string? root = Path.GetPathRoot(fullPath);
+            if (string.IsNullOrEmpty(root))
+                return null;
+
+            string relative = fullPath[root.Length..];
+            string[] segments = relative.Split(Path.DirectorySeparatorChar, StringSplitOptions.RemoveEmptyEntries);
+            string current = root;
+
+            for (int i = 0; i < segments.Length; i++)
+            {
+                string segment = segments[i];
+                string exactNext = Path.Combine(current, segment);
+                bool isLast = i == segments.Length - 1;
+
+                if (isLast ? File.Exists(exactNext) : Directory.Exists(exactNext))
+                {
+                    current = exactNext;
+                    continue;
+                }
+
+                if (!Directory.Exists(current))
+                    return null;
+
+                string? matched = null;
+                foreach (string entry in Directory.EnumerateFileSystemEntries(current))
+                {
+                    if (string.Equals(Path.GetFileName(entry), segment, StringComparison.OrdinalIgnoreCase))
+                    {
+                        if (isLast ? File.Exists(entry) : Directory.Exists(entry))
+                        {
+                            matched = entry;
+                            break;
+                        }
+                    }
+                }
+
+                if (matched is null)
+                    return null;
+
+                current = matched;
+            }
+
+            return File.Exists(current) ? current : null;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private string? TryDownloadMissingInclude(string subPath)
+    {
+        try
+        {
+            string normalizedKey = subPath.Replace('\\', '/').TrimStart('/');
+            Dictionary<string, ScriptInfo> remoteIndex = GetRemoteScriptsIndex();
+
+            string relativePath = normalizedKey;
+            string downloadUrl = $"https://raw.githubusercontent.com/auqw/Scripts/Skua/{normalizedKey}";
+
+            if (remoteIndex.TryGetValue(normalizedKey, out ScriptInfo? info))
+            {
+                if (!string.IsNullOrWhiteSpace(info.FilePath))
+                    relativePath = info.FilePath.Replace('\\', '/').TrimStart('/');
+                if (!string.IsNullOrWhiteSpace(info.DownloadUrl))
+                    downloadUrl = info.DownloadUrl;
+            }
+
+            string localTarget = Path.Combine(_repositoryRoot, relativePath.Replace('/', Path.DirectorySeparatorChar));
+            string? existingLocal = ResolveExistingFile(localTarget);
+            if (existingLocal is not null)
+                return existingLocal;
+
+            string? dir = Path.GetDirectoryName(localTarget);
+            if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir))
+                Directory.CreateDirectory(dir);
+
+            using var response = ValidatedHttpExtensions.GetAsync(HttpClients.GitHubRaw, downloadUrl).GetAwaiter().GetResult();
+            byte[] bytes = response.Content.ReadAsByteArrayAsync().GetAwaiter().GetResult();
+            if (bytes.Length > 0)
+            {
+                File.WriteAllBytes(localTarget, bytes);
+                return localTarget;
+            }
+        }
+        catch
+        {
+        }
+
+        return null;
+    }
+
+    private Dictionary<string, ScriptInfo> GetRemoteScriptsIndex()
+    {
+        lock (_remoteIndexLock)
+        {
+            if (_remoteScriptsByPath is not null)
+                return _remoteScriptsByPath;
+
+            Dictionary<string, ScriptInfo> index = new(StringComparer.OrdinalIgnoreCase);
+            try
+            {
+                string cacheFile = ClientFileSources.SkuaScriptsCacheFile;
+                string? json = null;
+
+                if (File.Exists(cacheFile))
+                {
+                    json = File.ReadAllText(cacheFile);
+                }
+
+                if (string.IsNullOrWhiteSpace(json))
+                {
+                    using var response = ValidatedHttpExtensions.GetAsync(
+                        HttpClients.GitHubRaw,
+                        "auqw/Scripts/refs/heads/Skua/scripts.json").GetAwaiter().GetResult();
+                    json = response.Content.ReadAsStringAsync().GetAwaiter().GetResult();
+                    if (!string.IsNullOrWhiteSpace(json))
+                    {
+                        string? dir = Path.GetDirectoryName(cacheFile);
+                        if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir))
+                            Directory.CreateDirectory(dir);
+                        File.WriteAllText(cacheFile, json);
+                    }
+                }
+
+                if (!string.IsNullOrWhiteSpace(json))
+                {
+                    List<ScriptInfo>? scripts = JsonConvert.DeserializeObject<List<ScriptInfo>>(json);
+                    if (scripts is not null)
+                    {
+                        foreach (ScriptInfo script in scripts)
+                        {
+                            if (!string.IsNullOrWhiteSpace(script.FilePath))
+                            {
+                                string key = script.FilePath.Replace('\\', '/').TrimStart('/');
+                                index[key] = script;
+                            }
+                        }
+                    }
+                }
+            }
+            catch
+            {
+            }
+
+            _remoteScriptsByPath = index;
+            return _remoteScriptsByPath;
+        }
     }
 
     private static void AddOwnerRelativeCandidate(List<string> candidates, string? ownerFile, string specifier)

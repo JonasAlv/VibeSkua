@@ -1,4 +1,4 @@
-﻿using Skua.Core.Interfaces;
+using Skua.Core.Interfaces;
 using Skua.Core.Models;
 using System.Diagnostics;
 
@@ -57,7 +57,7 @@ public class ProcessStartService : IProcessService
         }
         catch
         {
-            Process.Start("notepad", path);
+            Process.Start("xdg-open", path);
         }
     }
 

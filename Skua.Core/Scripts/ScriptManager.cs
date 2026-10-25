@@ -118,7 +118,8 @@ public partial class ScriptManager : ObservableObject, IScriptManager, IDisposab
 
     public CancellationTokenSource? ScriptCts { get; private set; }
 
-    public bool ShouldExit => ScriptCts?.IsCancellationRequested ?? false;
+    private volatile bool _isRunningStoppingEvent;
+    public bool ShouldExit => !_isRunningStoppingEvent && (ScriptCts?.IsCancellationRequested ?? false);
 
     public async Task<Exception?> StartScript()
     {
@@ -175,7 +176,7 @@ public partial class ScriptManager : ObservableObject, IScriptManager, IDisposab
 
             lock (_stateLock)
             {
-                _runScriptStoppingBool = false;
+                _runScriptStoppingBool = true;
             }
 
             Thread scriptThread = new(() =>
@@ -223,10 +224,11 @@ public partial class ScriptManager : ObservableObject, IScriptManager, IDisposab
                     if (shouldSendStoppingMessage)
                     {
                         StrongReferenceMessenger.Default.Send<ScriptStoppingMessage, int>((int)MessageChannels.ScriptStatus);
+                        _isRunningStoppingEvent = true;
                         try
                         {
                             Task<bool?> messageTask = Task.Run(async () => await StrongReferenceMessenger.Default.Send<ScriptStoppingRequestMessage, int>(new(exception), (int)MessageChannels.ScriptStatus));
-                            if (messageTask.Wait(TimeSpan.FromSeconds(2)))
+                            if (messageTask.Wait(TimeSpan.FromSeconds(15)))
                             {
                                 switch (messageTask.Result)
                                 {
@@ -248,6 +250,10 @@ public partial class ScriptManager : ObservableObject, IScriptManager, IDisposab
                             }
                         }
                         catch { }
+                        finally
+                        {
+                            _isRunningStoppingEvent = false;
+                        }
                     }
 
                     script = null;
@@ -551,7 +557,7 @@ public partial class ScriptManager : ObservableObject, IScriptManager, IDisposab
             }
         }
 
-        return sb.ToString().Trim();
+        return SanitizeScriptSourceForLinux(sb.ToString().Trim());
     }
 
     private string? ResolveImport(string ownerFile, string specifier)
@@ -804,7 +810,7 @@ public partial class ScriptManager : ObservableObject, IScriptManager, IDisposab
                 try
                 {
                     matchingFile = _includedFiles.FirstOrDefault(path => path.Equals(dep, StringComparison.Ordinal));
-                    if (matchingFile is null && OperatingSystem.IsWindows())
+                    if (matchingFile is null)
                         matchingFile = _includedFiles.FirstOrDefault(path => path.Equals(dep, StringComparison.OrdinalIgnoreCase));
                 }
                 finally
@@ -1256,8 +1262,27 @@ public partial class ScriptManager : ObservableObject, IScriptManager, IDisposab
             }
         }
 
-        return sb.ToString().Trim();
+        return SanitizeScriptSourceForLinux(sb.ToString().Trim());
     }
+
+    private static string SanitizeScriptSourceForLinux(string source)
+    {
+        if (OperatingSystem.IsWindows() || string.IsNullOrEmpty(source))
+            return source;
+
+        return source
+            .Replace("OperatingSystem.IsWindowsVersionAtLeast(", "Skua.Core.Scripts.ScriptManager.IsWindowsVersionAtLeastCompat(", StringComparison.Ordinal)
+            .Replace("OperatingSystem.IsWindows()", "true", StringComparison.Ordinal)
+            .Replace("Process.Start(\"explorer\",", "Process.Start(\"xdg-open\",", StringComparison.Ordinal)
+            .Replace("Process.Start(\"explorer.exe\",", "Process.Start(\"xdg-open\",", StringComparison.Ordinal)
+            .Replace("Process.Start(\"notepad.exe\",", "Process.Start(\"xdg-open\",", StringComparison.Ordinal)
+            .Replace("\"Skua\", \"Options\"", "\"VibeSkua\", \"options\"", StringComparison.Ordinal)
+            .Replace("\"Skua\",\n                \"Options\"", "\"VibeSkua\",\n                \"options\"", StringComparison.Ordinal)
+            .Replace("\"Skua\",\r\n                \"Options\"", "\"VibeSkua\",\r\n                \"options\"", StringComparison.Ordinal)
+            .Replace("\"Skua\", \"Scripts\"", "\"VibeSkua\", \"Scripts\"", StringComparison.Ordinal);
+    }
+
+    public static bool IsWindowsVersionAtLeastCompat(int major, int minor = 0, int build = 0, int revision = 0) => true;
 
     private void UnloadPreviousScript()
     {

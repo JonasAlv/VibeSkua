@@ -107,13 +107,13 @@ internal class Options
             }), s.GetRequiredService<ISettingsService>().Get<int>("ReloginTryDelay")),
             new CommandOptionItemViewModel<IRelayCommand>("Clear Flash Cache", new RelayCommand(() =>
             {
-                string flash = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Adobe", "Flash Player");
-                string macromedia = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Macromedia", "Flash Player");
+                string ruffleCache = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".cache", "ruffle");
+                string ruffleSharedObjects = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "ruffle", "shared_objects");
 
-                if (Directory.Exists(flash))
-                    Directory.Delete(flash, true);
-                if (Directory.Exists(macromedia))
-                    Directory.Delete(macromedia, true);
+                if (Directory.Exists(ruffleCache))
+                    Directory.Delete(ruffleCache, true);
+                if (Directory.Exists(ruffleSharedObjects))
+                    Directory.Delete(ruffleSharedObjects, true);
             }))
         };
 

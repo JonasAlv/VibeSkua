@@ -9,6 +9,7 @@ public class ItemBase
     /// The ID of the item.
     /// </summary>
     [JsonProperty("ItemID")]
+    [JsonConverter(typeof(IntConverter))]
     public virtual int ID { get; set; }
 
     /// <summary>
@@ -28,12 +29,14 @@ public class ItemBase
     /// The quantity of the item in this stack.
     /// </summary>
     [JsonProperty("iQty")]
+    [JsonConverter(typeof(IntConverter))]
     public virtual int Quantity { get; set; }
 
     /// <summary>
     /// The maximum stack size this item can exist in.
     /// </summary>
     [JsonProperty("iStk")]
+    [JsonConverter(typeof(IntConverter))]
     public virtual int MaxStack { get; set; }
 
     /// <summary>
@@ -88,6 +91,7 @@ public class ItemBase
     /// <br> 32: Hearty </br>
     /// </summary>
     [JsonProperty("EnhPatternID")]
+    [JsonConverter(typeof(IntConverter))]
     public virtual int EnhancementPatternID { get; set; }
 
     /// <summary>

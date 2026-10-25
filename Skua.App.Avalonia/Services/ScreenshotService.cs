@@ -59,7 +59,7 @@ public class ScreenshotService : IScreenshotService
             }
         });
 #else
-        return Task.FromResult(Array.Empty<byte>());
+        return await Task.FromResult(Array.Empty<byte>());
 #endif
     }
 }

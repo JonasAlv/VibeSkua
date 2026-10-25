@@ -17,6 +17,7 @@ using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Linq;
 using Skua.Core.Interfaces.ViewModels;
+using System.Threading;
 using System.Threading.Tasks;
 using Skua.Core.AppStartup;
 
@@ -77,6 +78,7 @@ public partial class MainWindow : Window
     private bool _isTitleBarPermanentlyHidden = false;
     private int _preThrottleFPS = -1;
     private string? _preThrottleQuality = null;
+    private readonly CancellationTokenSource _ipcCancelCts = new();
 
     public void HideTitleBar()
     {
@@ -93,6 +95,7 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
+        Skua.Shared.Avalonia.Services.WindowResizeHelper.Attach(this);
         _mainViewModel = Ioc.Default.GetRequiredService<MainViewModel>();
         _mainMenuVm = Ioc.Default.GetRequiredService<MainMenuViewModel>();
         _flash = Ioc.Default.GetRequiredService<IFlashUtil>();
@@ -284,19 +287,30 @@ public partial class MainWindow : Window
         }
         catch { }
         
-        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) 
-        {
-            _flash.InitializeFlash();
-            
 #if IS_WINDOWS
-            if (this.TryGetPlatformHandle()?.Handle is IntPtr hwnd && hwnd != IntPtr.Zero)
-            {
-                SetWindowText(hwnd, _mainViewModel.Title ?? "Skua");
-                _subclassProc = WindowSubclassProc;
-                SetWindowSubclass(hwnd, _subclassProc, 1, IntPtr.Zero);
-            }
-#endif
+        _flash.InitializeFlash();
+        if (this.TryGetPlatformHandle()?.Handle is IntPtr hwnd && hwnd != IntPtr.Zero)
+        {
+            SetWindowText(hwnd, _mainViewModel.Title ?? "Skua");
+            _subclassProc = WindowSubclassProc;
+            SetWindowSubclass(hwnd, _subclassProc, 1, IntPtr.Zero);
         }
+#elif IS_LINUX
+        Focusable = true;
+        AddHandler(global::Avalonia.Input.InputElement.KeyDownEvent, OnLinuxKeyDown, global::Avalonia.Interactivity.RoutingStrategies.Tunnel);
+        AddHandler(global::Avalonia.Input.InputElement.KeyUpEvent, OnLinuxKeyUp, global::Avalonia.Interactivity.RoutingStrategies.Tunnel);
+        Skua.App.Avalonia.Controls.WinFormsFlashHost.GameClicked -= OnLinuxGameClicked;
+        Skua.App.Avalonia.Controls.WinFormsFlashHost.GameClicked += OnLinuxGameClicked;
+
+        if (FlashHost != null)
+        {
+            FlashHost.IsVisible = !_options.HeadlessMode;
+            Dispatcher.UIThread.RunJobs();
+            FlashHost.Focus();
+        }
+        _flash.InitializeFlash();
+        TabIpc.StartListener(this, Environment.ProcessId, _ipcCancelCts.Token);
+#endif
 
         _tabTitleSyncTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
         string lastWrittenUsername = "";
@@ -327,11 +341,16 @@ public partial class MainWindow : Window
     {
         App.DisposeTrayIcon();
         _tabTitleSyncTimer?.Stop();
+        _ipcCancelCts.Cancel();
         try
         {
             string file = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "VibeSkuaTabs", $"{Environment.ProcessId}.txt");
             if (System.IO.File.Exists(file))
                 System.IO.File.Delete(file);
+
+            string readyFile = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "VibeSkuaTabs", $"ready_{Environment.ProcessId}.txt");
+            if (System.IO.File.Exists(readyFile))
+                System.IO.File.Delete(readyFile);
         }
         catch { }
 
@@ -346,6 +365,134 @@ public partial class MainWindow : Window
     {
         FlashHost.SetChild(flash);
     }
+    #else
+    private void OnLinuxGameClicked()
+    {
+        if (AutoToggle != null)
+            AutoToggle.IsChecked = false;
+        if (JumpToggle != null)
+            JumpToggle.IsChecked = false;
+        MainMenuControl?.Close();
+        Activate();
+        if (FlashHost != null && FlashHost.IsVisible)
+            FlashHost.Focus();
+        else
+            Focus();
+    }
+
+    private void OnLinuxKeyDown(object? sender, global::Avalonia.Input.KeyEventArgs e)
+    {
+        if (FocusManager?.GetFocusedElement() is TextBox)
+            return;
+
+        if (FocusManager?.GetFocusedElement() is Button)
+            FlashHost?.Focus();
+
+        ForwardLinuxKeyEvent(true, e);
+    }
+
+    private void OnLinuxKeyUp(object? sender, global::Avalonia.Input.KeyEventArgs e)
+    {
+        if (FocusManager?.GetFocusedElement() is TextBox)
+            return;
+
+        ForwardLinuxKeyEvent(false, e);
+    }
+
+    private static void ForwardLinuxKeyEvent(bool down, global::Avalonia.Input.KeyEventArgs e)
+    {
+        bool ctrl = e.KeyModifiers.HasFlag(global::Avalonia.Input.KeyModifiers.Control);
+        bool shift = e.KeyModifiers.HasFlag(global::Avalonia.Input.KeyModifiers.Shift);
+        bool alt = e.KeyModifiers.HasFlag(global::Avalonia.Input.KeyModifiers.Alt);
+
+        string physical = e.PhysicalKey != global::Avalonia.Input.PhysicalKey.None
+            ? e.PhysicalKey.ToString()
+            : e.Key.ToString();
+
+        bool isNumPadDigit = e.Key is >= global::Avalonia.Input.Key.NumPad0 and <= global::Avalonia.Input.Key.NumPad9;
+        string? symbol = (!string.IsNullOrEmpty(e.KeySymbol) && e.KeySymbol.Length == 1 && !char.IsControl(e.KeySymbol[0]))
+            ? e.KeySymbol
+            : TryMapSpecialKeyToSymbol(e.Key);
+
+        string logical;
+        if (!string.IsNullOrEmpty(symbol))
+        {
+            logical = (shift && !isNumPadDigit) ? ApplyShiftToSymbol(symbol) : symbol;
+        }
+        else
+        {
+            string keyStr = e.Key.ToString();
+            logical = (keyStr.Length == 1 && char.IsLetter(keyStr[0]))
+                ? (shift ? keyStr.ToUpperInvariant() : keyStr.ToLowerInvariant())
+                : keyStr;
+        }
+
+        Skua.App.Avalonia.Controls.WinFormsFlashHost.ForwardKey(down, physical, logical, ctrl, shift, alt);
+    }
+
+    private static string? TryMapSpecialKeyToSymbol(global::Avalonia.Input.Key key) => key switch
+    {
+        global::Avalonia.Input.Key.D0 or global::Avalonia.Input.Key.NumPad0 => "0",
+        global::Avalonia.Input.Key.D1 or global::Avalonia.Input.Key.NumPad1 => "1",
+        global::Avalonia.Input.Key.D2 or global::Avalonia.Input.Key.NumPad2 => "2",
+        global::Avalonia.Input.Key.D3 or global::Avalonia.Input.Key.NumPad3 => "3",
+        global::Avalonia.Input.Key.D4 or global::Avalonia.Input.Key.NumPad4 => "4",
+        global::Avalonia.Input.Key.D5 or global::Avalonia.Input.Key.NumPad5 => "5",
+        global::Avalonia.Input.Key.D6 or global::Avalonia.Input.Key.NumPad6 => "6",
+        global::Avalonia.Input.Key.D7 or global::Avalonia.Input.Key.NumPad7 => "7",
+        global::Avalonia.Input.Key.D8 or global::Avalonia.Input.Key.NumPad8 => "8",
+        global::Avalonia.Input.Key.D9 or global::Avalonia.Input.Key.NumPad9 => "9",
+        global::Avalonia.Input.Key.Multiply => "*",
+        global::Avalonia.Input.Key.Add => "+",
+        global::Avalonia.Input.Key.Subtract => "-",
+        global::Avalonia.Input.Key.Divide => "/",
+        global::Avalonia.Input.Key.Decimal => ".",
+        global::Avalonia.Input.Key.Space => " ",
+        global::Avalonia.Input.Key.OemMinus => "-",
+        global::Avalonia.Input.Key.OemPlus => "=",
+        global::Avalonia.Input.Key.OemOpenBrackets => "[",
+        global::Avalonia.Input.Key.OemCloseBrackets => "]",
+        global::Avalonia.Input.Key.OemPipe or global::Avalonia.Input.Key.OemBackslash => "\\",
+        global::Avalonia.Input.Key.OemSemicolon => ";",
+        global::Avalonia.Input.Key.OemQuotes => "'",
+        global::Avalonia.Input.Key.OemComma => ",",
+        global::Avalonia.Input.Key.OemPeriod => ".",
+        global::Avalonia.Input.Key.OemQuestion => "/",
+        global::Avalonia.Input.Key.OemTilde => "`",
+        _ => null
+    };
+
+    private static string ApplyShiftToSymbol(string symbol)
+    {
+        if (symbol.Length == 1 && char.IsLetter(symbol[0]))
+            return symbol.ToUpperInvariant();
+
+        return symbol switch
+        {
+            "1" => "!",
+            "2" => "@",
+            "3" => "#",
+            "4" => "$",
+            "5" => "%",
+            "6" => "^",
+            "7" => "&",
+            "8" => "*",
+            "9" => "(",
+            "0" => ")",
+            "-" => "_",
+            "=" => "+",
+            "[" => "{",
+            "]" => "}",
+            "\\" => "|",
+            ";" => ":",
+            "'" => "\"",
+            "," => "<",
+            "." => ">",
+            "/" => "?",
+            "`" => "~",
+            _ => symbol
+        };
+    }
     #endif
 
     private void OnFlashCall(string function, params object[] args)
@@ -358,6 +505,8 @@ public partial class MainWindow : Window
                 LoadingBar.IsVisible = false;
                 FlashHost.IsVisible = !_options.HeadlessMode;
                 HeadlessOverlay.IsVisible = _options.HeadlessMode;
+                if (FlashHost != null && FlashHost.IsVisible && FocusManager?.GetFocusedElement() is not TextBox)
+                    FlashHost.Focus();
                 try
                 {
                     FlashHost?.SetScaleMode(false);
@@ -368,25 +517,8 @@ public partial class MainWindow : Window
         }
     }
 
-#if IS_WINDOWS
-    private IntPtr WindowSubclassProc(IntPtr hWnd, uint uMsg, IntPtr wParam, IntPtr lParam, nuint uIdSubclass, IntPtr dwRefData)
+    public IntPtr HandleIpcMessage(uint uMsg, IntPtr wParam, IntPtr lParam)
     {
-        if (uMsg == WM_NCACTIVATE)
-        {
-            if (wParam == IntPtr.Zero)
-            {
-                IntPtr fg = GetForegroundWindow();
-                if (fg != IntPtr.Zero)
-                {
-                    GetWindowThreadProcessId(fg, out uint fgPid);
-                    if (fgPid == (uint)Environment.ProcessId)
-                    {
-                        return DefSubclassProc(hWnd, uMsg, (IntPtr)1, lParam);
-                    }
-                }
-            }
-        }
-
         if (uMsg == WM_SKUA_GRIDVIEW)
         {
             Dispatcher.UIThread.Post(() =>
@@ -717,6 +849,28 @@ public partial class MainWindow : Window
             });
             return IntPtr.Zero;
         }
+
+        return IntPtr.Zero;
+    }
+
+#if IS_WINDOWS
+    private IntPtr WindowSubclassProc(IntPtr hWnd, uint uMsg, IntPtr wParam, IntPtr lParam, nuint uIdSubclass, IntPtr dwRefData)
+    {
+        if (uMsg == WM_NCACTIVATE)
+        {
+            if (wParam == IntPtr.Zero)
+            {
+                IntPtr fg = GetForegroundWindow();
+                if (fg != IntPtr.Zero)
+                {
+                    GetWindowThreadProcessId(fg, out uint fgPid);
+                    if (fgPid == (uint)Environment.ProcessId)
+                    {
+                        return DefSubclassProc(hWnd, uMsg, (IntPtr)1, lParam);
+                    }
+                }
+            }
+        }
         else if (uMsg == 0x004A /* WM_COPYDATA */)
         {
             try
@@ -747,7 +901,11 @@ public partial class MainWindow : Window
             }
             catch { }
         }
-        
+
+        IntPtr res = HandleIpcMessage(uMsg, wParam, lParam);
+        if (res != IntPtr.Zero)
+            return res;
+
         return DefSubclassProc(hWnd, uMsg, wParam, lParam);
     }
 #endif

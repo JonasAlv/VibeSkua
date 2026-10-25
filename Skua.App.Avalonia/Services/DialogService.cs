@@ -685,6 +685,8 @@ public class DialogService : IDialogService
         {
             Title = title,
             Width = 420,
+            MinWidth = 250,
+            MinHeight = 100,
             SizeToContent = SizeToContent.Height,
             WindowStartupLocation = WindowStartupLocation.Manual,
             SystemDecorations = SystemDecorations.BorderOnly,
@@ -697,6 +699,7 @@ public class DialogService : IDialogService
         };
         dialog[!Window.BackgroundProperty] = new global::Avalonia.Markup.Xaml.MarkupExtensions.DynamicResourceExtension("SkuaPageBrush");
         Skua.Shared.Avalonia.Services.ThemeResourceApplicator.ApplyTitleBarTheme(dialog);
+        Skua.Shared.Avalonia.Services.WindowResizeHelper.Attach(dialog);
         return dialog;
     }
 

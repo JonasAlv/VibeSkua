@@ -56,6 +56,8 @@ public static class ThemeResourceApplicator
 
     public static void ApplyTitleBarTheme(Window window, bool? isDarkTheme = null)
     {
+        WindowResizeHelper.Attach(window);
+
         bool isDark = isDarkTheme ?? (window.ActualThemeVariant == ThemeVariant.Dark || Application.Current?.RequestedThemeVariant != ThemeVariant.Light);
         ThemeVariant targetVariant = isDark ? ThemeVariant.Dark : ThemeVariant.Light;
         if (window.RequestedThemeVariant != targetVariant)

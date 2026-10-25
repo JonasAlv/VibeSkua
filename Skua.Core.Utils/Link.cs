@@ -1,4 +1,4 @@
-﻿using System.Diagnostics;
+using System.Diagnostics;
 
 namespace Skua.Core.Utils;
 
@@ -6,10 +6,10 @@ public class Link
 {
     public static void OpenBrowser(string link)
     {
-        ProcessStartInfo ps = new("explorer", link)
+        ProcessStartInfo ps = new("xdg-open", link)
         {
-            UseShellExecute = true,
-            Verb = "open"
+            UseShellExecute = false,
+            CreateNoWindow = true
         };
         Process.Start(ps);
     }

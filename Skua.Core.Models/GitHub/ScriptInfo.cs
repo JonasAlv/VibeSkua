@@ -59,9 +59,9 @@ public class ScriptInfo
 
     public string RelativePath => FilePath == FileName ? "Scripts/" : $"Scripts/{FilePath.Replace(FileName, "")}";
 
-    public string LocalFile => Path.GetFullPath(Path.Combine(ClientFileSources.SkuaScriptsDIR, FilePath.Replace('/', Path.DirectorySeparatorChar)));
+    public string LocalFile => Path.GetFullPath(Path.Combine(ClientFileSources.SkuaScriptsDIR, FilePath.Replace('\\', Path.DirectorySeparatorChar).Replace('/', Path.DirectorySeparatorChar)));
 
-    public string ManagerLocalFile => Path.GetFullPath(Path.Combine(ClientFileSources.SkuaScriptsDIR, FilePath.Replace('/', Path.DirectorySeparatorChar)));
+    public string ManagerLocalFile => Path.GetFullPath(Path.Combine(ClientFileSources.SkuaScriptsDIR, FilePath.Replace('\\', Path.DirectorySeparatorChar).Replace('/', Path.DirectorySeparatorChar)));
 
     [JsonIgnore]
     public bool? CachedDownloaded { get; set; }

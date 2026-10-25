@@ -141,6 +141,7 @@ public class WindowService : IWindowService
         window.Classes.Add("skua");
         window[!Window.BackgroundProperty] = new global::Avalonia.Markup.Xaml.MarkupExtensions.DynamicResourceExtension("SkuaPageBrush");
         Skua.Shared.Avalonia.Services.ThemeResourceApplicator.ApplyTitleBarTheme(window);
+        Skua.Shared.Avalonia.Services.WindowResizeHelper.Attach(window);
 
         if (initialPos.HasValue)
         {

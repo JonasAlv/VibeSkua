@@ -19,6 +19,7 @@ using Skua.Core.Utils;
 using System;
 using System.Threading;
 using System.Threading.Tasks;
+using Newtonsoft.Json;
 
 #if IS_WINDOWS
 using CommunityToolkit.Mvvm.Input;
@@ -73,6 +74,17 @@ public partial class App : Application
     public override void OnFrameworkInitializationCompleted()
     {
         RegisterGlobalExceptionHandlers();
+
+        JsonConvert.DefaultSettings = () => new JsonSerializerSettings
+        {
+            NullValueHandling = NullValueHandling.Ignore,
+            MissingMemberHandling = MissingMemberHandling.Ignore,
+            Error = (sender, args) =>
+            {
+                System.Diagnostics.Trace.WriteLine($"[JSON Warning] {args.ErrorContext.Path}: {args.ErrorContext.Error.Message}");
+                args.ErrorContext.Handled = true;
+            }
+        };
 
         ServiceCollection services = new();
         services.AddCommonServices();
@@ -164,7 +176,7 @@ public partial class App : Application
         {
             desktop.ShutdownMode = ShutdownMode.OnMainWindowClose;
             Task.Run(() => Skua.App.Avalonia.Flash.FlashUtil.PreloadSwf());
-            
+
             if (hasEmbedFlag)
             {
                 // Child instance
@@ -188,6 +200,7 @@ public partial class App : Application
                     IntPtr childHwnd = mainChild.TryGetPlatformHandle()?.Handle ?? IntPtr.Zero;
                     if (childHwnd != IntPtr.Zero)
                     {
+#if IS_WINDOWS
                         int exStyle = GetWindowLong_Native(childHwnd, -20);
                         SetWindowLong_Native(childHwnd, -20, exStyle | 0x00000080); // WS_EX_TOOLWINDOW
                         SetWindowPos_Native(childHwnd, IntPtr.Zero, -32000, -32000, 800, 600, 0x0040 | 0x0010 | 0x0004); // SWP_SHOWWINDOW | SWP_NOACTIVATE | SWP_NOZORDER
@@ -196,6 +209,16 @@ public partial class App : Application
                         {
                             PostMessage_Native(new IntPtr(embedHwnd), 0x0400 + 440 /* WM_SKUA_CHILD_READY */, childHwnd, new IntPtr(Environment.ProcessId));
                         }
+#elif IS_LINUX
+                        try
+                        {
+                            string dir = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "VibeSkuaTabs");
+                            System.IO.Directory.CreateDirectory(dir);
+                            string file = System.IO.Path.Combine(dir, $"ready_{Environment.ProcessId}.txt");
+                            System.IO.File.WriteAllText(file, childHwnd.ToInt64().ToString());
+                        }
+                        catch { }
+#endif
                     }
                 };
 

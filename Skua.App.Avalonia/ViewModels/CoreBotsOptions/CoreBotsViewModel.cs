@@ -82,7 +82,7 @@ public partial class CoreBotsViewModel : BotControlViewModelBase
 
         if (showDialog)
         {
-            _dialogService.ShowMessageBox($@"Saved to \options\CBO_Storage({_player.Username}).txt", "Save Successful!");
+            _dialogService.ShowMessageBox($"Saved to {Path.Combine(ClientFileSources.SkuaOptionsDIR, $"CBO_Storage({_player.Username}).txt")}", "Save Successful!");
         }
         _readValues[_player.Username] = ReadValues(File.ReadAllLines(filePath));
     }

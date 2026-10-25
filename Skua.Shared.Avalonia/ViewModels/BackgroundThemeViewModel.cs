@@ -77,7 +77,7 @@ public class BackgroundThemeViewModel : ObservableObject
     {
         try
         {
-            System.Diagnostics.Process.Start("explorer.exe", ClientFileSources.SkuaThemesDIR);
+            System.Diagnostics.Process.Start("xdg-open", ClientFileSources.SkuaThemesDIR);
         }
         catch (Exception)
         {

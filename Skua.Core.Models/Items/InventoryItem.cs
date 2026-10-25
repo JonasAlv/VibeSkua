@@ -1,4 +1,4 @@
-﻿using Newtonsoft.Json;
+using Newtonsoft.Json;
 using Skua.Core.Models.Converters;
 
 namespace Skua.Core.Models.Items;
@@ -9,6 +9,7 @@ public class InventoryItem : ItemBase
     /// The character (instance) ID of this item.
     /// </summary>
     [JsonProperty("CharItemID")]
+    [JsonConverter(typeof(IntConverter))]
     public int CharItemID { get; set; }
 
     /// <summary>
@@ -22,12 +23,14 @@ public class InventoryItem : ItemBase
     /// The level of the item.
     /// </summary>
     [JsonProperty("iLvl")]
+    [JsonConverter(typeof(IntConverter))]
     public int Level { get; set; }
 
     /// <summary>
     /// The enhancement level of the item.
     /// </summary>
     [JsonProperty("EnhLvl")]
+    [JsonConverter(typeof(IntConverter))]
     public virtual int EnhancementLevel { get; set; }
 
     public override bool Equals(object? obj)

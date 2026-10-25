@@ -9,4 +9,11 @@
 		<SuppressTrimAnalysisWarnings>true</SuppressTrimAnalysisWarnings>
 		<DisableFody>false</DisableFody>
 	</PropertyGroup>
+
+	<PropertyGroup Condition="$([MSBuild]::IsOSPlatform('Windows'))">
+		<DefineConstants>$(DefineConstants);IS_WINDOWS</DefineConstants>
+	</PropertyGroup>
+	<PropertyGroup Condition="$([MSBuild]::IsOSPlatform('Linux'))">
+		<DefineConstants>$(DefineConstants);IS_LINUX</DefineConstants>
+	</PropertyGroup>
 </Project>

@@ -65,7 +65,7 @@ public partial class ScriptInfoViewModel : ObservableObject
     public string DisplayPath => IsCustom ? LocalFile : ScriptPath;
 
     private bool DownloadedFileExists => File.Exists(LocalFile);
-    public string ScriptPath => Path.Combine(ClientFileSources.SkuaScriptsDIR, FilePath.Replace("/", "\\"));
+    public string ScriptPath => Path.Combine(ClientFileSources.SkuaScriptsDIR, FilePath.Replace('\\', Path.DirectorySeparatorChar).Replace('/', Path.DirectorySeparatorChar));
     public string FormattedCreationDate => Info.CreationDate.HasValue && Info.CreationDate.Value > DateTime.MinValue ? Info.CreationDate.Value.ToString("MMM dd, yyyy") : "Unknown";
 
     private ObservableCollection<string>? _infoTags;

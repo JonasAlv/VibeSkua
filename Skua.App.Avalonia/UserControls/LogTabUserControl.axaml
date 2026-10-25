@@ -65,7 +65,7 @@
              ScrollViewer.VerticalScrollBarVisibility="Visible"
              ScrollViewer.HorizontalScrollBarVisibility="Disabled"
              ScrollViewer.AllowAutoHide="False"
-             FontFamily="JetBrains Mono,Consolas,Courier New,monospace"
+             FontFamily="JetBrains Mono,Noto Sans Symbols,Noto Sans Symbols 2,Noto Color Emoji,Consolas,Courier New,monospace"
              FontSize="11"
              Foreground="{DynamicResource SkuaTextBrush}">
       <ListBox.ContextMenu>
