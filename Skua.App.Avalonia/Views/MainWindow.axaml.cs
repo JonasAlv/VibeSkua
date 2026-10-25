@@ -52,6 +52,18 @@ public partial class MainWindow : Window
     private const int WM_NCACTIVATE = 0x0086;
 
     private SubclassProc? _subclassProc;
+#elif IS_LINUX
+    [DllImport("libX11.so.6")]
+    private static extern IntPtr XOpenDisplay(IntPtr display);
+
+    [DllImport("libX11.so.6")]
+    private static extern int XCloseDisplay(IntPtr display);
+
+    [DllImport("libX11.so.6")]
+    private static extern int XSetInputFocus(IntPtr display, IntPtr w, int revert_to, IntPtr time);
+
+    [DllImport("libX11.so.6")]
+    private static extern int XFlush(IntPtr display);
 #endif
     private const int WM_SKUA_JUMP_MAP = 0x0400 + 449;
     private const int WM_SKUA_SET_OPTION = 0x0400 + 450;
@@ -109,6 +121,25 @@ public partial class MainWindow : Window
         
         #if IS_WINDOWS
         RegisterMessages();
+        #elif IS_LINUX
+        AddHandler(PointerPressedEvent, (s, e) =>
+        {
+            IntPtr handle = this.TryGetPlatformHandle()?.Handle ?? IntPtr.Zero;
+            if (handle != IntPtr.Zero)
+            {
+                try
+                {
+                    IntPtr disp = XOpenDisplay(IntPtr.Zero);
+                    if (disp != IntPtr.Zero)
+                    {
+                        XSetInputFocus(disp, handle, 1 /* RevertToParent */, IntPtr.Zero);
+                        XFlush(disp);
+                        XCloseDisplay(disp);
+                    }
+                }
+                catch { }
+            }
+        }, global::Avalonia.Interactivity.RoutingStrategies.Tunnel);
         #endif
     }
 

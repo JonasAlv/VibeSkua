@@ -69,6 +69,40 @@ public partial class App : Application
         public int Bottom;
     }
 
+#if IS_LINUX
+    [System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential)]
+    public struct XSetWindowAttributes
+    {
+        public IntPtr background_pixmap;
+        public UIntPtr background_pixel;
+        public IntPtr border_pixmap;
+        public UIntPtr border_pixel;
+        public int bit_gravity;
+        public int win_gravity;
+        public int backing_store;
+        public UIntPtr backing_planes;
+        public UIntPtr backing_pixel;
+        public int save_under;
+        public IntPtr event_mask;
+        public IntPtr do_not_propagate_mask;
+        public int override_redirect;
+        public IntPtr colormap;
+        public IntPtr cursor;
+    }
+
+    [System.Runtime.InteropServices.DllImport("libX11.so.6")]
+    public static extern IntPtr XOpenDisplay(IntPtr display);
+
+    [System.Runtime.InteropServices.DllImport("libX11.so.6")]
+    public static extern int XCloseDisplay(IntPtr display);
+
+    [System.Runtime.InteropServices.DllImport("libX11.so.6")]
+    public static extern int XChangeWindowAttributes(IntPtr display, IntPtr w, UIntPtr valuemask, ref XSetWindowAttributes attributes);
+
+    [System.Runtime.InteropServices.DllImport("libX11.so.6")]
+    public static extern int XFlush(IntPtr display);
+#endif
+
     public static System.Threading.Mutex AppMutex;
 
     public override void OnFrameworkInitializationCompleted()
@@ -210,6 +244,19 @@ public partial class App : Application
                             PostMessage_Native(new IntPtr(embedHwnd), 0x0400 + 440 /* WM_SKUA_CHILD_READY */, childHwnd, new IntPtr(Environment.ProcessId));
                         }
 #elif IS_LINUX
+                        try
+                        {
+                            IntPtr disp = XOpenDisplay(IntPtr.Zero);
+                            if (disp != IntPtr.Zero)
+                            {
+                                XSetWindowAttributes attrs = new() { override_redirect = 1 };
+                                XChangeWindowAttributes(disp, childHwnd, new UIntPtr(1 << 9) /* CWOverrideRedirect */, ref attrs);
+                                XFlush(disp);
+                                XCloseDisplay(disp);
+                            }
+                        }
+                        catch { }
+
                         try
                         {
                             string dir = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "VibeSkuaTabs");
