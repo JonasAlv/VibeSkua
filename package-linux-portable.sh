@@ -28,7 +28,49 @@ mkdir -p "$FFDEC_DIR"
 # 3. Create root portable marker
 touch "$DIST_DIR/.portable"
 
-# 4. Create root launcher scripts
+# 4. Create root launcher executables and scripts
+cat << 'EOF' > "$BUILD_DIR/launcher.c"
+#define _GNU_SOURCE
+#include <unistd.h>
+#include <libgen.h>
+#include <limits.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+int main(int argc, char *argv[]) {
+    char exe_path[PATH_MAX];
+    ssize_t len = readlink("/proc/self/exe", exe_path, sizeof(exe_path) - 1);
+    if (len == -1) {
+        perror("readlink");
+        return 1;
+    }
+    exe_path[len] = '\0';
+
+    char *dir = dirname(exe_path);
+    char current_dir[PATH_MAX];
+    snprintf(current_dir, sizeof(current_dir), "%s/current", dir);
+
+    char target[PATH_MAX];
+    snprintf(target, sizeof(target), "%s/%s", current_dir, TARGET_BIN);
+
+    if (chdir(current_dir) != 0) {
+        perror("chdir");
+        return 1;
+    }
+
+    execv(target, argv);
+    perror("execv");
+    return 1;
+}
+EOF
+
+# Compile native ELF binary launchers (matching Velopack's Windows stub.exe)
+gcc -O2 -s -DTARGET_BIN=\"VibeSkua.Manager\" "$BUILD_DIR/launcher.c" -o "$DIST_DIR/VibeSkua-Manager"
+gcc -O2 -s -DTARGET_BIN=\"VibeSkua\" "$BUILD_DIR/launcher.c" -o "$DIST_DIR/VibeSkua"
+rm -f "$BUILD_DIR/launcher.c"
+
+# Also provide .sh shell scripts as an option
 cat << 'EOF' > "$DIST_DIR/VibeSkua-Manager.sh"
 #!/usr/bin/env bash
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -36,8 +78,6 @@ cd "$SCRIPT_DIR/current"
 exec "$SCRIPT_DIR/current/VibeSkua.Manager" "$@"
 EOF
 chmod +x "$DIST_DIR/VibeSkua-Manager.sh"
-cp -f "$DIST_DIR/VibeSkua-Manager.sh" "$DIST_DIR/VibeSkua-Manager"
-chmod +x "$DIST_DIR/VibeSkua-Manager"
 
 cat << 'EOF' > "$DIST_DIR/VibeSkua.sh"
 #!/usr/bin/env bash
@@ -46,8 +86,6 @@ cd "$SCRIPT_DIR/current"
 exec "$SCRIPT_DIR/current/VibeSkua" "$@"
 EOF
 chmod +x "$DIST_DIR/VibeSkua.sh"
-cp -f "$DIST_DIR/VibeSkua.sh" "$DIST_DIR/VibeSkua"
-chmod +x "$DIST_DIR/VibeSkua"
 
 # 5. Copy root application files into current/
 APP_BIN="$SCRIPT_DIR/Skua.App.Avalonia/bin/Release/net10.0"
