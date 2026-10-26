@@ -12,27 +12,30 @@ internal static class SkuaExecutableLocator
 
     private static string Resolve()
     {
-        string vibePath = Path.Combine(AppContext.BaseDirectory, "VibeSkua.exe");
-        if (File.Exists(vibePath))
-            return vibePath;
+        string[] directCandidates = OperatingSystem.IsWindows()
+            ? [ "VibeSkua.exe", "Skua.exe" ]
+            : [ "VibeSkua", "Skua", "VibeSkua.exe", "Skua.exe" ];
 
-        string deployedPath = Path.Combine(AppContext.BaseDirectory, "Skua.exe");
-        if (File.Exists(deployedPath))
-            return deployedPath;
+        foreach (string name in directCandidates)
+        {
+            string p = Path.Combine(AppContext.BaseDirectory, name);
+            if (File.Exists(p))
+                return p;
+        }
 
         string repositoryRoot = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", ".."));
         string[] candidates =
         [
+            Path.Combine(repositoryRoot, "Build", "VibeSkua"),
             Path.Combine(repositoryRoot, "Build", "VibeSkua.exe"),
+            Path.Combine(repositoryRoot, "Build", "Skua"),
             Path.Combine(repositoryRoot, "Build", "Skua.exe"),
+            Path.Combine(repositoryRoot, "Skua.App.Avalonia", "bin", "Release", "net10.0", "VibeSkua"),
+            Path.Combine(repositoryRoot, "Skua.App.Avalonia", "bin", "Release", "net10.0", "VibeSkua.dll"),
             Path.Combine(repositoryRoot, "Skua.App.Avalonia", "bin", "Release", "net10.0-windows", "VibeSkua.exe"),
             Path.Combine(repositoryRoot, "Skua.App.Avalonia", "bin", "Release", "net10.0-windows", "Skua.exe"),
-            Path.Combine(repositoryRoot, "Skua.App.Avalonia", "bin", "Release", "net10.0-windows", "win-x64", "VibeSkua.exe"),
-            Path.Combine(repositoryRoot, "Skua.App.Avalonia", "bin", "Release", "net10.0-windows", "win-x64", "Skua.exe"),
-            Path.Combine(repositoryRoot, "Skua.App.Avalonia", "bin", "Debug", "net10.0-windows", "VibeSkua.exe"),
-            Path.Combine(repositoryRoot, "Skua.App.Avalonia", "bin", "Debug", "net10.0-windows", "Skua.exe"),
-            Path.Combine(repositoryRoot, "Skua.App.Avalonia", "bin", "Debug", "net10.0-windows", "win-x64", "VibeSkua.exe"),
-            Path.Combine(repositoryRoot, "Skua.App.Avalonia", "bin", "Debug", "net10.0-windows", "win-x64", "Skua.exe")
+            Path.Combine(repositoryRoot, "Skua.App.Avalonia", "bin", "Debug", "net10.0", "VibeSkua"),
+            Path.Combine(repositoryRoot, "Skua.App.Avalonia", "bin", "Debug", "net10.0-windows", "VibeSkua.exe")
         ];
 
         foreach (string candidate in candidates)
@@ -41,6 +44,7 @@ internal static class SkuaExecutableLocator
                 return candidate;
         }
 
-        return File.Exists(vibePath) ? vibePath : deployedPath;
+        string fallbackName = OperatingSystem.IsWindows() ? "VibeSkua.exe" : "VibeSkua";
+        return Path.Combine(AppContext.BaseDirectory, fallbackName);
     }
 }

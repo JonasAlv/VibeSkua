@@ -18,6 +18,7 @@ namespace Skua.Manager.Avalonia;
 internal static class Program
 {
     private static EventWaitHandle? _singleInstanceWaitHandle;
+    private static Mutex? _singleInstanceMutex;
 
     static Program()
     {
@@ -31,41 +32,61 @@ internal static class Program
 
         VelopackApp.Build().Run();
 
-        const string eventName = @"Global\VibeSkua.Manager.SingleInstance.WakeEvent";
-        bool createdNew;
-        try
+        if (OperatingSystem.IsWindows())
         {
-            _singleInstanceWaitHandle = new EventWaitHandle(false, EventResetMode.AutoReset, eventName, out createdNew);
-        }
-        catch
-        {
-            _singleInstanceWaitHandle = new EventWaitHandle(false, EventResetMode.AutoReset, "VibeSkua.Manager.SingleInstance.WakeEvent", out createdNew);
-        }
-
-        if (!createdNew)
-        {
-            // Another manager is already running! Wake it up and terminate this second instance immediately.
+            const string eventName = @"Global\VibeSkua.Manager.SingleInstance.WakeEvent";
+            bool createdNew;
             try
             {
-                _singleInstanceWaitHandle.Set();
+                _singleInstanceWaitHandle = new EventWaitHandle(false, EventResetMode.AutoReset, eventName, out createdNew);
             }
             catch
             {
+                _singleInstanceWaitHandle = new EventWaitHandle(false, EventResetMode.AutoReset, "VibeSkua.Manager.SingleInstance.WakeEvent", out createdNew);
             }
-            return;
-        }
 
-        // We are the single running instance. Listen for signals from subsequent launch attempts.
-        ThreadPool.RegisterWaitForSingleObject(_singleInstanceWaitHandle, (state, timedOut) =>
-        {
-            if (!timedOut)
+            if (!createdNew)
             {
-                Dispatcher.UIThread.Post(() =>
+                // Another manager is already running! Wake it up and terminate this second instance immediately.
+                try
                 {
-                    StrongReferenceMessenger.Default.Send(new ShowMainWindowMessage());
-                });
+                    _singleInstanceWaitHandle.Set();
+                }
+                catch
+                {
+                }
+                return;
             }
-        }, null, Timeout.Infinite, false);
+
+            // We are the single running instance. Listen for signals from subsequent launch attempts.
+            ThreadPool.RegisterWaitForSingleObject(_singleInstanceWaitHandle, (state, timedOut) =>
+            {
+                if (!timedOut)
+                {
+                    Dispatcher.UIThread.Post(() =>
+                    {
+                        StrongReferenceMessenger.Default.Send(new ShowMainWindowMessage());
+                    });
+                }
+            }, null, Timeout.Infinite, false);
+        }
+        else
+        {
+            bool createdNew;
+            try
+            {
+                _singleInstanceMutex = new Mutex(true, "VibeSkuaManagerSingleInstanceMutex", out createdNew);
+            }
+            catch
+            {
+                createdNew = true;
+            }
+
+            if (!createdNew)
+            {
+                return;
+            }
+        }
 
         RunApp(args);
     }

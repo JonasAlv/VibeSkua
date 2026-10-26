@@ -43,21 +43,33 @@ internal static class ProcessCloser
     /// </summary>
     public static bool RequestClose(Process process)
     {
-        uint pid = (uint)process.Id;
-        bool posted = false;
-        EnumWindows((hWnd, _) =>
+        if (OperatingSystem.IsWindows())
         {
-            GetWindowThreadProcessId(hWnd, out uint windowPid);
-            if (windowPid == pid
-                && IsWindowVisible(hWnd)
-                && GetWindow(hWnd, GW_OWNER) == IntPtr.Zero
-                && GetWindowTextLength(hWnd) > 0)
+            uint pid = (uint)process.Id;
+            bool posted = false;
+            EnumWindows((hWnd, _) =>
             {
-                posted |= PostMessage(hWnd, WM_CLOSE, IntPtr.Zero, IntPtr.Zero);
-            }
-            return true;
-        }, IntPtr.Zero);
-        return posted;
+                GetWindowThreadProcessId(hWnd, out uint windowPid);
+                if (windowPid == pid
+                    && IsWindowVisible(hWnd)
+                    && GetWindow(hWnd, GW_OWNER) == IntPtr.Zero
+                    && GetWindowTextLength(hWnd) > 0)
+                {
+                    posted |= PostMessage(hWnd, WM_CLOSE, IntPtr.Zero, IntPtr.Zero);
+                }
+                return true;
+            }, IntPtr.Zero);
+            return posted;
+        }
+
+        try
+        {
+            return process.CloseMainWindow();
+        }
+        catch
+        {
+            return false;
+        }
     }
 
     /// <summary>
