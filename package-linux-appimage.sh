@@ -32,9 +32,9 @@ MGR_APPDIR="$BUILD_DIR/VibeSkua-Manager.AppDir"
 rm -rf "$SKUA_APPDIR" "$MGR_APPDIR"
 mkdir -p "$SKUA_APPDIR" "$MGR_APPDIR"
 
-# Source icon assets
+# Source icon assets (both use the official grey/blue Skua bird icon matching upstream Windows ApplicationIcon)
 SKUA_ICON_SRC="$SCRIPT_DIR/Skua.Shared.Avalonia/Assets/SkuaImage.png"
-MGR_ICON_SRC="$SCRIPT_DIR/Skua.Shared.Avalonia/Assets/SkuaShellImage.png"
+MGR_ICON_SRC="$SCRIPT_DIR/Skua.Shared.Avalonia/Assets/SkuaImage.png"
 
 # ==============================================================================
 # Helper to generate hicolor icon hierarchy
