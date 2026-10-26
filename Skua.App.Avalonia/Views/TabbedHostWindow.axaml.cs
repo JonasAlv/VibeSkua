@@ -72,6 +72,7 @@ public partial class TabbedHostWindow : Window
     private int _lastX = -99999, _lastY = -99999, _lastW = -99999, _lastH = -99999;
     private IntPtr _lastActiveHwnd = IntPtr.Zero;
     private bool _lastGridViewState = false;
+    private int _lastTabCount = 0;
     private int _childOffsetX = 0;
     private int _childOffsetY = 0;
     private int _childWidth = 0;
@@ -333,19 +334,33 @@ public partial class TabbedHostWindow : Window
         info.ChildHwnd = childHwnd;
         if (info.Process != null)
             HotKeys.RegisterSkuaPid((uint)info.Process.Id);
-        if (HotKeys.ActiveChildHwnd == IntPtr.Zero)
-            HotKeys.ActiveChildHwnd = childHwnd;
 
         PlatformReparentChild(childHwnd);
+
+        TabItem? selectedTab = InstancesTabControl.SelectedItem as TabItem;
+        bool isSelected = (selectedTab != null && _tabs.TryGetValue(selectedTab, out var selInfo) && selInfo == info);
 
         if (_isGridViewEnabled)
         {
             info.IsThrottled = false;
             PostChildMessage(childHwnd, WM_SKUA_GRIDVIEW, new IntPtr(1), IntPtr.Zero);
             PostChildMessage(childHwnd, WM_SKUA_THROTTLE, IntPtr.Zero, IntPtr.Zero);
+            DoReposition();
         }
-
-        DoReposition();
+        else if (isSelected)
+        {
+            HotKeys.ActiveChildHwnd = childHwnd;
+            _lastActiveHwnd = IntPtr.Zero; // Invalidate cache so DoReposition maps and positions child
+            DoReposition();
+        }
+        else
+        {
+            // Inactive tab: ensure it stays unmapped, offscreen and throttled so it never shows over active tab
+            info.IsThrottled = true;
+            PlatformHideChild(childHwnd);
+            PostChildMessage(childHwnd, WM_SKUA_THROTTLE, new IntPtr(1), IntPtr.Zero);
+            PostChildMessage(childHwnd, (uint)HotKeys.WM_SKUA_FOCUS, IntPtr.Zero, IntPtr.Zero);
+        }
 
         _isSpawning = false;
         ProcessNextSpawn();
@@ -1225,6 +1240,7 @@ public partial class TabbedHostWindow : Window
                 }
                 _lastGridViewState = true;
                 _lastActiveHwnd = IntPtr.Zero;
+                _lastTabCount = activeWindows.Count;
                 if (selectedTab != null && _tabs.TryGetValue(selectedTab, out TabInfo? selInfo) && selInfo.ChildHwnd != IntPtr.Zero)
                     HotKeys.ActiveChildHwnd = selInfo.ChildHwnd;
                 else if (activeWindows.Count > 0)
@@ -1240,8 +1256,10 @@ public partial class TabbedHostWindow : Window
                 }
                 HotKeys.ActiveChildHwnd = activeChildHwnd;
                 
+                int currentTabCount = _tabs.Count;
                 if (x == _lastX && y == _lastY && w == _lastW && h == _lastH && 
-                    activeChildHwnd == _lastActiveHwnd && _lastGridViewState == _isGridViewEnabled)
+                    activeChildHwnd == _lastActiveHwnd && _lastGridViewState == _isGridViewEnabled &&
+                    currentTabCount == _lastTabCount)
                 {
                     return;
                 }
@@ -1252,6 +1270,7 @@ public partial class TabbedHostWindow : Window
                 _lastH = h;
                 _lastActiveHwnd = activeChildHwnd;
                 _lastGridViewState = false;
+                _lastTabCount = currentTabCount;
 
                 if (activeChildHwnd != IntPtr.Zero)
                 {

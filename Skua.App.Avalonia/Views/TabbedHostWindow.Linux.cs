@@ -117,9 +117,7 @@ public partial class TabbedHostWindow : Window
             {
                 XUnmapWindow(display, childHwnd);
                 XSync(display, 0);
-                XReparentWindow(display, childHwnd, _hostHwnd, 0, 36);
-                XSync(display, 0);
-                XMapWindow(display, childHwnd);
+                XReparentWindow(display, childHwnd, _hostHwnd, -32000, -32000);
                 XSync(display, 0);
             }
         }

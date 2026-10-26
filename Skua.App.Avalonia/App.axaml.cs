@@ -191,8 +191,9 @@ public partial class App : Application
                     Title = "Skua-Child",
                     MinWidth = 0,
                     MinHeight = 0,
-                    Width = 800,
-                    Height = 600,
+                    Width = 1,
+                    Height = 1,
+                    Opacity = 0,
                     Position = new global::Avalonia.PixelPoint(-32000, -32000),
                     SystemDecorations = global::Avalonia.Controls.SystemDecorations.None,
                     ShowInTaskbar = false
@@ -214,15 +215,16 @@ public partial class App : Application
                                 {
                                     XUnmapWindow(disp, childHwnd);
                                     XSync(disp, 0);
-                                    XReparentWindow(disp, childHwnd, new IntPtr(embedHwnd), 0, 36);
-                                    XSync(disp, 0);
-                                    XMapWindow(disp, childHwnd);
+                                    XReparentWindow(disp, childHwnd, new IntPtr(embedHwnd), -32000, -32000);
                                     XSync(disp, 0);
                                     XCloseDisplay(disp);
                                 }
                             }
                             catch { }
                         }
+
+                        // Restore Opacity once reparented into the host window
+                        mainChild.Opacity = 1;
 
                         try
                         {
