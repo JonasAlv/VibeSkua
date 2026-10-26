@@ -299,6 +299,10 @@ public class ScriptInterface : IScriptInterface, IScriptInterfaceManager, IDispo
                 bool currentPlaying = currentInGame && Player.Alive;
                 if (currentInGame)
                 {
+                    if (!wasPlaying)
+                    {
+                        try { Options.Reset(); } catch { }
+                    }
                     wasPlaying = true;
                     Servers.LastIP = Player.ServerIP ?? Servers.LastIP;
                     if (Servers.IsIntentionalLogout)
@@ -475,6 +479,7 @@ public class ScriptInterface : IScriptInterface, IScriptInterfaceManager, IDispo
 
             case "loaded":
                 Initialize();
+                try { Options.Reset(); } catch { }
                 break;
 
             case "connectionLost":

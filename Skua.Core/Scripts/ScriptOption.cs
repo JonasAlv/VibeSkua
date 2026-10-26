@@ -213,10 +213,26 @@ public partial class ScriptOption : ObservableRecipient, IScriptOption, IOptionD
     {
         if (enabled)
         {
-            if (CustomName != "Hidden" && CustomName != "VibeSkuaUser")
-                _originalName = CustomName;
-            if (CustomGuild != "Hidden")
-                _originalGuild = CustomGuild;
+            var flash = _lazyFlash.Value;
+            if (flash != null)
+            {
+                if (string.IsNullOrEmpty(_originalName))
+                {
+                    string realName = flash.GetGameObject<string>("world.myAvatar.dataLeaf.strUsername")
+                        ?? flash.GetGameObject<string>("world.myAvatar.objData.strUsername")
+                        ?? CustomName;
+                    if (!string.IsNullOrEmpty(realName) && realName != "Hidden" && realName != "VibeSkuaUser")
+                        _originalName = realName;
+                }
+                if (string.IsNullOrEmpty(_originalGuild))
+                {
+                    string realGuild = flash.GetGameObject<string>("world.myAvatar.objData.strGuildName")
+                        ?? flash.GetGameObject<string>("world.myAvatar.pMC.pname.tg.text")
+                        ?? CustomGuild;
+                    if (!string.IsNullOrEmpty(realGuild) && realGuild != "Hidden")
+                        _originalGuild = realGuild;
+                }
+            }
 
             _originalHidePlayers = HidePlayers;
             HidePlayers = true;
@@ -237,7 +253,14 @@ public partial class ScriptOption : ObservableRecipient, IScriptOption, IOptionD
                         var flash = _lazyFlash.Value;
                         if (flash == null) return;
 
-                        // Override visuals only, NEVER overwrite objData as it breaks shops/inventory
+                        // Override identity in dataLeaf and objData so combat animations / fName() cannot revert to real name
+                        flash.Call("setGameObject", "world.myAvatar.dataLeaf.strUsername", "VibeSkuaUser");
+                        flash.Call("setGameObject", "world.myAvatar.dataLeaf.uoName", "vibeskuauser");
+                        flash.Call("setGameObject", "world.myAvatar.objData.strUsername", "VibeSkuaUser");
+                        flash.Call("setGameObject", "world.myAvatar.dataLeaf.strGuildName", "Hidden");
+                        flash.Call("setGameObject", "world.myAvatar.objData.strGuildName", "Hidden");
+
+                        // Visual name and portrait
                         flash.Call("setGameObject", "world.myAvatar.pMC.pname.ti.text", "VibeSkuaUser");
                         flash.Call("setGameObject", "world.myAvatar.pMC.pname.tg.text", "Hidden");
                         flash.Call("setGameObject", "world.rootClass.ui.mcPortrait.strName.text", "VibeSkuaUser");
@@ -267,7 +290,7 @@ public partial class ScriptOption : ObservableRecipient, IScriptOption, IOptionD
                         }
                     }
                     catch { }
-                    await Task.Delay(500, token);
+                    await Task.Delay(150, token);
                 }
             }, token);
         }
@@ -286,6 +309,20 @@ public partial class ScriptOption : ObservableRecipient, IScriptOption, IOptionD
                 var flash = _lazyFlash.Value;
                 if (flash != null)
                 {
+                    if (!string.IsNullOrEmpty(_originalName))
+                    {
+                        flash.Call("setGameObject", "world.myAvatar.dataLeaf.strUsername", _originalName);
+                        flash.Call("setGameObject", "world.myAvatar.dataLeaf.uoName", _originalName.ToLowerInvariant());
+                        flash.Call("setGameObject", "world.myAvatar.objData.strUsername", _originalName);
+                        flash.Call("setGameObject", "world.myAvatar.pMC.pname.ti.text", _originalName);
+                    }
+                    if (!string.IsNullOrEmpty(_originalGuild))
+                    {
+                        flash.Call("setGameObject", "world.myAvatar.dataLeaf.strGuildName", _originalGuild);
+                        flash.Call("setGameObject", "world.myAvatar.objData.strGuildName", _originalGuild);
+                        flash.Call("setGameObject", "world.myAvatar.pMC.pname.tg.text", _originalGuild);
+                    }
+
                     // Restore Chat
                     flash.Call("setGameObject", "world.rootClass.ui.mcInterface.t1.visible", true);
                     flash.Call("setGameObject", "world.rootClass.ui.mcInterface.te.visible", true);
@@ -303,6 +340,9 @@ public partial class ScriptOption : ObservableRecipient, IScriptOption, IOptionD
                 }
             }
             catch { }
+
+            _originalName = string.Empty;
+            _originalGuild = string.Empty;
         }
     }
 

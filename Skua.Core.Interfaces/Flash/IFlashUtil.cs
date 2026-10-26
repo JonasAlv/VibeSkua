@@ -1,4 +1,5 @@
 using Newtonsoft.Json;
+using System.Text;
 using System.Xml.Linq;
 
 namespace Skua.Core.Interfaces;
@@ -89,13 +90,53 @@ public interface IFlashUtil : IDisposable
     /// <returns>The value of the object at the given path as a serialzied JSON string.</returns>
     string? GetGameObject(string path)
     {
+        if (string.IsNullOrWhiteSpace(path))
+            return null;
+
         if (path.Contains('['))
         {
-            string key = path.Split(new char[] { '"', '[', ']' }, StringSplitOptions.RemoveEmptyEntries).Last();
-            string finalPath = path.Split('[')[0];
-            return Call("getGameObjectKey", finalPath, key);
+            int lastOpen = path.LastIndexOf('[');
+            int lastClose = path.LastIndexOf(']');
+            if (lastClose == path.Length - 1 && lastOpen >= 0 && lastClose > lastOpen && !path[..lastOpen].Contains('['))
+            {
+                string key = path[(lastOpen + 1)..lastClose].Trim('"', '\'');
+                string finalPath = path[..lastOpen];
+                return Call("getGameObjectKey", finalPath, key);
+            }
+
+            string normalized = NormalizeBracketPath(path);
+            return Call("getGameObject", normalized);
         }
         return Call("getGameObject", path);
+    }
+
+    private static string NormalizeBracketPath(string path)
+    {
+        var sb = new StringBuilder(path.Length);
+        bool inBracket = false;
+        for (int i = 0; i < path.Length; i++)
+        {
+            char c = path[i];
+            if (c == '[')
+            {
+                if (sb.Length > 0 && sb[^1] != '.')
+                    sb.Append('.');
+                inBracket = true;
+            }
+            else if (c == ']')
+            {
+                inBracket = false;
+            }
+            else if (inBracket && (c == '"' || c == '\''))
+            {
+                // skip quotes inside bracket
+            }
+            else
+            {
+                sb.Append(c);
+            }
+        }
+        return sb.ToString().Replace("..", ".");
     }
 
     private static readonly JsonSerializerSettings SafeJsonSettings = new()
@@ -121,9 +162,10 @@ public interface IFlashUtil : IDisposable
         try
         {
             string? raw = GetGameObject(path);
-            if (string.IsNullOrWhiteSpace(raw))
+            if (string.IsNullOrWhiteSpace(raw) || raw == "null" || raw == "undefined")
                 return def;
-            return JsonConvert.DeserializeObject<T>(raw, SafeJsonSettings) ?? def;
+            var result = JsonConvert.DeserializeObject<T>(raw, SafeJsonSettings);
+            return result is null ? def : result;
         }
         catch (Exception ex)
         {
@@ -154,9 +196,10 @@ public interface IFlashUtil : IDisposable
         try
         {
             string? raw = GetGameObjectStatic(path);
-            if (string.IsNullOrWhiteSpace(raw))
+            if (string.IsNullOrWhiteSpace(raw) || raw == "null" || raw == "undefined")
                 return def;
-            return JsonConvert.DeserializeObject<T>(raw, SafeJsonSettings) ?? def;
+            var result = JsonConvert.DeserializeObject<T>(raw, SafeJsonSettings);
+            return result is null ? def : result;
         }
         catch (Exception ex)
         {
@@ -172,11 +215,23 @@ public interface IFlashUtil : IDisposable
     /// <param name="value">The value to set the object to. This can be a string, any number type or a bool.</param>
     void SetGameObject(string path, object value)
     {
+        if (string.IsNullOrWhiteSpace(path))
+            return;
+
         if (path.Contains('['))
         {
-            string key = path.Split(new char[] { '"', '[', ']' }, StringSplitOptions.RemoveEmptyEntries).Last();
-            string finalPath = path.Split('[')[0];
-            Call("setGameObjectKey", finalPath, key, value);
+            int lastOpen = path.LastIndexOf('[');
+            int lastClose = path.LastIndexOf(']');
+            if (lastClose == path.Length - 1 && lastOpen >= 0 && lastClose > lastOpen && !path[..lastOpen].Contains('['))
+            {
+                string key = path[(lastOpen + 1)..lastClose].Trim('"', '\'');
+                string finalPath = path[..lastOpen];
+                Call("setGameObjectKey", finalPath, key, value);
+                return;
+            }
+
+            string normalized = NormalizeBracketPath(path);
+            Call("setGameObject", normalized, value);
             return;
         }
         Call("setGameObject", path, value);

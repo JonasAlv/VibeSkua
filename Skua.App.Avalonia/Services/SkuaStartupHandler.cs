@@ -90,6 +90,11 @@ public sealed class SkuaStartupHandler : IDisposable
 
     private void Login(string function, params object[] args)
     {
+        if (function == "loaded")
+        {
+            try { _bot.Options.Reset(); } catch { }
+        }
+
         if (_loginTriggered || function != "loaded")
             return;
 
@@ -112,6 +117,7 @@ public sealed class SkuaStartupHandler : IDisposable
                 return;
 
             await Task.Delay(1000);
+            try { _bot.Options.Reset(); } catch { }
 
             if (!string.IsNullOrWhiteSpace(_options.Script))
             {

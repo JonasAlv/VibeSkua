@@ -265,6 +265,11 @@ public partial class MainWindow : Window
                     _flash.Call("setGameObject", "stage.scaleMode", "showAll");
                 }
                 catch { }
+                try
+                {
+                    _options.Reset();
+                }
+                catch { }
             });
         }
     }

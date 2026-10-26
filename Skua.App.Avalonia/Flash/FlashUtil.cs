@@ -741,6 +741,9 @@ public class FlashUtil : IFlashUtil
             if (type == typeof(string))
                 return strVal;
 
+            if (strVal == "null" || strVal == "undefined")
+                return default!;
+
             object? value = Convert.ChangeType(strVal, type, CultureInfo.InvariantCulture);
             return value ?? default!;
         }
