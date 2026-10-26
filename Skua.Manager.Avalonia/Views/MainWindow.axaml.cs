@@ -13,12 +13,6 @@ public partial class MainWindow : Window
     private readonly ManagerMainViewModel _viewModel;
     private bool _allowClose;
 
-    [DllImport("user32.dll")]
-    private static extern bool SetForegroundWindow(IntPtr hWnd);
-
-    [DllImport("user32.dll")]
-    private static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
-
     public MainWindow()
     {
         InitializeComponent();
@@ -77,12 +71,6 @@ public partial class MainWindow : Window
         recipient.Topmost = true;
         recipient.Topmost = false;
         recipient.Focus();
-
-        if (OperatingSystem.IsWindows() && recipient.TryGetPlatformHandle() is { Handle: var handle } && handle != IntPtr.Zero)
-        {
-            ShowWindow(handle, 9); // SW_RESTORE
-            SetForegroundWindow(handle);
-        }
     }
 
     private void AllowClose(MainWindow recipient, ExitManagerMessage message)

@@ -2,10 +2,8 @@
 
     <PropertyGroup>
         <OutputType>WinExe</OutputType>
-        <TargetFramework Condition="$([MSBuild]::IsOSPlatform('Windows'))">net10.0-windows</TargetFramework>
-        <TargetFramework Condition="!$([MSBuild]::IsOSPlatform('Windows'))">net10.0</TargetFramework>
-        <RuntimeIdentifiers Condition="$([MSBuild]::IsOSPlatform('Windows'))">win-x64;win-x86</RuntimeIdentifiers>
-        <RuntimeIdentifiers Condition="!$([MSBuild]::IsOSPlatform('Windows'))">linux-x64</RuntimeIdentifiers>
+        <TargetFramework>net10.0</TargetFramework>
+        <RuntimeIdentifiers>linux-x64</RuntimeIdentifiers>
         <Nullable>enable</Nullable>
         <LangVersion>latest</LangVersion>
         <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
@@ -20,20 +18,6 @@
         <AssemblyMetadata Include="Skua.ClientId" Value="VibeSkuaAvalonia" />
     </ItemGroup>
 
-    <PropertyGroup Condition="$([MSBuild]::IsOSPlatform('Windows'))">
-        <UseWindowsForms>true</UseWindowsForms>
-        <DefineConstants>$(DefineConstants);IS_WINDOWS</DefineConstants>
-    </PropertyGroup>
-
-    <ItemGroup Condition="$([MSBuild]::IsOSPlatform('Windows'))">
-        <Reference Include="AxInterop.ShockwaveFlashObjects">
-            <HintPath>Assemblies\AxInterop.ShockwaveFlashObjects.dll</HintPath>
-        </Reference>
-        <Reference Include="Interop.ShockwaveFlashObjects">
-            <HintPath>Assemblies\Interop.ShockwaveFlashObjects.dll</HintPath>
-        </Reference>
-    </ItemGroup>
-
     <ItemGroup>
         <PackageReference Include="Velopack" />
         <PackageReference Include="Avalonia" />
@@ -45,7 +29,6 @@
         <PackageReference Include="Material.Avalonia" />
         <PackageReference Include="Material.Icons" />
         <PackageReference Include="Material.Icons.Avalonia" />
-        <PackageReference Include="CoreHook" />
     </ItemGroup>
 
     <ItemGroup>
@@ -60,21 +43,6 @@
           <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
         </Content>
         <Content Include="AdvancedSkills.json">
-          <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-        </Content>
-    </ItemGroup>
-
-    <ItemGroup>
-        <Content Include="Assemblies\corehook32.dll" Link="corehook32.dll">
-          <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-        </Content>
-        <Content Include="Assemblies\corehook64.dll" Link="corehook64.dll">
-          <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-        </Content>
-        <Content Include="Assemblies\coreload32.dll" Link="coreload32.dll">
-          <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-        </Content>
-        <Content Include="Assemblies\coreload64.dll" Link="coreload64.dll">
           <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
         </Content>
     </ItemGroup>

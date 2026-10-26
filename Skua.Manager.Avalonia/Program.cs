@@ -29,13 +29,7 @@ internal static class Program
     {
         InitializeAssemblyResolvers();
 
-        VelopackApp.Build()
-            .OnAfterInstallFastCallback(_ => AppShortcutHelper.CreateOrUpdateShortcuts(createIfMissing: true))
-            .OnAfterUpdateFastCallback(_ => AppShortcutHelper.CreateOrUpdateShortcuts(createIfMissing: true))
-            .OnBeforeUninstallFastCallback(_ => AppShortcutHelper.RemoveClientShortcuts())
-            .OnFirstRun(_ => AppShortcutHelper.CreateOrUpdateShortcuts(createIfMissing: true))
-            .OnRestarted(_ => AppShortcutHelper.CreateOrUpdateShortcuts(createIfMissing: true))
-            .Run();
+        VelopackApp.Build().Run();
 
         const string eventName = @"Global\VibeSkua.Manager.SingleInstance.WakeEvent";
         bool createdNew;
@@ -76,56 +70,19 @@ internal static class Program
         RunApp(args);
     }
 
-    [DllImport("kernel32.dll", CharSet = CharSet.Auto, SetLastError = true)]
-    private static extern bool SetDllDirectory(string lpPathName);
-
     private static void InitializeAssemblyResolvers()
     {
-        string assembliesDir = Path.Combine(AppContext.BaseDirectory, "Assemblies");
-        if (Directory.Exists(assembliesDir))
-        {
-            try
-            {
-                SetDllDirectory(assembliesDir);
-            }
-            catch
-            {
-            }
-        }
-
         AssemblyLoadContext.Default.Resolving += (context, assemblyName) =>
         {
             if (assemblyName.Name == null || assemblyName.Name.EndsWith(".resources", StringComparison.OrdinalIgnoreCase))
                 return null;
 
             string fileName = $"{assemblyName.Name}.dll";
-            string path = Path.Combine(AppContext.BaseDirectory, "Assemblies", fileName);
-            if (File.Exists(path))
-                return context.LoadFromAssemblyPath(path);
-
-            path = Path.Combine(AppContext.BaseDirectory, fileName);
+            string path = Path.Combine(AppContext.BaseDirectory, fileName);
             if (File.Exists(path))
                 return context.LoadFromAssemblyPath(path);
 
             return null;
-        };
-
-        AssemblyLoadContext.Default.ResolvingUnmanagedDll += (assembly, unmanagedDllName) =>
-        {
-            string fileName = unmanagedDllName.EndsWith(".dll", StringComparison.OrdinalIgnoreCase)
-                ? unmanagedDllName
-                : $"{unmanagedDllName}.dll";
-
-            string path = Path.Combine(AppContext.BaseDirectory, "Assemblies", fileName);
-            if (File.Exists(path))
-                return NativeLibrary.Load(path);
-
-            string arch = Environment.Is64BitProcess ? "win-x64" : "win-x86";
-            string runtimePath = Path.Combine(AppContext.BaseDirectory, "Assemblies", "runtimes", arch, "native", fileName);
-            if (File.Exists(runtimePath))
-                return NativeLibrary.Load(runtimePath);
-
-            return IntPtr.Zero;
         };
 
         AppDomain.CurrentDomain.AssemblyResolve += (sender, args) =>
@@ -138,11 +95,7 @@ internal static class Program
                 return existing;
 
             string assemblyName = new AssemblyName(args.Name).Name + ".dll";
-            string path = Path.Combine(AppContext.BaseDirectory, "Assemblies", assemblyName);
-            if (File.Exists(path))
-                return Assembly.LoadFrom(path);
-
-            path = Path.Combine(AppContext.BaseDirectory, assemblyName);
+            string path = Path.Combine(AppContext.BaseDirectory, assemblyName);
             if (File.Exists(path))
                 return Assembly.LoadFrom(path);
 
@@ -171,12 +124,7 @@ internal static class Program
     public static AppBuilder BuildAvaloniaApp()
     {
         AppBuilder builder = AppBuilder.Configure<App>()
-            .UsePlatformDetect()
-            .With(new Win32PlatformOptions
-            {
-                RenderingMode = new[] { Win32RenderingMode.AngleEgl, Win32RenderingMode.Software },
-                CompositionMode = new[] { Win32CompositionMode.LowLatencyDxgiSwapChain, Win32CompositionMode.WinUIComposition, Win32CompositionMode.RedirectionSurface }
-            });
+            .UsePlatformDetect();
 #if DEBUG
         builder = builder.WithDeveloperTools();
 #endif

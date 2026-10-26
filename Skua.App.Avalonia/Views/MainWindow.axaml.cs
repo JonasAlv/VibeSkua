@@ -21,38 +21,10 @@ using System.Threading;
 using System.Threading.Tasks;
 using Skua.Core.AppStartup;
 
-#if IS_WINDOWS
-using Avalonia.Input;
-using AxShockwaveFlashObjects;
-using System.Runtime.Versioning;
-#endif
-
 namespace Skua.App.Avalonia.Views;
 
 public partial class MainWindow : Window
 {
-#if IS_WINDOWS
-    public delegate IntPtr SubclassProc(IntPtr hWnd, uint uMsg, IntPtr wParam, IntPtr lParam, nuint uIdSubclass, IntPtr dwRefData);
-    
-    [DllImport("comctl32.dll", SetLastError = true)]
-    public static extern bool SetWindowSubclass(IntPtr hWnd, SubclassProc pfnSubclass, nuint uIdSubclass, IntPtr dwRefData);
-
-    [DllImport("comctl32.dll", SetLastError = true)]
-    public static extern IntPtr DefSubclassProc(IntPtr hWnd, uint uMsg, IntPtr wParam, IntPtr lParam);
-
-    [DllImport("user32.dll", CharSet = CharSet.Auto, SetLastError = true)]
-    public static extern bool SetWindowText(IntPtr hWnd, string lpString);
-
-    [DllImport("user32.dll")]
-    public static extern IntPtr GetForegroundWindow();
-
-    [DllImport("user32.dll")]
-    public static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint lpdwProcessId);
-
-    private const int WM_NCACTIVATE = 0x0086;
-
-    private SubclassProc? _subclassProc;
-#elif IS_LINUX
     [DllImport("libX11.so.6")]
     private static extern IntPtr XOpenDisplay(IntPtr display);
 
@@ -64,7 +36,6 @@ public partial class MainWindow : Window
 
     [DllImport("libX11.so.6")]
     private static extern int XFlush(IntPtr display);
-#endif
     private const int WM_SKUA_JUMP_MAP = 0x0400 + 449;
     private const int WM_SKUA_SET_OPTION = 0x0400 + 450;
     private const int WM_SKUA_LOAD_SCRIPT = 0x0400 + 453;
@@ -120,9 +91,6 @@ public partial class MainWindow : Window
         ConfigureMainMenu();
         RegisterLifecycleHandlers();
         
-        #if IS_WINDOWS
-        RegisterMessages();
-        #elif IS_LINUX
         AddHandler(PointerPressedEvent, (s, e) =>
         {
             IntPtr handle = this.TryGetPlatformHandle()?.Handle ?? IntPtr.Zero;
@@ -141,7 +109,6 @@ public partial class MainWindow : Window
                 catch { }
             }
         }, global::Avalonia.Interactivity.RoutingStrategies.Tunnel);
-        #endif
     }
 
     private void ConfigureMainMenu()
@@ -276,13 +243,6 @@ public partial class MainWindow : Window
         return menuItem;
     }
 
-    #if IS_WINDOWS
-    private void RegisterMessages()
-    {
-        WeakReferenceMessenger.Default.Register<MainWindow, FlashChangedMessage<AxShockwaveFlash>>(this, static (r, m) => r.OnFlashControlChanged(m.Flash));
-    }
-    #endif
-
     private void RegisterLifecycleHandlers()
     {
         Opened += MainWindow_Opened;
@@ -319,15 +279,6 @@ public partial class MainWindow : Window
         }
         catch { }
         
-#if IS_WINDOWS
-        _flash.InitializeFlash();
-        if (this.TryGetPlatformHandle()?.Handle is IntPtr hwnd && hwnd != IntPtr.Zero)
-        {
-            SetWindowText(hwnd, _mainViewModel.Title ?? "Skua");
-            _subclassProc = WindowSubclassProc;
-            SetWindowSubclass(hwnd, _subclassProc, 1, IntPtr.Zero);
-        }
-#elif IS_LINUX
         Focusable = true;
         AddHandler(global::Avalonia.Input.InputElement.KeyDownEvent, OnLinuxKeyDown, global::Avalonia.Interactivity.RoutingStrategies.Tunnel);
         AddHandler(global::Avalonia.Input.InputElement.KeyUpEvent, OnLinuxKeyUp, global::Avalonia.Interactivity.RoutingStrategies.Tunnel);
@@ -342,7 +293,6 @@ public partial class MainWindow : Window
         }
         _flash.InitializeFlash();
         TabIpc.StartListener(this, Environment.ProcessId, _ipcCancelCts.Token);
-#endif
 
         _tabTitleSyncTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
         string lastWrittenUsername = "";
@@ -392,12 +342,6 @@ public partial class MainWindow : Window
         WeakReferenceMessenger.Default.UnregisterAll(this);
     }
     
-    #if IS_WINDOWS
-    private void OnFlashControlChanged(AxShockwaveFlash flash)
-    {
-        FlashHost.SetChild(flash);
-    }
-    #else
     private void OnLinuxGameClicked()
     {
         if (AutoToggle != null)
@@ -525,7 +469,6 @@ public partial class MainWindow : Window
             _ => symbol
         };
     }
-    #endif
 
     private void OnFlashCall(string function, params object[] args)
     {
@@ -920,61 +863,4 @@ public partial class MainWindow : Window
 
         return IntPtr.Zero;
     }
-
-#if IS_WINDOWS
-    private IntPtr WindowSubclassProc(IntPtr hWnd, uint uMsg, IntPtr wParam, IntPtr lParam, nuint uIdSubclass, IntPtr dwRefData)
-    {
-        if (uMsg == WM_NCACTIVATE)
-        {
-            if (wParam == IntPtr.Zero)
-            {
-                IntPtr fg = GetForegroundWindow();
-                if (fg != IntPtr.Zero)
-                {
-                    GetWindowThreadProcessId(fg, out uint fgPid);
-                    if (fgPid == (uint)Environment.ProcessId)
-                    {
-                        return DefSubclassProc(hWnd, uMsg, (IntPtr)1, lParam);
-                    }
-                }
-            }
-        }
-        else if (uMsg == 0x004A /* WM_COPYDATA */)
-        {
-            try
-            {
-                if (lParam != IntPtr.Zero)
-                {
-                    var cds = Marshal.PtrToStructure<HotKeys.COPYDATASTRUCT>(lParam);
-                    if (cds.dwData == (IntPtr)0x484B && cds.lpData != IntPtr.Zero)
-                    {
-                        string? actionName = Marshal.PtrToStringUni(cds.lpData);
-                        if (!string.IsNullOrEmpty(actionName))
-                        {
-                            Dispatcher.UIThread.Post(() =>
-                            {
-                                try
-                                {
-                                    if (actionName == "OpenBank")
-                                        Ioc.Default.GetRequiredService<IScriptBank>().Open();
-                                    else
-                                        HotKeys.ExecuteHotkeyActionDirect(actionName);
-                                }
-                                catch { }
-                            });
-                            return (IntPtr)1;
-                        }
-                    }
-                }
-            }
-            catch { }
-        }
-
-        IntPtr res = HandleIpcMessage(uMsg, wParam, lParam);
-        if (res != IntPtr.Zero)
-            return res;
-
-        return DefSubclassProc(hWnd, uMsg, wParam, lParam);
-    }
-#endif
 }

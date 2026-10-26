@@ -27,7 +27,7 @@ public static class WindowResizeHelper
 
     public static void Attach(Window window)
     {
-        if (OperatingSystem.IsWindows() || window == null)
+        if (window == null)
             return;
 
         lock (AttachedWindows)

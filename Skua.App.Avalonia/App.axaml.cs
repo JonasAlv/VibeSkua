@@ -21,12 +21,6 @@ using System.Threading;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
 
-#if IS_WINDOWS
-using CommunityToolkit.Mvvm.Input;
-using System.Collections.Generic;
-using WinForms = System.Windows.Forms;
-#endif
-
 namespace Skua.App.Avalonia;
 
 public partial class App : Application
@@ -38,38 +32,6 @@ public partial class App : Application
         AvaloniaXamlLoader.Load(this);
     }
 
-    [System.Runtime.InteropServices.DllImport("user32.dll", EntryPoint = "SetParent", SetLastError = true)]
-    public static extern IntPtr SetParent_Native(IntPtr hWndChild, IntPtr hWndNewParent);
-
-    [System.Runtime.InteropServices.DllImport("user32.dll", EntryPoint = "GetWindowLong", SetLastError = true)]
-    public static extern int GetWindowLong_Native(IntPtr hWnd, int nIndex);
-
-    [System.Runtime.InteropServices.DllImport("user32.dll", EntryPoint = "SetWindowLong", SetLastError = true)]
-    public static extern int SetWindowLong_Native(IntPtr hWnd, int nIndex, int dwNewLong);
-
-    [System.Runtime.InteropServices.DllImport("user32.dll", EntryPoint = "GetClientRect")]
-    public static extern bool GetClientRect_Native(IntPtr hWnd, out RECT lpRect);
-
-    [System.Runtime.InteropServices.DllImport("user32.dll", EntryPoint = "MoveWindow", SetLastError = true)]
-    public static extern bool MoveWindow_Native(IntPtr hWnd, int X, int Y, int nWidth, int nHeight, bool bRepaint);
-
-    [System.Runtime.InteropServices.DllImport("user32.dll", EntryPoint = "SetWindowPos", SetLastError = true)]
-    public static extern bool SetWindowPos_Native(IntPtr hWnd, IntPtr hWndInsertAfter, int X, int Y, int cx, int cy, uint uFlags);
-
-    [System.Runtime.InteropServices.DllImport("user32.dll", EntryPoint = "PostMessage", SetLastError = true)]
-    [return: System.Runtime.InteropServices.MarshalAs(System.Runtime.InteropServices.UnmanagedType.Bool)]
-    public static extern bool PostMessage_Native(IntPtr hWnd, uint Msg, IntPtr wParam, IntPtr lParam);
-
-    [System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential)]
-    public struct RECT
-    {
-        public int Left;
-        public int Top;
-        public int Right;
-        public int Bottom;
-    }
-
-#if IS_LINUX
     [System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential)]
     public struct XSetWindowAttributes
     {
@@ -113,7 +75,6 @@ public partial class App : Application
 
     [System.Runtime.InteropServices.DllImport("libX11.so.6")]
     public static extern int XFlush(IntPtr display);
-#endif
 
     public static System.Threading.Mutex AppMutex;
 
@@ -246,16 +207,6 @@ public partial class App : Application
                     IntPtr childHwnd = mainChild.TryGetPlatformHandle()?.Handle ?? IntPtr.Zero;
                     if (childHwnd != IntPtr.Zero)
                     {
-#if IS_WINDOWS
-                        int exStyle = GetWindowLong_Native(childHwnd, -20);
-                        SetWindowLong_Native(childHwnd, -20, exStyle | 0x00000080); // WS_EX_TOOLWINDOW
-                        SetWindowPos_Native(childHwnd, IntPtr.Zero, -32000, -32000, 800, 600, 0x0040 | 0x0010 | 0x0004); // SWP_SHOWWINDOW | SWP_NOACTIVATE | SWP_NOZORDER
-
-                        if (embedHwnd != 0)
-                        {
-                            PostMessage_Native(new IntPtr(embedHwnd), 0x0400 + 440 /* WM_SKUA_CHILD_READY */, childHwnd, new IntPtr(Environment.ProcessId));
-                        }
-#elif IS_LINUX
                         if (embedHwnd != 0)
                         {
                             try
@@ -283,7 +234,6 @@ public partial class App : Application
                             System.IO.File.WriteAllText(file, childHwnd.ToInt64().ToString());
                         }
                         catch { }
-#endif
                     }
                 };
 
@@ -389,14 +339,7 @@ public partial class App : Application
         {
             string details = $"Unhandled exception source: {source}\r\n\r\n{ex.GetType().FullName}: {ex.Message}\r\n\r\n{ex.StackTrace}";
             try { System.IO.File.WriteAllText(System.IO.Path.Combine(AppContext.BaseDirectory, "crash.txt"), details); } catch { }
-
-            #if IS_WINDOWS
-            WinForms.MessageBox.Show(
-                details,
-                "Skua Client Exception",
-                WinForms.MessageBoxButtons.OK,
-                WinForms.MessageBoxIcon.Error);
-            #endif
+            Console.Error.WriteLine(details);
         }
         catch
         {

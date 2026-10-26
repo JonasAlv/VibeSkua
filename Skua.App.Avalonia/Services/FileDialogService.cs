@@ -1,18 +1,55 @@
-using Skua.Core.Interfaces;
+using System;
 using System.Collections.Generic;
+using System.IO;
+using System.Linq;
 using System.Threading.Tasks;
+using Avalonia;
+using Avalonia.Controls.ApplicationLifetimes;
+using Avalonia.Platform.Storage;
+using Avalonia.Threading;
+using Skua.Core.Interfaces;
+using Skua.Core.Models;
 
 namespace Skua.App.Avalonia.Services;
 
-#if IS_WINDOWS
-using Skua.Core.Models;
-using System.IO;
-using System.Linq;
-using global::Avalonia.Platform.Storage;
-using WinForms = System.Windows.Forms;
 public class FileDialogService : IFileDialogService
 {
     private const string DefaultFilter = "Text Files (*.txt)|*.txt";
+
+    private static IStorageProvider? GetStorageProvider()
+    {
+        if (Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
+        {
+            var activeWindow = desktop.Windows.FirstOrDefault(w => w.IsActive) ?? desktop.MainWindow;
+            return activeWindow?.StorageProvider;
+        }
+        return null;
+    }
+
+    private static List<FilePickerFileType> ParseFilters(string? filterString)
+    {
+        var result = new List<FilePickerFileType>();
+        if (string.IsNullOrWhiteSpace(filterString))
+            return result;
+
+        var parts = filterString.Split('|');
+        for (int i = 0; i < parts.Length - 1; i += 2)
+        {
+            string name = parts[i];
+            string patterns = parts[i + 1];
+            var extensions = patterns.Split(';', ',')
+                .Select(p => p.Trim())
+                .Select(p => p.StartsWith("*.") ? p.Substring(2) : p)
+                .Where(p => p != "*")
+                .ToList();
+
+            result.Add(new FilePickerFileType(name)
+            {
+                Patterns = extensions.Select(ext => "*." + ext).ToList()
+            });
+        }
+        return result;
+    }
 
     public string? OpenFile() => OpenFile(ClientFileSources.SkuaDIR, "All Files (*.*)|*.*");
 
@@ -20,59 +57,61 @@ public class FileDialogService : IFileDialogService
 
     public string? OpenFile(string initialDirectory, string filters)
     {
-        using WinForms.OpenFileDialog dialog = new()
+        return Task.Run(async () =>
         {
-            InitialDirectory = initialDirectory,
-            Filter = string.IsNullOrWhiteSpace(filters) ? "All Files (*.*)|*.*" : filters
-        };
+            return await Dispatcher.UIThread.InvokeAsync(async () =>
+            {
+                var provider = GetStorageProvider();
+                if (provider == null) return null;
 
-        return dialog.ShowDialog() == WinForms.DialogResult.OK ? dialog.FileName : null;
+                var options = new FilePickerOpenOptions
+                {
+                    AllowMultiple = false,
+                    FileTypeFilter = ParseFilters(filters),
+                    SuggestedStartLocation = !string.IsNullOrWhiteSpace(initialDirectory) && Directory.Exists(initialDirectory)
+                        ? await provider.TryGetFolderFromPathAsync(initialDirectory)
+                        : null
+                };
+
+                var files = await provider.OpenFilePickerAsync(options);
+                return files.FirstOrDefault()?.TryGetLocalPath();
+            });
+        }).GetAwaiter().GetResult();
     }
 
     public string? OpenFolder() => OpenFolder(ClientFileSources.SkuaDIR);
 
     public string? OpenFolder(string initialDirectory)
     {
-        using WinForms.FolderBrowserDialog dialog = new()
-        {
-            Description = "Select the folder.",
-            UseDescriptionForTitle = true,
-            InitialDirectory = initialDirectory,
-            AutoUpgradeEnabled = true
-        };
-
-        return dialog.ShowDialog() == WinForms.DialogResult.OK ? dialog.SelectedPath : null;
+        return OpenFolderAsync(initialDirectory).GetAwaiter().GetResult();
     }
 
     public Task<string?> OpenFolderAsync() => OpenFolderAsync(ClientFileSources.SkuaDIR);
 
     public async Task<string?> OpenFolderAsync(string initialDirectory)
     {
-        if (global::Avalonia.Application.Current?.ApplicationLifetime is global::Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop &&
-            desktop.MainWindow?.StorageProvider is global::Avalonia.Platform.Storage.IStorageProvider provider)
+        return await Dispatcher.UIThread.InvokeAsync(async () =>
         {
-            var options = new global::Avalonia.Platform.Storage.FolderPickerOpenOptions
+            var provider = GetStorageProvider();
+            if (provider == null) return null;
+
+            var options = new FolderPickerOpenOptions
             {
                 AllowMultiple = false,
-                SuggestedStartLocation = !string.IsNullOrWhiteSpace(initialDirectory)
+                SuggestedStartLocation = !string.IsNullOrWhiteSpace(initialDirectory) && Directory.Exists(initialDirectory)
                     ? await provider.TryGetFolderFromPathAsync(initialDirectory)
                     : null
             };
-            var folders = await provider.OpenFolderPickerAsync(options);
-            string? localPath = folders.FirstOrDefault()?.TryGetLocalPath();
-            if (!string.IsNullOrEmpty(localPath))
-                return localPath;
-            if (folders.Count == 0)
-                return null;
-        }
 
-        return OpenFolder(initialDirectory);
+            var folders = await provider.OpenFolderPickerAsync(options);
+            return folders.FirstOrDefault()?.TryGetLocalPath();
+        });
     }
 
     public IEnumerable<string>? OpenText()
     {
         string? path = OpenFile(ClientFileSources.SkuaDIR, DefaultFilter);
-        return string.IsNullOrWhiteSpace(path) ? null : File.ReadAllLines(path);
+        return string.IsNullOrWhiteSpace(path) || !File.Exists(path) ? null : File.ReadAllLines(path);
     }
 
     public string? Save() => Save(ClientFileSources.SkuaDIR, DefaultFilter);
@@ -81,13 +120,25 @@ public class FileDialogService : IFileDialogService
 
     public string? Save(string initialDirectory, string filters)
     {
-        using WinForms.SaveFileDialog dialog = new()
+        return Task.Run(async () =>
         {
-            InitialDirectory = initialDirectory,
-            Filter = string.IsNullOrWhiteSpace(filters) ? DefaultFilter : filters
-        };
+            return await Dispatcher.UIThread.InvokeAsync(async () =>
+            {
+                var provider = GetStorageProvider();
+                if (provider == null) return null;
 
-        return dialog.ShowDialog() == WinForms.DialogResult.OK ? dialog.FileName : null;
+                var options = new FilePickerSaveOptions
+                {
+                    FileTypeChoices = ParseFilters(filters),
+                    SuggestedStartLocation = !string.IsNullOrWhiteSpace(initialDirectory) && Directory.Exists(initialDirectory)
+                        ? await provider.TryGetFolderFromPathAsync(initialDirectory)
+                        : null
+                };
+
+                var file = await provider.SaveFilePickerAsync(options);
+                return file?.TryGetLocalPath();
+            });
+        }).GetAwaiter().GetResult();
     }
 
     public void SaveText(string contents)
@@ -104,72 +155,3 @@ public class FileDialogService : IFileDialogService
             File.WriteAllLines(path, contents);
     }
 }
-#else
-public class FileDialogService : IFileDialogService
-{
-    public string? OpenFile()
-    {
-        throw new System.NotImplementedException();
-    }
-
-    public string? OpenFile(string filters)
-    {
-        throw new System.NotImplementedException();
-    }
-
-    public string? OpenFile(string initialDirectory, string filters)
-    {
-        throw new System.NotImplementedException();
-    }
-
-    public string? OpenFolder()
-    {
-        throw new System.NotImplementedException();
-    }
-
-    public string? OpenFolder(string initialDirectory)
-    {
-        throw new System.NotImplementedException();
-    }
-
-    public Task<string?> OpenFolderAsync()
-    {
-        throw new System.NotImplementedException();
-    }
-
-    public Task<string?> OpenFolderAsync(string initialDirectory)
-    {
-        throw new System.NotImplementedException();
-    }
-
-    public IEnumerable<string>? OpenText()
-    {
-        throw new System.NotImplementedException();
-    }
-
-    public string? Save()
-    {
-        throw new System.NotImplementedException();
-    }
-
-    public string? Save(string filters)
-    {
-        throw new System.NotImplementedException();
-    }
-
-    public string? Save(string initialDirectory, string filters)
-    {
-        throw new System.NotImplementedException();
-    }
-
-    public void SaveText(string contents)
-    {
-        throw new System.NotImplementedException();
-    }
-
-    public void SaveText(IEnumerable<string> contents)
-    {
-        throw new System.NotImplementedException();
-    }
-}
-#endif

@@ -1,85 +1,6 @@
 using Avalonia.Controls;
 using Avalonia.Platform;
 using System;
-
-#if IS_WINDOWS
-namespace Skua.App.Avalonia.Controls
-{
-using WinForms = System.Windows.Forms;
-public class WinFormsFlashHost : NativeControlHost
-{
-    private WinForms.Panel? _panel;
-    private WinForms.Control? _child;
-
-    public void SetChild(WinForms.Control child)
-    {
-        _child = child;
-        if (_panel is null)
-            return;
-
-        AttachChildToPanel();
-    }
-
-    public void SetScaleMode(bool isExactFit = false)
-    {
-        ApplyScaleMode();
-    }
-
-    private void ApplyScaleMode()
-    {
-        if (_child is AxShockwaveFlashObjects.AxShockwaveFlash flash)
-        {
-            try
-            {
-                flash.ScaleMode = 0;
-                flash.CtlScale = "ShowAll";
-            }
-            catch { }
-        }
-    }
-
-    protected override IPlatformHandle CreateNativeControlCore(IPlatformHandle parent)
-    {
-        _panel = new WinForms.Panel
-        {
-            Dock = WinForms.DockStyle.Fill,
-            BackColor = System.Drawing.Color.FromArgb(20, 20, 20)
-        };
-
-        _panel.Resize += (s, e) => ApplyScaleMode();
-
-        if (_child is not null)
-            AttachChildToPanel();
-
-        return new PlatformHandle(_panel.Handle, "HWND");
-    }
-
-    protected override void DestroyNativeControlCore(IPlatformHandle control)
-    {
-        if (_panel is not null)
-        {
-            _panel.Controls.Clear();
-            _panel.Dispose();
-            _panel = null;
-        }
-    }
-
-    private void AttachChildToPanel()
-    {
-        if (_panel is null || _child is null)
-            return;
-
-        if (_child.Parent is not null && _child.Parent != _panel)
-            _child.Parent.Controls.Remove(_child);
-
-        _child.Dock = WinForms.DockStyle.Fill;
-        _panel.Controls.Clear();
-        _panel.Controls.Add(_child);
-        ApplyScaleMode();
-    }
-}
-}
-#else
 using System.Runtime.InteropServices;
 
 namespace Skua.App.Avalonia.Controls
@@ -315,7 +236,7 @@ namespace System.Windows.Forms
         public DockStyle Dock { get; set; }
         public System.Drawing.Color ForeColor { get; set; }
         public System.Drawing.Color BackColor { get; set; }
-        public event PaintEventHandler? Paint;
+        public event PaintEventHandler? Paint { add { } remove { } }
         public virtual void Dispose() { }
     }
 
@@ -356,4 +277,3 @@ namespace System.Windows.Forms
         public static DialogResult Show(string? text, string? caption = null) => DialogResult.OK;
     }
 }
-#endif

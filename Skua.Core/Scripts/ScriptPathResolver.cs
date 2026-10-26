@@ -141,9 +141,6 @@ public sealed class ScriptPathResolver : IScriptPathResolver
         if (File.Exists(path))
             return path;
 
-        if (OperatingSystem.IsWindows())
-            return null;
-
         try
         {
             string fullPath = Path.GetFullPath(path);

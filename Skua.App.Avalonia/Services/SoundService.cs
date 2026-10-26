@@ -7,16 +7,23 @@ public class SoundService : ISoundService
 {
     public void Beep()
     {
-        Console.Beep();
+        try
+        {
+            Console.Beep();
+        }
+        catch
+        {
+        }
     }
 
     public void Beep(int frequency, int duration)
     {
-        if (frequency < 37)
-            frequency = 37;
-        else if (frequency > 32767)
-            frequency = 32767;
-
-        Console.Beep(frequency, duration);
+        try
+        {
+            Console.Beep();
+        }
+        catch
+        {
+        }
     }
 }

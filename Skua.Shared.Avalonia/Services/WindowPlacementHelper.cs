@@ -4,49 +4,11 @@ using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Platform;
 using System;
 using System.Linq;
-using System.Runtime.InteropServices;
 
 namespace Skua.Shared.Avalonia.Services;
 
 public static class WindowPlacementHelper
 {
-    [DllImport("user32.dll")]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool GetWindowRect(IntPtr hWnd, out RECT lpRect);
-
-    [DllImport("user32.dll")]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool IsIconic(IntPtr hWnd);
-
-    [DllImport("user32.dll")]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool IsWindow(IntPtr hWnd);
-
-    [DllImport("user32.dll")]
-    private static extern IntPtr GetForegroundWindow();
-
-    [DllImport("user32.dll")]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool GetCursorPos(out POINT lpPoint);
-
-    [StructLayout(LayoutKind.Sequential)]
-    private struct RECT
-    {
-        public int Left;
-        public int Top;
-        public int Right;
-        public int Bottom;
-        public int Width => Right - Left;
-        public int Height => Bottom - Top;
-    }
-
-    [StructLayout(LayoutKind.Sequential)]
-    private struct POINT
-    {
-        public int X;
-        public int Y;
-    }
-
     public static Screen? GetTargetScreen(Window window)
     {
         return GetTargetScreen(window, out _);
@@ -56,30 +18,7 @@ public static class WindowPlacementHelper
     {
         hostBounds = null;
 
-        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-        {
-            // 1. Try host window handle (used in embedded child processes and main host window)
-            try
-            {
-                IntPtr hostHwnd = Skua.Core.AppStartup.HotKeys.HostHwnd;
-                if (hostHwnd != IntPtr.Zero && IsWindow(hostHwnd) && !IsIconic(hostHwnd) && GetWindowRect(hostHwnd, out RECT hostRect))
-                {
-                    if (hostRect.Width > 100 && hostRect.Height > 100)
-                    {
-                        PixelPoint center = new(hostRect.Left + hostRect.Width / 2, hostRect.Top + hostRect.Height / 2);
-                        var screen = window.Screens?.ScreenFromPoint(center);
-                        if (screen != null)
-                        {
-                            hostBounds = new PixelRect(hostRect.Left, hostRect.Top, hostRect.Width, hostRect.Height);
-                            return screen;
-                        }
-                    }
-                }
-            }
-            catch { }
-        }
-
-        // 2. Try desktop MainWindow if visible and on a real screen (host process or standalone mode)
+        // Try desktop MainWindow if visible and on a real screen (host process or standalone mode)
         try
         {
             if (Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop &&
@@ -103,43 +42,7 @@ public static class WindowPlacementHelper
         }
         catch { }
 
-        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-        {
-            // 3. Try foreground window (if user was actively clicking a Skua window)
-            try
-            {
-                IntPtr fg = GetForegroundWindow();
-                if (fg != IntPtr.Zero && IsWindow(fg) && !IsIconic(fg) && GetWindowRect(fg, out RECT fgRect))
-                {
-                    if (fgRect.Width > 100 && fgRect.Height > 100)
-                    {
-                        PixelPoint center = new(fgRect.Left + fgRect.Width / 2, fgRect.Top + fgRect.Height / 2);
-                        var screen = window.Screens?.ScreenFromPoint(center);
-                        if (screen != null)
-                        {
-                            hostBounds = new PixelRect(fgRect.Left, fgRect.Top, fgRect.Width, fgRect.Height);
-                            return screen;
-                        }
-                    }
-                }
-            }
-            catch { }
-
-            // 4. Try current mouse cursor position
-            try
-            {
-                if (GetCursorPos(out POINT cursorPt))
-                {
-                    PixelPoint pt = new(cursorPt.X, cursorPt.Y);
-                    var screen = window.Screens?.ScreenFromPoint(pt);
-                    if (screen != null)
-                        return screen;
-                }
-            }
-            catch { }
-        }
-
-        // 5. Fallback to Primary screen or first screen
+        // Fallback to Primary screen or first screen
         return window.Screens?.Primary ?? window.Screens?.All?.FirstOrDefault();
     }
 

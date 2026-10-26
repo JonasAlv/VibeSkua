@@ -13,25 +13,13 @@ namespace Skua.Core.AppStartup;
 
 public class HotKeys
 {
-    [DllImport("user32.dll")]
-    private static extern IntPtr GetForegroundWindow();
-
-    [DllImport("user32.dll")]
-    private static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint processId);
-
-    [DllImport("user32.dll", SetLastError = true)]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool PostMessage(IntPtr hWnd, uint Msg, IntPtr wParam, IntPtr lParam);
-
-    private delegate bool EnumWindowsProc(IntPtr hWnd, IntPtr lParam);
-
-    [DllImport("user32.dll")]
-    private static extern bool EnumWindows(EnumWindowsProc lpEnumFunc, IntPtr lParam);
-
     public static bool IsHostProcess { get; set; } = false;
     public static IntPtr ActiveChildHwnd { get; set; } = IntPtr.Zero;
     public static IntPtr HostHwnd { get; set; } = IntPtr.Zero;
     public static Func<uint, IntPtr>? GetChildHwndForPid { get; set; }
+    public static Action<string>? ForwardHotKeyAction { get; set; }
+    public static Action<uint, int, int>? BroadcastArmyMessageAction { get; set; }
+    public static Action? BroadcastReloadHotkeysAction { get; set; }
 
     private static readonly List<string> _actionList = new()
     {
@@ -274,34 +262,7 @@ public class HotKeys
     {
         try
         {
-            if (HostHwnd != IntPtr.Zero)
-            {
-                PostMessage(HostHwnd, WM_SKUA_RELOAD_HOTKEYS, IntPtr.Zero, IntPtr.Zero);
-            }
-
-            HashSet<uint> pids;
-            lock (_skuaPids)
-            {
-                pids = new HashSet<uint>(_skuaPids);
-            }
-
-            try
-            {
-                var skuaProcesses = System.Diagnostics.Process.GetProcessesByName(System.Diagnostics.Process.GetCurrentProcess().ProcessName);
-                foreach (var p in skuaProcesses)
-                    pids.Add((uint)p.Id);
-            }
-            catch { }
-
-            EnumWindows((hWnd, lp) =>
-            {
-                GetWindowThreadProcessId(hWnd, out uint pid);
-                if (pids.Contains(pid))
-                {
-                    PostMessage(hWnd, WM_SKUA_RELOAD_HOTKEYS, IntPtr.Zero, IntPtr.Zero);
-                }
-                return true;
-            }, IntPtr.Zero);
+            BroadcastReloadHotkeysAction?.Invoke();
         }
         catch { }
     }
@@ -332,58 +293,12 @@ public class HotKeys
         }
     }
 
-    [StructLayout(LayoutKind.Sequential)]
-    public struct COPYDATASTRUCT
-    {
-        public IntPtr dwData;
-        public int cbData;
-        public IntPtr lpData;
-    }
-
-    [DllImport("user32.dll", CharSet = CharSet.Unicode)]
-    private static extern IntPtr SendMessage(IntPtr hWnd, uint Msg, IntPtr wParam, ref COPYDATASTRUCT lParam);
-
     private static void ExecuteOrForward(string actionName, Action localExecute)
     {
-        if (IsHostProcess)
+        if (IsHostProcess && ForwardHotKeyAction != null)
         {
-            IntPtr childHwnd = IntPtr.Zero;
-            IntPtr fg = GetForegroundWindow();
-            if (fg != IntPtr.Zero)
-            {
-                GetWindowThreadProcessId(fg, out uint fgPid);
-                if (fgPid != (uint)Environment.ProcessId && GetChildHwndForPid != null)
-                {
-                    childHwnd = GetChildHwndForPid(fgPid);
-                }
-            }
-
-            if (childHwnd == IntPtr.Zero)
-                childHwnd = ActiveChildHwnd;
-
-            if (childHwnd != IntPtr.Zero)
-            {
-                if (actionName == "OpenBank")
-                {
-                    PostMessage(childHwnd, WM_SKUA_OPEN_BANK, IntPtr.Zero, IntPtr.Zero);
-                    return;
-                }
-
-                int actionId = GetActionId(actionName);
-                if (actionId >= 0)
-                {
-                    PostMessage(childHwnd, WM_SKUA_EXECUTE_HOTKEY, new IntPtr(actionId), IntPtr.Zero);
-                    return;
-                }
-
-                COPYDATASTRUCT cds = new COPYDATASTRUCT();
-                cds.dwData = (IntPtr)0x484B;
-                cds.cbData = (actionName.Length + 1) * 2;
-                cds.lpData = Marshal.StringToHGlobalUni(actionName);
-                SendMessage(childHwnd, 0x004A, IntPtr.Zero, ref cds);
-                Marshal.FreeHGlobal(cds.lpData);
-                return;
-            }
+            ForwardHotKeyAction(actionName);
+            return;
         }
 
         localExecute();
@@ -482,23 +397,6 @@ public class HotKeys
         return _hotkeyRegistry;
     }
 
-    private static bool CanExecuteHotKey()
-    {
-        try
-        {
-            IntPtr foregroundWindow = GetForegroundWindow();
-            if (foregroundWindow == IntPtr.Zero)
-                return false;
-
-            GetWindowThreadProcessId(foregroundWindow, out uint foregroundProcessId);
-            return IsSkuaProcess(foregroundProcessId);
-        }
-        catch
-        {
-            return false;
-        }
-    }
-
     private static void ToggleAutoHuntLocal()
     {
         if (Ioc.Default.GetRequiredService<IScriptAuto>().IsRunning)
@@ -533,26 +431,11 @@ public class HotKeys
 
     private static void ArmyLoadScriptAllLocal()
     {
-        if (IsHostProcess)
+        try
         {
-            try
-            {
-                Ioc.Default.GetRequiredService<IWindowService>().ShowManagedWindow("Script Repo");
-            }
-            catch { }
+            Ioc.Default.GetRequiredService<IWindowService>().ShowManagedWindow("Script Repo");
         }
-        else if (HostHwnd != IntPtr.Zero)
-        {
-            PostMessage(HostHwnd, WM_SKUA_LOAD_SCRIPT_ALL, IntPtr.Zero, IntPtr.Zero);
-        }
-        else
-        {
-            try
-            {
-                Ioc.Default.GetRequiredService<IWindowService>().ShowManagedWindow("Script Repo");
-            }
-            catch { }
-        }
+        catch { }
     }
 
     private static void ToggleScriptLocal()
@@ -573,17 +456,6 @@ public class HotKeys
 
     private static void BroadcastArmyMessage(uint msg, int wParam, int lParam)
     {
-        var skuaProcesses = System.Diagnostics.Process.GetProcessesByName(System.Diagnostics.Process.GetCurrentProcess().ProcessName);
-        var pids = skuaProcesses.Select(p => p.Id).ToHashSet();
-        
-        EnumWindows((hWnd, lp) =>
-        {
-            GetWindowThreadProcessId(hWnd, out uint pid);
-            if (pids.Contains((int)pid))
-            {
-                PostMessage(hWnd, msg, new IntPtr(wParam), new IntPtr(lParam));
-            }
-            return true;
-        }, IntPtr.Zero);
+        BroadcastArmyMessageAction?.Invoke(msg, wParam, lParam);
     }
 }

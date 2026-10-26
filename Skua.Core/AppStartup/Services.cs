@@ -101,24 +101,6 @@ public static class Services
                         {
                             AddAssemblyPath(dll);
                         }
-
-                        if (OperatingSystem.IsWindows())
-                        {
-                            string? dotnetShared = Path.GetDirectoryName(runtimeDir);
-                            string? dotnetSharedRoot = Path.GetDirectoryName(dotnetShared);
-                            string versionDir = Path.GetFileName(runtimeDir);
-                            if (!string.IsNullOrEmpty(dotnetSharedRoot))
-                            {
-                                string desktopDir = Path.Combine(dotnetSharedRoot, "Microsoft.WindowsDesktop.App", versionDir);
-                                if (Directory.Exists(desktopDir))
-                                {
-                                    foreach (string dll in Directory.EnumerateFiles(desktopDir, "*.dll"))
-                                    {
-                                        AddAssemblyPath(dll);
-                                    }
-                                }
-                            }
-                        }
                     }
 
                     string[] refPaths = {

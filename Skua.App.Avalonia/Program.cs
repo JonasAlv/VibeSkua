@@ -22,74 +22,19 @@ internal static class Program
         RunApp(args);
     }
 
-    [DllImport("kernel32.dll", CharSet = CharSet.Auto, SetLastError = true)]
-    private static extern bool SetDllDirectory(string lpPathName);
-
     private static void InitializeAssemblyResolvers()
     {
-        string assembliesDir = Path.Combine(AppContext.BaseDirectory, "Assemblies");
-        HashSet<string>? assembliesSet = null;
-        if (Directory.Exists(assembliesDir))
-        {
-            try
-            {
-                SetDllDirectory(assembliesDir);
-                assembliesSet = new HashSet<string>(
-                    Directory.EnumerateFiles(assembliesDir, "*.dll").Select(Path.GetFileName)!,
-                    StringComparer.OrdinalIgnoreCase);
-            }
-            catch
-            {
-            }
-        }
-
-        string arch = Environment.Is64BitProcess ? "win-x64" : "win-x86";
-        string runtimeNativeDir = Path.Combine(AppContext.BaseDirectory, "Assemblies", "runtimes", arch, "native");
-        HashSet<string>? runtimeNativeSet = null;
-        if (Directory.Exists(runtimeNativeDir))
-        {
-            try
-            {
-                runtimeNativeSet = new HashSet<string>(
-                    Directory.EnumerateFiles(runtimeNativeDir, "*.dll").Select(Path.GetFileName)!,
-                    StringComparer.OrdinalIgnoreCase);
-            }
-            catch
-            {
-            }
-        }
-
         AssemblyLoadContext.Default.Resolving += (context, assemblyName) =>
         {
             if (assemblyName.Name == null || assemblyName.Name.EndsWith(".resources", StringComparison.OrdinalIgnoreCase))
                 return null;
 
             string fileName = $"{assemblyName.Name}.dll";
-            if (assembliesSet != null && assembliesSet.Contains(fileName))
-            {
-                return context.LoadFromAssemblyPath(Path.Combine(assembliesDir, fileName));
-            }
-
             string rootPath = Path.Combine(AppContext.BaseDirectory, fileName);
             if (File.Exists(rootPath))
                 return context.LoadFromAssemblyPath(rootPath);
 
             return null;
-        };
-
-        AssemblyLoadContext.Default.ResolvingUnmanagedDll += (assembly, unmanagedDllName) =>
-        {
-            string fileName = unmanagedDllName.EndsWith(".dll", StringComparison.OrdinalIgnoreCase)
-                ? unmanagedDllName
-                : $"{unmanagedDllName}.dll";
-
-            if (assembliesSet != null && assembliesSet.Contains(fileName))
-                return NativeLibrary.Load(Path.Combine(assembliesDir, fileName));
-
-            if (runtimeNativeSet != null && runtimeNativeSet.Contains(fileName))
-                return NativeLibrary.Load(Path.Combine(runtimeNativeDir, fileName));
-
-            return IntPtr.Zero;
         };
 
         AppDomain.CurrentDomain.AssemblyResolve += (sender, args) =>
@@ -102,11 +47,6 @@ internal static class Program
                 return existing;
 
             string assemblyName = new AssemblyName(args.Name).Name + ".dll";
-            if (assembliesSet != null && assembliesSet.Contains(assemblyName))
-            {
-                return Assembly.LoadFrom(Path.Combine(assembliesDir, assemblyName));
-            }
-
             string rootPath = Path.Combine(AppContext.BaseDirectory, assemblyName);
             if (File.Exists(rootPath))
                 return Assembly.LoadFrom(rootPath);
@@ -139,12 +79,7 @@ internal static class Program
     public static AppBuilder BuildAvaloniaApp()
     {
         AppBuilder builder = AppBuilder.Configure<App>()
-            .UsePlatformDetect()
-            .With(new Win32PlatformOptions
-            {
-                RenderingMode = new[] { Win32RenderingMode.AngleEgl, Win32RenderingMode.Software },
-                CompositionMode = new[] { Win32CompositionMode.LowLatencyDxgiSwapChain, Win32CompositionMode.WinUIComposition, Win32CompositionMode.RedirectionSurface }
-            });
+            .UsePlatformDetect();
 #if DEBUG
         builder = builder.WithDeveloperTools();
 #endif

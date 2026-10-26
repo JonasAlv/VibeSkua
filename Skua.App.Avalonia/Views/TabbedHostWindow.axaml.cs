@@ -33,188 +33,6 @@ namespace Skua.App.Avalonia.Views;
 
 public partial class TabbedHostWindow : Window
 {
-#if IS_WINDOWS
-    #region Win32 API
-    public delegate IntPtr SubclassProc(IntPtr hWnd, uint uMsg, IntPtr wParam, IntPtr lParam, nuint uIdSubclass, IntPtr dwRefData);
-
-    [DllImport("comctl32.dll", SetLastError = true)]
-    public static extern bool SetWindowSubclass(IntPtr hWnd, SubclassProc pfnSubclass, nuint uIdSubclass, IntPtr dwRefData);
-
-    [DllImport("comctl32.dll", SetLastError = true)]
-    public static extern IntPtr DefSubclassProc(IntPtr hWnd, uint uMsg, IntPtr wParam, IntPtr lParam);
-
-    private SubclassProc? _subclassProc;
-    private const int WM_SKUA_CHILD_READY = 0x0400 + 440;
-
-    [DllImport("user32.dll", SetLastError = true)]
-    public static extern bool MoveWindow(IntPtr hWnd, int X, int Y, int nWidth, int nHeight, bool bRepaint);
-
-    [DllImport("user32.dll", SetLastError = true)]
-    public static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
-
-    [DllImport("user32.dll", SetLastError = true)]
-    public static extern int SetWindowLong(IntPtr hWnd, int nIndex, int dwNewLong);
-
-    [DllImport("user32.dll", EntryPoint = "SetWindowLongPtr", SetLastError = true)]
-    public static extern IntPtr SetWindowLongPtr(IntPtr hWnd, int nIndex, IntPtr dwNewLong);
-
-    [DllImport("user32.dll", EntryPoint = "SetWindowLong", SetLastError = true)]
-    public static extern int SetWindowLong32(IntPtr hWnd, int nIndex, int dwNewLong);
-
-    public static IntPtr SetWindowLongAny(IntPtr hWnd, int nIndex, IntPtr dwNewLong)
-    {
-        if (IntPtr.Size == 8) return SetWindowLongPtr(hWnd, nIndex, dwNewLong);
-        return new IntPtr(SetWindowLong32(hWnd, nIndex, dwNewLong.ToInt32()));
-    }
-
-    [DllImport("user32.dll", SetLastError = true)]
-    public static extern int GetWindowLong(IntPtr hWnd, int nIndex);
-
-    [DllImport("user32.dll")]
-    public static extern bool GetClientRect(IntPtr hWnd, out RECT lpRect);
-
-    [DllImport("user32.dll")]
-    public static extern bool SetWindowPos(IntPtr hWnd, IntPtr hWndInsertAfter, int X, int Y, int cx, int cy, uint uFlags);
-
-    private delegate bool EnumWindowsProc(IntPtr hWnd, IntPtr lParam);
-
-    [DllImport("user32.dll")]
-    private static extern bool EnumWindows(EnumWindowsProc lpEnumFunc, IntPtr lParam);
-
-    [DllImport("user32.dll")]
-    private static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint lpdwProcessId);
-
-    [DllImport("user32.dll")]
-    private static extern bool IsWindowVisible(IntPtr hWnd);
-
-    [DllImport("user32.dll")]
-    public static extern IntPtr BeginDeferWindowPos(int nNumWindows);
-
-    [DllImport("user32.dll")]
-    public static extern IntPtr DeferWindowPos(IntPtr hWinPosInfo, IntPtr hWnd, IntPtr hWndInsertAfter, int x, int y, int cx, int cy, uint uFlags);
-
-    [DllImport("user32.dll")]
-    public static extern bool EndDeferWindowPos(IntPtr hWinPosInfo);
-
-    [DllImport("user32.dll", CharSet = CharSet.Auto)]
-    public static extern IntPtr SendMessage(IntPtr hWnd, uint Msg, IntPtr wParam, IntPtr lParam);
-
-    [DllImport("user32.dll", SetLastError = true)]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    public static extern bool PostMessage(IntPtr hWnd, uint Msg, IntPtr wParam, IntPtr lParam);
-
-    [DllImport("user32.dll", CharSet = CharSet.Auto, SetLastError = true)]
-    public static extern int GetWindowText(IntPtr hWnd, System.Text.StringBuilder lpString, int nMaxCount);
-
-    [DllImport("user32.dll")]
-    public static extern IntPtr GetForegroundWindow();
-
-    private const int WM_NCACTIVATE = 0x0086;
-    private static readonly IntPtr HWND_TOP = IntPtr.Zero;
-    private static readonly IntPtr HWND_BOTTOM = new IntPtr(1);
-    private const uint WM_CLOSE = 0x0010;
-    private const int GWL_HWNDPARENT = -8;
-    private const int GWL_EXSTYLE = -20;
-    private const uint GW_OWNER = 4;
-
-    [DllImport("user32.dll", SetLastError = true)]
-    public static extern IntPtr GetWindow(IntPtr hWnd, uint uCmd);
-    private const int WS_EX_TOOLWINDOW = 0x00000080;
-    private const int SW_SHOW = 5;
-    private const int SW_HIDE = 0;
-    private const uint SWP_NOMOVE = 0x0001;
-    private const uint SWP_NOSIZE = 0x0002;
-    private const uint SWP_SHOWWINDOW = 0x0040;
-    private const uint SWP_NOACTIVATE = 0x0010;
-    private const uint SWP_ASYNCWINDOWPOS = 0x4000;
-    private const uint SWP_NOZORDER = 0x0004;
-    private const uint WM_ENTERSIZEMOVE = 0x0231;
-    private const uint WM_EXITSIZEMOVE = 0x0232;
-
-    [StructLayout(LayoutKind.Sequential)]
-    public struct RECT
-    {
-        public int Left, Top, Right, Bottom;
-    }
-
-    [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
-    private static extern IntPtr CreateJobObject(IntPtr lpJobAttributes, string? lpName);
-
-    [DllImport("kernel32.dll", SetLastError = true)]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool SetInformationJobObject(IntPtr hJob, int JobObjectInformationClass, IntPtr lpJobObjectInfo, uint cbJobObjectInfoLength);
-
-    [DllImport("kernel32.dll", SetLastError = true)]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool AssignProcessToJobObject(IntPtr hJob, IntPtr hProcess);
-
-    [StructLayout(LayoutKind.Sequential)]
-    private struct JOBOBJECT_BASIC_LIMIT_INFORMATION
-    {
-        public long PerProcessUserTimeLimit;
-        public long PerJobUserTimeLimit;
-        public uint LimitFlags;
-        public UIntPtr MinimumWorkingSetSize;
-        public UIntPtr MaximumWorkingSetSize;
-        public uint ActiveProcessLimit;
-        public UIntPtr Affinity;
-        public uint PriorityClass;
-        public uint SchedulingClass;
-    }
-
-    [StructLayout(LayoutKind.Sequential)]
-    private struct IO_COUNTERS
-    {
-        public ulong ReadOperationCount;
-        public ulong WriteOperationCount;
-        public ulong OtherOperationCount;
-        public ulong ReadTransferCount;
-        public ulong WriteTransferCount;
-        public ulong OtherTransferCount;
-    }
-
-    [StructLayout(LayoutKind.Sequential)]
-    private struct JOBOBJECT_EXTENDED_LIMIT_INFORMATION
-    {
-        public JOBOBJECT_BASIC_LIMIT_INFORMATION BasicLimitInformation;
-        public IO_COUNTERS IoInfo;
-        public UIntPtr ProcessMemoryLimit;
-        public UIntPtr JobMemoryLimit;
-        public UIntPtr PeakProcessMemoryLimit;
-        public UIntPtr PeakJobMemoryLimit;
-    }
-
-    private static IntPtr _childJobHandle = IntPtr.Zero;
-
-    private static void EnsureChildJobObject()
-    {
-        if (_childJobHandle != IntPtr.Zero) return;
-        try
-        {
-            _childJobHandle = CreateJobObject(IntPtr.Zero, null);
-            if (_childJobHandle != IntPtr.Zero)
-            {
-                var info = new JOBOBJECT_EXTENDED_LIMIT_INFORMATION();
-                info.BasicLimitInformation.LimitFlags = 0x2000; // JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE
-                int length = Marshal.SizeOf(typeof(JOBOBJECT_EXTENDED_LIMIT_INFORMATION));
-                IntPtr extendedInfoPtr = Marshal.AllocHGlobal(length);
-                try
-                {
-                    Marshal.StructureToPtr(info, extendedInfoPtr, false);
-                    SetInformationJobObject(_childJobHandle, 9 /* JobObjectExtendedLimitInformation */, extendedInfoPtr, (uint)length);
-                }
-                finally
-                {
-                    Marshal.FreeHGlobal(extendedInfoPtr);
-                }
-            }
-        }
-        catch { }
-    }
-    #endregion
-#endif
-
-#if IS_LINUX
     #region Linux X11 API
     [StructLayout(LayoutKind.Sequential)]
     public struct XSetWindowAttributes
@@ -300,26 +118,18 @@ public partial class TabbedHostWindow : Window
         }
     }
     #endregion
-#endif
 
     private void PostChildMessage(IntPtr hWnd, uint msg, IntPtr wParam, IntPtr lParam)
     {
-#if IS_WINDOWS
-        PostMessage(hWnd, msg, wParam, lParam);
-#elif IS_LINUX
         var tab = _tabs.Values.FirstOrDefault(t => t.ChildHwnd == hWnd);
         if (tab?.Process != null && !tab.Process.HasExited)
         {
             TabIpc.SendMessage(tab.Process.Id, msg, wParam, lParam);
         }
-#endif
     }
 
     private IntPtr SendChildMessage(TabInfo info, uint msg, IntPtr wParam, IntPtr lParam)
     {
-#if IS_WINDOWS
-        return SendMessage(info.ChildHwnd, msg, wParam, lParam);
-#elif IS_LINUX
         if (msg == (uint)WM_SKUA_CHECK_LOGIN)
         {
             int pid = info.Process?.Id ?? 0;
@@ -331,9 +141,6 @@ public partial class TabbedHostWindow : Window
             }
         }
         return IntPtr.Zero;
-#else
-        return IntPtr.Zero;
-#endif
     }
 
     #region Tab State
@@ -519,20 +326,50 @@ public partial class TabbedHostWindow : Window
     private void TabbedHostWindow_Opened(object? sender, EventArgs e)
     {
         _hostHwnd = this.TryGetPlatformHandle()?.Handle ?? IntPtr.Zero;
-#if IS_WINDOWS
-        if (_hostHwnd != IntPtr.Zero)
-        {
-            HotKeys.HostHwnd = _hostHwnd;
-            _subclassProc = HostWindowSubclassProc;
-            SetWindowSubclass(_hostHwnd, _subclassProc, 1, IntPtr.Zero);
-        }
-#endif
 
         HotKeys.RegisterSkuaPid((uint)Environment.ProcessId);
         HotKeys.GetChildHwndForPid = (pid) =>
         {
             var tab = _tabs.Values.FirstOrDefault(t => t.Process != null && (uint)t.Process.Id == pid);
             return tab?.ChildHwnd ?? IntPtr.Zero;
+        };
+        HotKeys.ForwardHotKeyAction = (actionName) =>
+        {
+            IntPtr childHwnd = HotKeys.ActiveChildHwnd;
+            if (childHwnd != IntPtr.Zero)
+            {
+                if (actionName == "OpenBank")
+                {
+                    PostChildMessage(childHwnd, HotKeys.WM_SKUA_OPEN_BANK, IntPtr.Zero, IntPtr.Zero);
+                    return;
+                }
+
+                int actionId = HotKeys.GetActionId(actionName);
+                if (actionId >= 0)
+                {
+                    PostChildMessage(childHwnd, HotKeys.WM_SKUA_EXECUTE_HOTKEY, new IntPtr(actionId), IntPtr.Zero);
+                }
+            }
+        };
+        HotKeys.BroadcastArmyMessageAction = (msg, wParam, lParam) =>
+        {
+            foreach (var info in _tabs.Values)
+            {
+                if (info.ChildHwnd != IntPtr.Zero)
+                {
+                    PostChildMessage(info.ChildHwnd, msg, new IntPtr(wParam), new IntPtr(lParam));
+                }
+            }
+        };
+        HotKeys.BroadcastReloadHotkeysAction = () =>
+        {
+            foreach (var info in _tabs.Values)
+            {
+                if (info.ChildHwnd != IntPtr.Zero)
+                {
+                    PostChildMessage(info.ChildHwnd, HotKeys.WM_SKUA_RELOAD_HOTKEYS, IntPtr.Zero, IntPtr.Zero);
+                }
+            }
         };
 
         try
@@ -558,113 +395,6 @@ public partial class TabbedHostWindow : Window
         AddNewInstance(_initialArgs);
     }
 
-#if IS_WINDOWS
-    private IntPtr HostWindowSubclassProc(IntPtr hWnd, uint uMsg, IntPtr wParam, IntPtr lParam, nuint uIdSubclass, IntPtr dwRefData)
-    {
-        if (uMsg == HotKeys.WM_SKUA_RELOAD_HOTKEYS)
-        {
-            Dispatcher.UIThread.Post(() =>
-            {
-                try
-                {
-                    Ioc.Default.GetRequiredService<IHotKeyService>().Reload();
-                }
-                catch { }
-            });
-            return IntPtr.Zero;
-        }
-
-        if (uMsg == HotKeys.WM_SKUA_LOAD_SCRIPT_ALL)
-        {
-            Dispatcher.UIThread.Post(() =>
-            {
-                try
-                {
-                    var windowService = Ioc.Default.GetRequiredService<IWindowService>();
-                    windowService.RegisterManagedWindow("Script Repo", Ioc.Default.GetRequiredService<ScriptRepoViewModel>());
-                    windowService.ShowManagedWindow("Script Repo");
-                }
-                catch { }
-            });
-            return IntPtr.Zero;
-        }
-
-        if (uMsg == 0x001A /* WM_SETTINGCHANGE */ || uMsg == 0x031A /* WM_THEMECHANGED */ || uMsg == 0x0320 /* WM_DWMCOLORIZATIONCOLORCHANGED */)
-        {
-            IntPtr res = DefSubclassProc(hWnd, uMsg, wParam, lParam);
-            Dispatcher.UIThread.Post(() =>
-            {
-                try
-                {
-                    var themeService = Ioc.Default.GetService<IThemeService>();
-                    bool isDark = themeService?.IsDarkTheme ?? true;
-                    Skua.Shared.Avalonia.Services.ThemeResourceApplicator.ApplyTitleBarTheme(this, isDark);
-                }
-                catch { }
-            });
-            return res;
-        }
-
-        if (uMsg == WM_NCACTIVATE)
-        {
-            if (wParam == IntPtr.Zero)
-            {
-                IntPtr fg = GetForegroundWindow();
-                if (fg != IntPtr.Zero)
-                {
-                    GetWindowThreadProcessId(fg, out uint fgPid);
-                    uint currentPid = (uint)Environment.ProcessId;
-                    if (fgPid == currentPid || _tabs.Values.Any(t => t.Process != null && !t.Process.HasExited && (uint)t.Process.Id == fgPid))
-                    {
-                        return DefSubclassProc(hWnd, uMsg, (IntPtr)1, lParam);
-                    }
-                }
-            }
-        }
-
-        if (uMsg == WM_SKUA_CHILD_READY)
-        {
-            IntPtr childHwnd = wParam;
-            int pid = lParam.ToInt32();
-            
-            Dispatcher.UIThread.Post(() =>
-            {
-                if (_isClosing || childHwnd == IntPtr.Zero) return;
-
-                TabInfo? targetInfo = _tabs.Values.FirstOrDefault(t => t.Process != null && t.Process.Id == pid);
-                if (targetInfo != null)
-                {
-                    AttachChildWindow(targetInfo, childHwnd);
-                }
-            });
-            return IntPtr.Zero;
-        }
-
-        if (uMsg == WM_ENTERSIZEMOVE)
-        {
-            IntPtr res = DefSubclassProc(hWnd, uMsg, wParam, lParam);
-            _isDraggingWindow = false;
-            _lastX = -99999;
-            _lastY = -99999;
-            DoReposition();
-            _isDraggingWindow = true;
-            return res;
-        }
-
-        if (uMsg == WM_EXITSIZEMOVE || uMsg == 0x0215 /* WM_CAPTURECHANGED */)
-        {
-            IntPtr res = DefSubclassProc(hWnd, uMsg, wParam, lParam);
-            _isDraggingWindow = false;
-            _lastX = -99999;
-            _lastY = -99999;
-            DoReposition();
-            return res;
-        }
-
-        return DefSubclassProc(hWnd, uMsg, wParam, lParam);
-    }
-#endif
-
     private void AttachChildWindow(TabInfo info, IntPtr childHwnd)
     {
         if (info.ChildHwnd != IntPtr.Zero) return;
@@ -675,12 +405,6 @@ public partial class TabbedHostWindow : Window
         if (HotKeys.ActiveChildHwnd == IntPtr.Zero)
             HotKeys.ActiveChildHwnd = childHwnd;
 
-#if IS_WINDOWS
-        int exStyle = GetWindowLong(childHwnd, GWL_EXSTYLE);
-        exStyle |= WS_EX_TOOLWINDOW;
-        SetWindowLong(childHwnd, GWL_EXSTYLE, exStyle);
-        SetWindowLongAny(childHwnd, GWL_HWNDPARENT, _hostHwnd);
-#elif IS_LINUX
         IntPtr display = GetDisplay();
         if (display != IntPtr.Zero && _hostHwnd != IntPtr.Zero)
         {
@@ -694,7 +418,6 @@ public partial class TabbedHostWindow : Window
                 XSync(display, 0);
             }
         }
-#endif
 
         if (_isGridViewEnabled)
         {
@@ -724,9 +447,6 @@ public partial class TabbedHostWindow : Window
             {
                 if (info.ChildHwnd != IntPtr.Zero)
                 {
-#if IS_WINDOWS
-                        ShowWindow(info.ChildHwnd, SW_HIDE);
-#elif IS_LINUX
                         IntPtr display = GetDisplay();
                         if (display != IntPtr.Zero)
                         {
@@ -736,7 +456,6 @@ public partial class TabbedHostWindow : Window
                                 XFlush(display);
                             }
                         }
-#endif
                 }
                 if (!info.Process.HasExited)
                 {
@@ -1444,55 +1163,7 @@ public partial class TabbedHostWindow : Window
 
     private void FastReposition(PixelPoint newPos)
     {
-        if (_childWidth <= 1 || _childHeight <= 1)
-            return;
-
-        if (_isGridViewEnabled)
-        {
-            for (int i = 0; i < _gridTiles.Count; i++)
-            {
-                var tile = _gridTiles[i];
-                if (tile.Hwnd != IntPtr.Zero)
-                {
-#if IS_WINDOWS
-                    SetWindowPos(tile.Hwnd, IntPtr.Zero,
-                        newPos.X + tile.OffsetX,
-                        newPos.Y + tile.OffsetY,
-                        tile.Width,
-                        tile.Height,
-                        SWP_SHOWWINDOW | SWP_NOACTIVATE | SWP_ASYNCWINDOWPOS | SWP_NOZORDER);
-#elif IS_LINUX
-                    // On Linux, child window is reparented into _hostHwnd and moves with it automatically in X11.
-#endif
-                }
-            }
-            return;
-        }
-
-        IntPtr activeChildHwnd = _lastActiveHwnd;
-        if (activeChildHwnd == IntPtr.Zero)
-        {
-            if (InstancesTabControl.SelectedItem is TabItem tab && _tabs.TryGetValue(tab, out var info))
-                activeChildHwnd = info.ChildHwnd;
-            _lastActiveHwnd = activeChildHwnd;
-        }
-
-        if (activeChildHwnd != IntPtr.Zero)
-        {
-            int targetX = newPos.X + _childOffsetX;
-            int targetY = newPos.Y + _childOffsetY;
-
-#if IS_WINDOWS
-            SetWindowPos(activeChildHwnd, IntPtr.Zero,
-                targetX,
-                targetY,
-                _childWidth,
-                _childHeight,
-                SWP_SHOWWINDOW | SWP_NOACTIVATE | SWP_ASYNCWINDOWPOS | SWP_NOZORDER);
-#elif IS_LINUX
-            // On Linux, child window is reparented into _hostHwnd and moves with it automatically in X11.
-#endif
-        }
+        // On Linux, child windows are reparented into _hostHwnd and move with it automatically in X11.
     }
 
     private void ScheduleReposition()
@@ -1532,15 +1203,6 @@ public partial class TabbedHostWindow : Window
 
             if (WindowState == WindowState.Minimized || !IsVisible)
             {
-#if IS_WINDOWS
-                foreach (var info in _tabs.Values)
-                {
-                    if (info.ChildHwnd != IntPtr.Zero)
-                    {
-                        SetWindowPos(info.ChildHwnd, HWND_TOP, -32000, -32000, 0, 0, SWP_SHOWWINDOW | SWP_NOACTIVATE | SWP_ASYNCWINDOWPOS | SWP_NOSIZE);
-                    }
-                }
-#elif IS_LINUX
                 IntPtr disp = GetDisplay();
                 if (disp != IntPtr.Zero)
                 {
@@ -1557,35 +1219,15 @@ public partial class TabbedHostWindow : Window
                         XFlush(disp);
                     }
                 }
-#endif
                 return;
             }
 
-#if IS_WINDOWS
-            PixelPoint screenTL;
-            PixelPoint screenBR;
-            try
-            {
-                screenTL = HostContainer.PointToScreen(new Point(0, 0));
-                screenBR = HostContainer.PointToScreen(new Point(HostContainer.Bounds.Width, HostContainer.Bounds.Height));
-            }
-            catch
-            {
-                return;
-            }
-
-            int x = screenTL.X;
-            int y = screenTL.Y;
-            int w = Math.Max(screenBR.X - screenTL.X, 1);
-            int h = Math.Max(screenBR.Y - screenTL.Y, 1);
-#elif IS_LINUX
             // On Linux, child windows are reparented into _hostHwnd, so coordinates are relative to _hostHwnd
             int x = 0;
             int y = 36;
             int w = (int)Math.Max(HostContainer.Bounds.Width, 1);
             int h = (int)Math.Max(HostContainer.Bounds.Height, 1);
             IntPtr display = GetDisplay();
-#endif
 
             if (w <= 1 || h <= 1)
             {
@@ -1599,10 +1241,6 @@ public partial class TabbedHostWindow : Window
             _childHeight = h;
             _lastFastX = Position.X;
             _lastFastY = Position.Y;
-
-#if IS_WINDOWS
-            uint baseFlags = SWP_SHOWWINDOW | SWP_NOACTIVATE | SWP_ASYNCWINDOWPOS | SWP_NOZORDER;
-#endif
 
             var activeWindows = InstancesTabControl.Items.OfType<TabItem>()
                 .Where(t => _tabs.ContainsKey(t))
@@ -1645,9 +1283,6 @@ public partial class TabbedHostWindow : Window
                         Width = cellW,
                         Height = cellH
                     });
-#if IS_WINDOWS
-                    SetWindowPos(activeWindows[i].ChildHwnd, IntPtr.Zero, x + c * cellW, y + r * cellH, cellW, cellH, baseFlags);
-#elif IS_LINUX
                     if (display != IntPtr.Zero)
                     {
                         lock (_xLock)
@@ -1660,7 +1295,6 @@ public partial class TabbedHostWindow : Window
                             XFlush(display);
                         }
                     }
-#endif
                     if (activeWindows[i].IsThrottled)
                     {
                         activeWindows[i].IsThrottled = false;
@@ -1699,9 +1333,6 @@ public partial class TabbedHostWindow : Window
 
                 if (activeChildHwnd != IntPtr.Zero)
                 {
-#if IS_WINDOWS
-                    SetWindowPos(activeChildHwnd, IntPtr.Zero, x, y, w, h, baseFlags);
-#elif IS_LINUX
                     if (display != IntPtr.Zero)
                     {
                         lock (_xLock)
@@ -1713,7 +1344,6 @@ public partial class TabbedHostWindow : Window
                             XFlush(display);
                         }
                     }
-#endif
 
                     if (activeInfo != null && activeInfo.IsThrottled)
                     {
@@ -1735,9 +1365,6 @@ public partial class TabbedHostWindow : Window
                         PostChildMessage(info.ChildHwnd, WM_SKUA_THROTTLE, new IntPtr(1), IntPtr.Zero);
                     }
 
-#if IS_WINDOWS
-                    SetWindowPos(info.ChildHwnd, IntPtr.Zero, -32000, -32000, 0, 0, baseFlags | SWP_NOSIZE);
-#elif IS_LINUX
                     if (display != IntPtr.Zero)
                     {
                         lock (_xLock)
@@ -1746,7 +1373,6 @@ public partial class TabbedHostWindow : Window
                             XFlush(display);
                         }
                     }
-#endif
                 }
             }
         }
@@ -1761,34 +1387,6 @@ public partial class TabbedHostWindow : Window
         }
     }
     #endregion
-
-    private static IntPtr FindWindowByProcessId(int processId)
-    {
-#if IS_WINDOWS
-        IntPtr result = IntPtr.Zero;
-        EnumWindows((hWnd, lParam) =>
-        {
-            GetWindowThreadProcessId(hWnd, out uint pid);
-            if ((int)pid == processId)
-            {
-                System.Text.StringBuilder sb = new(256);
-                GetWindowText(hWnd, sb, sb.Capacity);
-                string title = sb.ToString();
-                
-                // Match WPF exactly: just check if it's visible and belongs to the process.
-                if (IsWindowVisible(hWnd))
-                {
-                    result = hWnd;
-                    return false;
-                }
-            }
-            return true;
-        }, IntPtr.Zero);
-        return result;
-#else
-        return IntPtr.Zero;
-#endif
-    }
 
     #region Tab Management
     private void CloseTab(TabItem tab)
@@ -1805,9 +1403,6 @@ public partial class TabbedHostWindow : Window
                 {
                     if (info.ChildHwnd != IntPtr.Zero)
                     {
-#if IS_WINDOWS
-                        ShowWindow(info.ChildHwnd, SW_HIDE);
-#elif IS_LINUX
                         IntPtr display = GetDisplay();
                         if (display != IntPtr.Zero)
                         {
@@ -1817,7 +1412,6 @@ public partial class TabbedHostWindow : Window
                                 XFlush(display);
                             }
                         }
-#endif
                     }
                     if (info.Process != null && !info.Process.HasExited)
                         info.Process.Kill();
@@ -2062,15 +1656,6 @@ public partial class TabbedHostWindow : Window
 
             p.Start();
             info.Process = p;
-#if IS_WINDOWS
-            try
-            {
-                EnsureChildJobObject();
-                if (_childJobHandle != IntPtr.Zero)
-                    AssignProcessToJobObject(_childJobHandle, p.Handle);
-            }
-            catch { }
-#endif
             HotKeys.RegisterSkuaPid((uint)p.Id);
 
             int pid = p.Id;
@@ -2093,10 +1678,7 @@ public partial class TabbedHostWindow : Window
                         }
                         catch { }
                     }
-                    if (childHwnd == IntPtr.Zero && OperatingSystem.IsWindows())
-                    {
-                        childHwnd = FindWindowByProcessId(pid);
-                    }
+
 
                     if (childHwnd != IntPtr.Zero)
                     {
