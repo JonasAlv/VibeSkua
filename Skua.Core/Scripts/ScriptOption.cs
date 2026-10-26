@@ -206,8 +206,12 @@ public partial class ScriptOption : ObservableRecipient, IScriptOption, IOptionD
 
     private string _originalName = string.Empty;
     private string _originalGuild = string.Empty;
+    private int _originalGuildColor = 0;
     private bool _originalHidePlayers = false;
     private CancellationTokenSource? _streamerModeCts;
+
+    [ObservableProperty]
+    private string _streamerName = "Hidden";
 
     private void ApplyStreamerMode(bool enabled)
     {
@@ -218,10 +222,11 @@ public partial class ScriptOption : ObservableRecipient, IScriptOption, IOptionD
             {
                 if (string.IsNullOrEmpty(_originalName))
                 {
-                    string realName = flash.GetGameObject<string>("world.myAvatar.dataLeaf.strUsername")
+                    string realName = flash.GetGameObject<string>("loginInfo.strUsername")
+                        ?? flash.GetGameObject<string>("world.myAvatar.dataLeaf.strUsername")
                         ?? flash.GetGameObject<string>("world.myAvatar.objData.strUsername")
                         ?? CustomName;
-                    if (!string.IsNullOrEmpty(realName) && realName != "Hidden" && realName != "VibeSkuaUser")
+                    if (!string.IsNullOrEmpty(realName) && realName != "Hidden" && realName != "VibeSkuaUser" && realName != StreamerName)
                         _originalName = realName;
                 }
                 if (string.IsNullOrEmpty(_originalGuild))
@@ -229,15 +234,22 @@ public partial class ScriptOption : ObservableRecipient, IScriptOption, IOptionD
                     string realGuild = flash.GetGameObject<string>("world.myAvatar.objData.strGuildName")
                         ?? flash.GetGameObject<string>("world.myAvatar.pMC.pname.tg.text")
                         ?? CustomGuild;
-                    if (!string.IsNullOrEmpty(realGuild) && realGuild != "Hidden")
+                    if (!string.IsNullOrEmpty(realGuild) && realGuild != "Hidden" && realGuild != StreamerName)
                         _originalGuild = realGuild;
+                }
+                if (_originalGuildColor == 0)
+                {
+                    int realColor = flash.GetGameObject<int>("world.myAvatar.pMC.pname.tg.textColor");
+                    if (realColor != 0 && realColor != 16777215)
+                        _originalGuildColor = realColor;
                 }
             }
 
             _originalHidePlayers = HidePlayers;
             HidePlayers = true;
-            CustomName = "VibeSkuaUser";
-            CustomGuild = "Hidden";
+            string hideName = string.IsNullOrWhiteSpace(StreamerName) ? "Hidden" : StreamerName;
+            CustomName = hideName;
+            CustomGuild = hideName;
 
             _streamerModeCts?.Cancel();
             _streamerModeCts?.Dispose();
@@ -253,18 +265,21 @@ public partial class ScriptOption : ObservableRecipient, IScriptOption, IOptionD
                         var flash = _lazyFlash.Value;
                         if (flash == null) return;
 
-                        // Override identity in dataLeaf and objData so combat animations / fName() cannot revert to real name
-                        flash.Call("setGameObject", "world.myAvatar.dataLeaf.strUsername", "VibeSkuaUser");
-                        flash.Call("setGameObject", "world.myAvatar.dataLeaf.uoName", "vibeskuauser");
-                        flash.Call("setGameObject", "world.myAvatar.objData.strUsername", "VibeSkuaUser");
-                        flash.Call("setGameObject", "world.myAvatar.dataLeaf.strGuildName", "Hidden");
-                        flash.Call("setGameObject", "world.myAvatar.objData.strGuildName", "Hidden");
+                        string currentHideName = string.IsNullOrWhiteSpace(StreamerName) ? "Hidden" : StreamerName;
 
-                        // Visual name and portrait
-                        flash.Call("setGameObject", "world.myAvatar.pMC.pname.ti.text", "VibeSkuaUser");
-                        flash.Call("setGameObject", "world.myAvatar.pMC.pname.tg.text", "Hidden");
-                        flash.Call("setGameObject", "world.rootClass.ui.mcPortrait.strName.text", "VibeSkuaUser");
-                        flash.Call("setGameObject", "world.rootClass.ui.mcPortraitTarget.strName.text", "Hidden");
+                        // Override identity in dataLeaf and objData for client-side display
+                        // NOTE: Do NOT alter dataLeaf.uoName; it is the SmartFox server connection identifier.
+                        flash.Call("setGameObject", "world.myAvatar.dataLeaf.strUsername", currentHideName);
+                        flash.Call("setGameObject", "world.myAvatar.objData.strUsername", currentHideName);
+                        flash.Call("setGameObject", "world.myAvatar.dataLeaf.strGuildName", currentHideName);
+                        flash.Call("setGameObject", "world.myAvatar.objData.strGuildName", currentHideName);
+
+                        // Visual name, guild, and portrait
+                        flash.Call("setGameObject", "world.myAvatar.pMC.pname.ti.text", currentHideName);
+                        flash.Call("setGameObject", "world.myAvatar.pMC.pname.tg.text", currentHideName);
+                        flash.Call("setGameObject", "world.myAvatar.pMC.pname.tg.textColor", 16777215);
+                        flash.Call("setGameObject", "world.rootClass.ui.mcPortrait.strName.text", currentHideName);
+                        flash.Call("setGameObject", "world.rootClass.ui.mcPortraitTarget.strName.text", currentHideName);
 
                         // Hide Gold/Coins visually instead of wiping the client's cached integer amounts
                         flash.Call("setGameObject", "world.rootClass.ui.mcInterface.teGold.visible", false);
@@ -312,7 +327,6 @@ public partial class ScriptOption : ObservableRecipient, IScriptOption, IOptionD
                     if (!string.IsNullOrEmpty(_originalName))
                     {
                         flash.Call("setGameObject", "world.myAvatar.dataLeaf.strUsername", _originalName);
-                        flash.Call("setGameObject", "world.myAvatar.dataLeaf.uoName", _originalName.ToLowerInvariant());
                         flash.Call("setGameObject", "world.myAvatar.objData.strUsername", _originalName);
                         flash.Call("setGameObject", "world.myAvatar.pMC.pname.ti.text", _originalName);
                     }
@@ -321,6 +335,14 @@ public partial class ScriptOption : ObservableRecipient, IScriptOption, IOptionD
                         flash.Call("setGameObject", "world.myAvatar.dataLeaf.strGuildName", _originalGuild);
                         flash.Call("setGameObject", "world.myAvatar.objData.strGuildName", _originalGuild);
                         flash.Call("setGameObject", "world.myAvatar.pMC.pname.tg.text", _originalGuild);
+                        if (_originalGuildColor != 0)
+                            flash.Call("setGameObject", "world.myAvatar.pMC.pname.tg.textColor", _originalGuildColor);
+                    }
+                    else
+                    {
+                        flash.Call("setGameObject", "world.myAvatar.dataLeaf.strGuildName", "");
+                        flash.Call("setGameObject", "world.myAvatar.objData.strGuildName", "");
+                        flash.Call("setGameObject", "world.myAvatar.pMC.pname.tg.text", "");
                     }
 
                     // Restore Chat
@@ -343,6 +365,7 @@ public partial class ScriptOption : ObservableRecipient, IScriptOption, IOptionD
 
             _originalName = string.Empty;
             _originalGuild = string.Empty;
+            _originalGuildColor = 0;
         }
     }
 

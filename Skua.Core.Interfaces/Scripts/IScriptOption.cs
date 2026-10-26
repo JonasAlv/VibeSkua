@@ -159,6 +159,11 @@ public interface IScriptOption : INotifyPropertyChanged
     bool StreamerMode { get; set; }
 
     /// <summary>
+    /// The display name used to anonymize the player in Streamer Mode. Defaults to "Hidden".
+    /// </summary>
+    string StreamerName { get; set; }
+
+    /// <summary>
     /// When enabled, optimizes visible player avatars.
     /// </summary>
     bool OptimizePlayers { get; set; }
