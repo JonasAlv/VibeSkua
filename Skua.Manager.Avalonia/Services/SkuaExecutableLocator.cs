@@ -12,9 +12,26 @@ internal static class SkuaExecutableLocator
 
     private static string Resolve()
     {
+        // If running inside an AppImage, check if a VibeSkua AppImage exists next to this manager AppImage
+        string? appImageEnv = Environment.GetEnvironmentVariable("APPIMAGE");
+        if (!string.IsNullOrEmpty(appImageEnv))
+        {
+            string? hostDir = Path.GetDirectoryName(appImageEnv);
+            if (!string.IsNullOrEmpty(hostDir))
+            {
+                string[] appImageCandidates = [ "VibeSkua-x86_64.AppImage", "VibeSkua.AppImage", "VibeSkua" ];
+                foreach (string name in appImageCandidates)
+                {
+                    string p = Path.Combine(hostDir, name);
+                    if (File.Exists(p) && !string.Equals(p, appImageEnv, StringComparison.OrdinalIgnoreCase))
+                        return p;
+                }
+            }
+        }
+
         string[] directCandidates = OperatingSystem.IsWindows()
             ? [ "VibeSkua.exe", "Skua.exe" ]
-            : [ "VibeSkua", "Skua", "VibeSkua.exe", "Skua.exe" ];
+            : [ "VibeSkua", "Skua", "VibeSkua-x86_64.AppImage", "VibeSkua.AppImage", "VibeSkua.exe", "Skua.exe" ];
 
         foreach (string name in directCandidates)
         {
