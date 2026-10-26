@@ -64,23 +64,7 @@ public partial class ScriptOption : ObservableRecipient, IScriptOption, IOptionD
 
         if (recipient.StreamerMode)
         {
-            Task.Run(async () => 
-            {
-                await Task.Delay(1000); // Give the Flash map UI time to load the string
-                try
-                {
-                    var rawMapName = recipient._lazyFlash.Value.GetGameObject("world.strMapName") ?? "";
-                    if (!string.IsNullOrEmpty(rawMapName) && rawMapName != "null")
-                    {
-                        var cleanMapName = rawMapName.Length > 1 
-                            ? char.ToUpper(rawMapName[0]) + rawMapName.Substring(1).ToLower() 
-                            : rawMapName.ToUpper();
-                        
-                        recipient._lazyFlash.Value.Call("setGameObject", "ui.mcInterface.areaList.title.t1.text", cleanMapName);
-                    }
-                }
-                catch { }
-            });
+            recipient.ApplyStreamerMode(true);
         }
     }
 
@@ -264,19 +248,32 @@ public partial class ScriptOption : ObservableRecipient, IScriptOption, IOptionD
 
     private string _originalName = string.Empty;
     private string _originalGuild = string.Empty;
-    private int _originalGuildColor = 0;
     private bool _originalHidePlayers = false;
-    private CancellationTokenSource? _streamerModeCts;
 
     [ObservableProperty]
-    private string _streamerName = "Hidden";
+    private string _streamerName = string.Empty;
+
+    partial void OnStreamerNameChanged(string value)
+    {
+        if (StreamerMode)
+        {
+            ApplyStreamerMode(true);
+        }
+    }
 
     private void ApplyStreamerMode(bool enabled)
     {
-        if (enabled)
+        try
         {
             var flash = _lazyFlash.Value;
-            if (flash != null)
+            if (flash == null)
+                return;
+
+            string hideName = StreamerName ?? string.Empty;
+            CustomName = hideName;
+            CustomGuild = hideName;
+
+            if (enabled)
             {
                 if (string.IsNullOrEmpty(_originalName))
                 {
@@ -295,136 +292,26 @@ public partial class ScriptOption : ObservableRecipient, IScriptOption, IOptionD
                     if (!string.IsNullOrEmpty(realGuild) && realGuild != "Hidden" && realGuild != StreamerName)
                         _originalGuild = realGuild;
                 }
-                if (_originalGuildColor == 0)
-                {
-                    int realColor = flash.GetGameObject<int>("world.myAvatar.pMC.pname.tg.textColor");
-                    if (realColor != 0 && realColor != 16777215)
-                        _originalGuildColor = realColor;
-                }
+
+                _originalHidePlayers = HidePlayers;
+                HidePlayers = true;
+
+                flash.Call("setGameObject", "world.rootClass.streamerName", hideName);
+                flash.Call("modEnable", "StreamerMode");
             }
-
-            _originalHidePlayers = HidePlayers;
-            HidePlayers = true;
-            string hideName = string.IsNullOrWhiteSpace(StreamerName) ? "Hidden" : StreamerName;
-            CustomName = hideName;
-            CustomGuild = hideName;
-
-            _streamerModeCts?.Cancel();
-            _streamerModeCts?.Dispose();
-            _streamerModeCts = new CancellationTokenSource();
-            var token = _streamerModeCts.Token;
-
-            Task.Run(async () => 
+            else
             {
-                while (!token.IsCancellationRequested)
-                {
-                    try
-                    {
-                        var flash = _lazyFlash.Value;
-                        if (flash == null) return;
+                flash.Call("modDisable", "StreamerMode");
+                flash.Call("setGameObject", "world.rootClass.streamerName", "");
 
-                        string currentHideName = string.IsNullOrWhiteSpace(StreamerName) ? "Hidden" : StreamerName;
-
-                        // Override identity in dataLeaf and objData for client-side display
-                        // NOTE: Do NOT alter dataLeaf.uoName; it is the SmartFox server connection identifier.
-                        flash.Call("setGameObject", "world.myAvatar.dataLeaf.strUsername", currentHideName);
-                        flash.Call("setGameObject", "world.myAvatar.objData.strUsername", currentHideName);
-                        flash.Call("setGameObject", "world.myAvatar.dataLeaf.strGuildName", currentHideName);
-                        flash.Call("setGameObject", "world.myAvatar.objData.strGuildName", currentHideName);
-
-                        // Visual name, guild, and portrait
-                        flash.Call("setGameObject", "world.myAvatar.pMC.pname.ti.text", currentHideName);
-                        flash.Call("setGameObject", "world.myAvatar.pMC.pname.tg.text", currentHideName);
-                        flash.Call("setGameObject", "world.myAvatar.pMC.pname.tg.textColor", 16777215);
-                        flash.Call("setGameObject", "world.rootClass.ui.mcPortrait.strName.text", currentHideName);
-                        flash.Call("setGameObject", "world.rootClass.ui.mcPortraitTarget.strName.text", currentHideName);
-
-                        // Hide Gold/Coins visually instead of wiping the client's cached integer amounts
-                        flash.Call("setGameObject", "world.rootClass.ui.mcInterface.teGold.visible", false);
-                        flash.Call("setGameObject", "world.rootClass.ui.mcInterface.teCoins.visible", false);
-                        flash.Call("setGameObject", "world.rootClass.ui.mcInterface.strGold.visible", false);
-                        flash.Call("setGameObject", "world.rootClass.ui.mcInterface.strCoins.visible", false);
-                        flash.Call("setGameObject", "world.rootClass.ui.mcInterface.txtGold.visible", false);
-                        flash.Call("setGameObject", "world.rootClass.ui.mcInterface.txtCoins.visible", false);
-
-                        // Hide chat
-                        flash.Call("setGameObject", "world.rootClass.ui.mcInterface.t1.visible", false);
-                        flash.Call("setGameObject", "world.rootClass.ui.mcInterface.te.visible", false);
-
-                        // Force map UI text cleanly
-                        var rawMapName = flash.GetGameObject("world.strMapName") ?? "";
-                        if (!string.IsNullOrEmpty(rawMapName) && rawMapName != "null")
-                        {
-                            var cleanMapName = rawMapName.Length > 1 
-                                ? char.ToUpper(rawMapName[0]) + rawMapName.Substring(1).ToLower() 
-                                : rawMapName.ToUpper();
-
-                            flash.Call("setGameObject", "ui.mcInterface.areaList.title.t1.text", cleanMapName);
-                        }
-                    }
-                    catch { }
-                    await Task.Delay(150, token);
-                }
-            }, token);
-        }
-        else
-        {
-            _streamerModeCts?.Cancel();
-            _streamerModeCts?.Dispose();
-            _streamerModeCts = null;
-
-            CustomName = _originalName;
-            CustomGuild = _originalGuild;
-            HidePlayers = _originalHidePlayers;
-
-            try
-            {
-                var flash = _lazyFlash.Value;
-                if (flash != null)
-                {
-                    if (!string.IsNullOrEmpty(_originalName))
-                    {
-                        flash.Call("setGameObject", "world.myAvatar.dataLeaf.strUsername", _originalName);
-                        flash.Call("setGameObject", "world.myAvatar.objData.strUsername", _originalName);
-                        flash.Call("setGameObject", "world.myAvatar.pMC.pname.ti.text", _originalName);
-                    }
-                    if (!string.IsNullOrEmpty(_originalGuild))
-                    {
-                        flash.Call("setGameObject", "world.myAvatar.dataLeaf.strGuildName", _originalGuild);
-                        flash.Call("setGameObject", "world.myAvatar.objData.strGuildName", _originalGuild);
-                        flash.Call("setGameObject", "world.myAvatar.pMC.pname.tg.text", _originalGuild);
-                        if (_originalGuildColor != 0)
-                            flash.Call("setGameObject", "world.myAvatar.pMC.pname.tg.textColor", _originalGuildColor);
-                    }
-                    else
-                    {
-                        flash.Call("setGameObject", "world.myAvatar.dataLeaf.strGuildName", "");
-                        flash.Call("setGameObject", "world.myAvatar.objData.strGuildName", "");
-                        flash.Call("setGameObject", "world.myAvatar.pMC.pname.tg.text", "");
-                    }
-
-                    // Restore Chat
-                    flash.Call("setGameObject", "world.rootClass.ui.mcInterface.t1.visible", true);
-                    flash.Call("setGameObject", "world.rootClass.ui.mcInterface.te.visible", true);
-
-                    // Restore Gold/Coins visibility
-                    flash.Call("setGameObject", "world.rootClass.ui.mcInterface.teGold.visible", true);
-                    flash.Call("setGameObject", "world.rootClass.ui.mcInterface.teCoins.visible", true);
-                    flash.Call("setGameObject", "world.rootClass.ui.mcInterface.strGold.visible", true);
-                    flash.Call("setGameObject", "world.rootClass.ui.mcInterface.strCoins.visible", true);
-                    flash.Call("setGameObject", "world.rootClass.ui.mcInterface.txtGold.visible", true);
-                    flash.Call("setGameObject", "world.rootClass.ui.mcInterface.txtCoins.visible", true);
-
-                    // Trigger a game UI refresh to accurately restore names
-                    flash.CallGameFunction("world.setUserData");
-                }
+                CustomName = _originalName;
+                CustomGuild = _originalGuild;
+                HidePlayers = _originalHidePlayers;
+                _originalName = string.Empty;
+                _originalGuild = string.Empty;
             }
-            catch { }
-
-            _originalName = string.Empty;
-            _originalGuild = string.Empty;
-            _originalGuildColor = 0;
         }
+        catch { }
     }
 
     [ObservableProperty]

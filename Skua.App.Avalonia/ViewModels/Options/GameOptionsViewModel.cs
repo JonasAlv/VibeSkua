@@ -150,6 +150,15 @@ public class GameOptionsViewModel : BotControlViewModelBase
         var used = new HashSet<DisplayOptionItemViewModelBase>(visuals.Concat(combat).Concat(drops).Concat(relogin));
         var gameplay = GameOptions.Where(i => !used.Contains(i)).ToList();
 
+        var streamerMode = gameplay.FirstOrDefault(i => i.Content.Equals("Streamer Mode", StringComparison.OrdinalIgnoreCase));
+        var streamerName = gameplay.FirstOrDefault(i => i.Content.Equals("Streamer Name", StringComparison.OrdinalIgnoreCase));
+        if (streamerMode != null && streamerName != null)
+        {
+            gameplay.Remove(streamerName);
+            int idx = gameplay.IndexOf(streamerMode);
+            gameplay.Insert(idx + 1, streamerName);
+        }
+
         OptionGroups = new List<OptionGroupViewModel>
         {
             new()
