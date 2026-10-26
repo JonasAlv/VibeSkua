@@ -37,6 +37,10 @@ internal static class ProcessCloser
     [DllImport("user32.dll")]
     private static extern bool PostMessage(IntPtr hWnd, uint msg, IntPtr wParam, IntPtr lParam);
 
+    [DllImport("libc", SetLastError = true)]
+    private static extern int kill(int pid, int sig);
+    private const int SIGTERM = 15;
+
     /// <summary>
     /// Posts WM_CLOSE to the process's visible, unowned, titled top-level windows (the tab host's
     /// main window). Returns false when the process has no such window.
@@ -60,6 +64,18 @@ internal static class ProcessCloser
                 return true;
             }, IntPtr.Zero);
             return posted;
+        }
+
+        if (OperatingSystem.IsLinux())
+        {
+            try
+            {
+                return kill(process.Id, SIGTERM) == 0;
+            }
+            catch
+            {
+                return false;
+            }
         }
 
         try
