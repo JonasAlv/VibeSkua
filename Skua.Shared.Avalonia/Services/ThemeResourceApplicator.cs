@@ -5,6 +5,7 @@ using Avalonia.Media;
 using Avalonia.Styling;
 using Avalonia.Threading;
 using System;
+using System.Linq;
 using System.Reflection;
 using System.Runtime.InteropServices;
 
@@ -17,13 +18,34 @@ public static class ThemeResourceApplicator
 
     public static void ApplyTitleBarTheme(Application app, bool isDark)
     {
+        if (!Dispatcher.UIThread.CheckAccess())
+        {
+            Dispatcher.UIThread.Post(() => ApplyTitleBarTheme(app, isDark));
+            return;
+        }
+
+        ThemeVariant targetVariant = isDark ? ThemeVariant.Dark : ThemeVariant.Light;
+        if (app.RequestedThemeVariant != targetVariant)
+            app.RequestedThemeVariant = targetVariant;
+
+        if (app.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
+        {
+            foreach (Window window in desktop.Windows.ToArray())
+            {
+                ApplyTitleBarTheme(window, isDark);
+            }
+        }
     }
 
     public static void ApplyTitleBarTheme(Window window, bool? isDarkTheme = null)
     {
         WindowResizeHelper.Attach(window);
 
-        bool isDark = isDarkTheme ?? (window.ActualThemeVariant == ThemeVariant.Dark || Application.Current?.RequestedThemeVariant != ThemeVariant.Light);
+        bool isDark = isDarkTheme 
+            ?? (Application.Current?.RequestedThemeVariant == ThemeVariant.Light ? false :
+               (Application.Current?.RequestedThemeVariant == ThemeVariant.Dark ? true :
+                window.ActualThemeVariant == ThemeVariant.Dark));
+
         ThemeVariant targetVariant = isDark ? ThemeVariant.Dark : ThemeVariant.Light;
         if (window.RequestedThemeVariant != targetVariant)
             window.RequestedThemeVariant = targetVariant;

@@ -10,10 +10,10 @@
     <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12" VerticalAlignment="Center">
       <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="16" VerticalAlignment="Center">
         <sharedSettings:LabeledToggleRow Label="Dark Mode"
-                                         IsChecked="{Binding ThemeService.IsDarkTheme}" />
+                                         IsChecked="{Binding ThemeService.IsDarkTheme, Mode=TwoWay}" />
         <sharedSettings:LabeledToggleRow x:Name="ColorAdjustmentToggle"
                                          Label="Auto Color Contrast"
-                                         IsChecked="{Binding ThemeService.IsColorAdjusted}" />
+                                         IsChecked="{Binding ThemeService.IsColorAdjusted, Mode=TwoWay}" />
       </StackPanel>
 
       <!-- Compact ColorPicker (Popup flyout only when clicked) -->
