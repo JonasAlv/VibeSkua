@@ -6,8 +6,8 @@ on:
       - 'v*'
   workflow_dispatch:
     inputs:
-      version:
-        description: 'Release version (e.g. 2.0.0). Leave blank to read from Directory.Build.props'
+      tag:
+        description: 'Release version tag (e.g. v2.1.0). Leave blank to use tag or Directory.Build.props'
         required: false
         default: ''
 
@@ -16,8 +16,9 @@ permissions:
 
 jobs:
   build-and-release:
-    name: Build & Publish Release
-    runs-on: windows-latest
+    name: Build & Release Linux AppImage
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
 
     steps:
       - name: Checkout Source Code
@@ -28,88 +29,47 @@ jobs:
         with:
           dotnet-version: '10.0.x'
 
-      - name: Install Velopack CLI
-        shell: pwsh
+      - name: Install System Dependencies & appimagetool
         run: |
-          dotnet tool install -g vpk
+          sudo apt-get update
+          sudo apt-get install -y libfuse2 file curl tar gzip
+          sudo curl -sSL https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-x86_64.AppImage -o /usr/local/bin/appimagetool
+          sudo chmod +x /usr/local/bin/appimagetool
 
-      - name: Determine Version
+      - name: Determine Version Tag
         id: get_version
-        shell: pwsh
         run: |
-          if ($env:GITHUB_REF_TYPE -eq 'tag' -and $env:GITHUB_REF_NAME -match '^v?(?<ver>\d+\.\d+\.\d+.*)$') {
-              $ver = $Matches.ver
-          } elseif ($env:INPUT_VERSION -and $env:INPUT_VERSION.Trim() -ne '') {
-              $ver = $env:INPUT_VERSION.Trim().TrimStart('v')
-          } else {
-              [xml]$props = Get-Content Directory.Build.props
-              $ver = $props.Project.PropertyGroup.Version
-          }
-          if (-not $ver) { $ver = "2.0.0" }
-          Write-Host "Determined Release Version: $ver"
-          "version=$ver" >> $env:GITHUB_OUTPUT
-        env:
-          INPUT_VERSION: ${{ github.event.inputs.version }}
+          if [ "${{ github.ref_type }}" = "tag" ]; then
+            TAG="${{ github.ref_name }}"
+          elif [ -n "${{ github.event.inputs.tag }}" ]; then
+            TAG="${{ github.event.inputs.tag }}"
+          else
+            VERSION=$(grep -oPm1 "(?<=<Version>)[^<]+" Directory.Build.props || echo "2.1.0")
+            TAG="v$VERSION"
+          fi
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "Building release for tag: $TAG"
 
-      - name: Build Project & Assemble Output
-        shell: cmd
+      - name: Package Linux AppImages
         run: |
-          call BuildProject.bat --no-pause
+          chmod +x ./BuildProject.sh ./package-linux.sh
+          ./package-linux.sh
 
-      - name: Package Release with Velopack
-        shell: pwsh
-        run: |
-          $ver = "${{ steps.get_version.outputs.version }}"
-          if (Test-Path "Build\Releases") {
-              Remove-Item "Build\Releases" -Recurse -Force
-          }
-          vpk pack -u VibeSkua -v $ver -p "Build" -e VibeSkua.Manager.exe --packTitle "VibeSkua Manager" --icon "Skua.Shared.Avalonia\Assets\SkuaIcon.ico" -o "Build\Releases" -r win-x64
-          if ($LASTEXITCODE -ne 0) {
-              throw "Velopack packaging failed with exit code $LASTEXITCODE"
-          }
-
-      - name: Publish Release Assets
-        shell: pwsh
+      - name: Publish GitHub Release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ steps.get_version.outputs.tag }}
         run: |
-          $ver = "${{ steps.get_version.outputs.version }}"
-          $tag = "v$ver"
-          $files = Get-ChildItem -Path "Build\Releases" -File | ForEach-Object FullName
-          if (-not $files) {
-              throw "No release artifacts were found in Build\Releases."
-          }
+          ASSET="Build/VibeSkua-linux-AppImage.tar.gz"
+          if [ ! -f "$ASSET" ]; then
+            echo "Error: Release asset $ASSET not found!" >&2
+            exit 1
+          fi
 
-          Write-Host "Publishing assets to tag $tag..."
-          $notesFile = "RELEASE_NOTES.md"
-          if (Test-Path "RELEASE_NOTES.md") {
-              $content = Get-Content "RELEASE_NOTES.md" -Raw
-              if ($content -match "(?s)(##\s+VibeSkua\s+v?$ver\b.*?)(?=\r?\n##\s+VibeSkua\s+v\d|\Z)") {
-                  $extracted = $Matches[1].Trim()
-                  if ($content -match "(?s)(###\s+Installation\s+&.*)") {
-                      if (-not ($extracted -match "###\s+Installation")) {
-                          $extracted += "`n`n---`n`n" + $Matches[1].Trim()
-                      }
-                  }
-                  $extracted | Set-Content "CURRENT_RELEASE_NOTES.md" -Encoding UTF8
-                  $notesFile = "CURRENT_RELEASE_NOTES.md"
-              }
-          }
-          $notesArg = @("--generate-notes")
-          if (Test-Path $notesFile) {
-              $notesArg = @("--notes-file", $notesFile)
-          }
-          gh release view $tag 2>$null
-          if ($LASTEXITCODE -eq 0) {
-              Write-Host "Existing release found for $tag. Uploading assets..."
-              gh release upload $tag $files --clobber
-              if ($LASTEXITCODE -ne 0) { throw "Failed to upload release assets." }
-              if (Test-Path $notesFile) {
-                  gh release edit $tag --notes-file $notesFile
-              }
-          } else {
-              Write-Host "Creating new release for $tag..."
-              gh release create $tag $files --title "VibeSkua $tag" @notesArg
-              if ($LASTEXITCODE -ne 0) { throw "Failed to create release." }
-          }
-          Write-Host "Release $tag published successfully!"
+          echo "Publishing release $TAG with asset $ASSET..."
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" "$ASSET" --clobber
+          else
+            gh release create "$TAG" "$ASSET" --title "$TAG" --notes ""
+          fi
+          echo "Release $TAG published successfully!"

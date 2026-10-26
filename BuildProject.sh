@@ -32,10 +32,14 @@ if [ -f "$SCRIPT_DIR/Skua.AS3/skua/bin/skua.swf" ]; then
     cp -f "$SCRIPT_DIR/Skua.AS3/skua/bin/skua.swf" "$BUILD_DIR/skua.swf"
 fi
 
-# 5. Copy Mugetsu binary if present in mugetsu repo
+# 5. Copy or download Mugetsu binary
 MUGETSU_SRC="$SCRIPT_DIR/../mugetsu/source/build/out/Mugetsu"
 if [ -f "$MUGETSU_SRC" ]; then
     cp -f "$MUGETSU_SRC" "$BUILD_DIR/Mugetsu"
+    chmod +x "$BUILD_DIR/Mugetsu"
+elif [ ! -f "$BUILD_DIR/Mugetsu" ]; then
+    echo "Mugetsu binary not found. Downloading from https://github.com/JonasAlv/mugetsu/releases/latest/download/Mugetsu..."
+    curl -sSL "https://github.com/JonasAlv/mugetsu/releases/latest/download/Mugetsu" -o "$BUILD_DIR/Mugetsu"
     chmod +x "$BUILD_DIR/Mugetsu"
 fi
 

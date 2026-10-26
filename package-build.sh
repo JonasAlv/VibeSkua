@@ -109,7 +109,7 @@ elif [ -f "$BUILD_DIR/skua.swf" ]; then
     cp -f "$BUILD_DIR/skua.swf" "$CURRENT_DIR/skua.swf"
 fi
 
-# Copy Mugetsu Flash runner
+# Copy or download Mugetsu Flash runner
 MUGETSU_SRC="$SCRIPT_DIR/../mugetsu/source/build/out/Mugetsu"
 if [ -f "$MUGETSU_SRC" ]; then
     cp -f "$MUGETSU_SRC" "$CURRENT_DIR/Mugetsu"
@@ -117,6 +117,11 @@ if [ -f "$MUGETSU_SRC" ]; then
 elif [ -f "$BUILD_DIR/Mugetsu" ]; then
     cp -f "$BUILD_DIR/Mugetsu" "$CURRENT_DIR/Mugetsu"
     chmod +x "$CURRENT_DIR/Mugetsu"
+else
+    echo "Mugetsu binary not found. Downloading from https://github.com/JonasAlv/mugetsu/releases/latest/download/Mugetsu..."
+    curl -sSL "https://github.com/JonasAlv/mugetsu/releases/latest/download/Mugetsu" -o "$CURRENT_DIR/Mugetsu"
+    chmod +x "$CURRENT_DIR/Mugetsu"
+    cp -f "$CURRENT_DIR/Mugetsu" "$BUILD_DIR/Mugetsu" 2>/dev/null || true
 fi
 
 chmod +x "$CURRENT_DIR/VibeSkua" "$CURRENT_DIR/VibeSkua.Manager" 2>/dev/null || true
@@ -239,10 +244,17 @@ EOF
 build_appimage() {
     echo "--- Building Standalone AppImages ---"
 
+    local appimagetool_cmd="appimagetool"
     if ! command -v appimagetool &>/dev/null; then
-        echo "Error: appimagetool not found in PATH." >&2
-        echo "Please install appimagetool or download it from https://github.com/AppImage/appimagetool/releases" >&2
-        exit 1
+        if [ -x "$BUILD_DIR/tools/appimagetool" ]; then
+            appimagetool_cmd="$BUILD_DIR/tools/appimagetool"
+        else
+            echo "appimagetool not found in PATH. Downloading standalone appimagetool..."
+            mkdir -p "$BUILD_DIR/tools"
+            curl -sSL "https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-x86_64.AppImage" -o "$BUILD_DIR/tools/appimagetool"
+            chmod +x "$BUILD_DIR/tools/appimagetool"
+            appimagetool_cmd="$BUILD_DIR/tools/appimagetool"
+        fi
     fi
 
     local skua_appdir="$BUILD_DIR/VibeSkua.AppDir"
@@ -332,11 +344,11 @@ EOF
 
     # Build AppImages
     echo "Running appimagetool for VibeSkua..."
-    ARCH=x86_64 appimagetool -n "$skua_appdir" "$OUTPUT_DIR/VibeSkua-x86_64.AppImage"
+    ARCH=x86_64 "$appimagetool_cmd" -n "$skua_appdir" "$OUTPUT_DIR/VibeSkua-x86_64.AppImage"
     chmod +x "$OUTPUT_DIR/VibeSkua-x86_64.AppImage"
 
     echo "Running appimagetool for VibeSkua-Manager..."
-    ARCH=x86_64 appimagetool -n "$mgr_appdir" "$OUTPUT_DIR/VibeSkua-Manager-x86_64.AppImage"
+    ARCH=x86_64 "$appimagetool_cmd" -n "$mgr_appdir" "$OUTPUT_DIR/VibeSkua-Manager-x86_64.AppImage"
     chmod +x "$OUTPUT_DIR/VibeSkua-Manager-x86_64.AppImage"
 
     rm -rf "$skua_appdir" "$mgr_appdir"
