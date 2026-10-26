@@ -370,117 +370,7 @@ public partial class TabbedHostWindow : Window
         }
     }
 
-#if IS_WINDOWS
-    private IntPtr HostWindowSubclassProc(IntPtr hWnd, uint uMsg, IntPtr wParam, IntPtr lParam, nuint uIdSubclass, IntPtr dwRefData)
-    {
-        if (uMsg == HotKeys.WM_SKUA_RELOAD_HOTKEYS)
-        {
-            Dispatcher.UIThread.Post(() =>
-            {
-                try
-                {
-                    Ioc.Default.GetRequiredService<IHotKeyService>().Reload();
-                }
-                catch { }
-            });
-            return IntPtr.Zero;
-        }
 
-        if (uMsg == HotKeys.WM_SKUA_LOAD_SCRIPT_ALL)
-        {
-            Dispatcher.UIThread.Post(() =>
-            {
-                try
-                {
-                    var windowService = Ioc.Default.GetRequiredService<IWindowService>();
-                    windowService.RegisterManagedWindow("Script Repo", Ioc.Default.GetRequiredService<ScriptRepoViewModel>());
-                    windowService.ShowManagedWindow("Script Repo");
-                }
-                catch { }
-            });
-            return IntPtr.Zero;
-        }
-
-        if (uMsg == 0x001A /* WM_SETTINGCHANGE */ || uMsg == 0x031A /* WM_THEMECHANGED */ || uMsg == 0x0320 /* WM_DWMCOLORIZATIONCOLORCHANGED */)
-        {
-            IntPtr res = DefSubclassProc(hWnd, uMsg, wParam, lParam);
-            Dispatcher.UIThread.Post(() =>
-            {
-                try
-                {
-                    var themeService = Ioc.Default.GetService<IThemeService>();
-                    bool isDark = themeService?.IsDarkTheme ?? true;
-                    if (themeService is Skua.Shared.Avalonia.Services.AvaloniaThemeService avaloniaTheme)
-                        Skua.Shared.Avalonia.Services.ThemeResourceApplicator.ApplyTitleBarTheme(this, isDark,
-                            avaloniaTheme.UseAccentOnMainTitleBar ? avaloniaTheme.PrimaryColor : (Color?)null,
-                            avaloniaTheme.UseAccentOnMainTitleBar ? avaloniaTheme.PrimaryForegroundColor : (Color?)null);
-                    else
-                        Skua.Shared.Avalonia.Services.ThemeResourceApplicator.ApplyTitleBarTheme(this, isDark);
-                }
-                catch { }
-            });
-            return res;
-        }
-
-        if (uMsg == WM_NCACTIVATE)
-        {
-            if (wParam == IntPtr.Zero)
-            {
-                IntPtr fg = GetForegroundWindow();
-                if (fg != IntPtr.Zero)
-                {
-                    GetWindowThreadProcessId(fg, out uint fgPid);
-                    uint currentPid = (uint)Environment.ProcessId;
-                    if (fgPid == currentPid || _tabs.Values.Any(t => t.Process != null && !t.Process.HasExited && (uint)t.Process.Id == fgPid))
-                    {
-                        return DefSubclassProc(hWnd, uMsg, (IntPtr)1, lParam);
-                    }
-                }
-            }
-        }
-
-        if (uMsg == WM_SKUA_CHILD_READY)
-        {
-            IntPtr childHwnd = wParam;
-            int pid = lParam.ToInt32();
-
-            Dispatcher.UIThread.Post(() =>
-            {
-                if (_isClosing || childHwnd == IntPtr.Zero) return;
-
-                TabInfo? targetInfo = _tabs.Values.FirstOrDefault(t => t.Process != null && t.Process.Id == pid);
-                if (targetInfo != null)
-                {
-                    AttachChildWindow(targetInfo, childHwnd);
-                }
-            });
-            return IntPtr.Zero;
-        }
-
-        if (uMsg == WM_ENTERSIZEMOVE)
-        {
-            IntPtr res = DefSubclassProc(hWnd, uMsg, wParam, lParam);
-            _isDraggingWindow = false;
-            _lastX = -99999;
-            _lastY = -99999;
-            DoReposition();
-            _isDraggingWindow = true;
-            return res;
-        }
-
-        if (uMsg == WM_EXITSIZEMOVE || uMsg == 0x0215 /* WM_CAPTURECHANGED */)
-        {
-            IntPtr res = DefSubclassProc(hWnd, uMsg, wParam, lParam);
-            _isDraggingWindow = false;
-            _lastX = -99999;
-            _lastY = -99999;
-            DoReposition();
-            return res;
-        }
-
-        return DefSubclassProc(hWnd, uMsg, wParam, lParam);
-    }
-#endif
 
     private void AttachChildWindow(TabInfo info, IntPtr childHwnd)
     {
@@ -1308,18 +1198,13 @@ public partial class TabbedHostWindow : Window
         {
             if (info.ChildHwnd != IntPtr.Zero)
             {
-#if IS_WINDOWS
-                ShowWindow(info.ChildHwnd, SW_HIDE);
-#endif
 #if IS_LINUX || !IS_WINDOWS
                 PlatformHideChild(info.ChildHwnd);
 #endif
             }
         }
 
-#if IS_WINDOWS
         HotKeys.ActiveChildHwnd = IntPtr.Zero;
-#endif
     }
 
     /// <summary>
@@ -1408,30 +1293,12 @@ public partial class TabbedHostWindow : Window
                 return;
             }
 
-#if IS_WINDOWS
-            PixelPoint screenTL;
-            PixelPoint screenBR;
-            try
-            {
-                screenTL = HostContainer.PointToScreen(new Point(0, 0));
-                screenBR = HostContainer.PointToScreen(new Point(HostContainer.Bounds.Width, HostContainer.Bounds.Height));
-            }
-            catch
-            {
-                return;
-            }
-
-            int x = screenTL.X;
-            int y = screenTL.Y;
-            int w = Math.Max(screenBR.X - screenTL.X, 1);
-            int h = Math.Max(screenBR.Y - screenTL.Y, 1);
-#endif
 #if IS_LINUX || !IS_WINDOWS
             Point? hostPos = HostContainer.TranslatePoint(new Point(0, 0), this);
             int x = (int)(hostPos?.X ?? 0);
-            int y = (int)(hostPos?.Y ?? 68);
-            int w = (int)Math.Max(HostContainer.Bounds.Width, 1);
-            int h = (int)Math.Max(HostContainer.Bounds.Height, 1);
+            int y = Math.Max((int)(hostPos?.Y ?? 68), 68);
+            int w = (int)Math.Max(HostContainer.Bounds.Width > 1 ? HostContainer.Bounds.Width : Bounds.Width, 1);
+            int h = (int)Math.Max(HostContainer.Bounds.Height > 1 ? HostContainer.Bounds.Height : Bounds.Height - y, 1);
 #endif
 
             if (w <= 1 || h <= 1)
@@ -1490,9 +1357,6 @@ public partial class TabbedHostWindow : Window
                     });
                     int tileX = x + (c * cellW);
                     int tileY = y + (r * cellH);
-#if IS_WINDOWS
-                    MoveWindow(activeWindows[i].ChildHwnd, tileX, tileY, cellW, cellH, true);
-#endif
 #if IS_LINUX || !IS_WINDOWS
                     PlatformMoveResizeChild(activeWindows[i].ChildHwnd, tileX, tileY, cellW, cellH);
 #endif
@@ -1540,9 +1404,6 @@ public partial class TabbedHostWindow : Window
 
                 if (activeChildHwnd != IntPtr.Zero)
                 {
-#if IS_WINDOWS
-                    MoveWindow(activeChildHwnd, x, y, w, h, true);
-#endif
 #if IS_LINUX || !IS_WINDOWS
                     PlatformMoveResizeChild(activeChildHwnd, x, y, w, h, focus: true);
 #endif

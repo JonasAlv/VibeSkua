@@ -20,13 +20,7 @@ public partial class MainWindow : Window
     private readonly ApplicationThemesViewModel _themesViewModel;
     private bool _allowClose;
 
-#if IS_WINDOWS
-    [DllImport("user32.dll")]
-    private static extern bool SetForegroundWindow(IntPtr hWnd);
 
-    [DllImport("user32.dll")]
-    private static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
-#endif
 
     public MainWindow()
     {
@@ -114,13 +108,7 @@ public partial class MainWindow : Window
         recipient.Topmost = true;
         recipient.Topmost = false;
         recipient.Focus();
-#if IS_WINDOWS
-        if (OperatingSystem.IsWindows() && recipient.TryGetPlatformHandle() is { Handle: var handle } && handle != IntPtr.Zero)
-        {
-            ShowWindow(handle, 5); // SW_SHOW: un-minimizing is done above; SW_RESTORE would also un-maximize
-            SetForegroundWindow(handle);
-        }
-#endif
+
     }
 
     private void AllowClose(MainWindow recipient, ExitManagerMessage message)

@@ -15,26 +15,7 @@ public static class ThemeResourceApplicator
     private static bool _materialChecked;
     private static bool _hasMaterialStyles;
 
-#if IS_WINDOWS
-    [DllImport("dwmapi.dll", PreserveSig = true)]
-    private static extern int DwmSetWindowAttribute(IntPtr hwnd, int attr, ref int attrValue, int attrSize);
 
-    [DllImport("user32.dll", SetLastError = true)]
-    private static extern bool SetWindowPos(IntPtr hWnd, IntPtr hWndInsertAfter, int X, int Y, int cx, int cy, uint uFlags);
-
-    private const int DWMWA_USE_IMMERSIVE_DARK_MODE_BEFORE_20H1 = 19;
-    private const int DWMWA_USE_IMMERSIVE_DARK_MODE = 20;
-    private const int DWMWA_CAPTION_COLOR = 35;
-    private const int DWMWA_TEXT_COLOR = 36;
-
-    private const uint SWP_NOSIZE = 0x0001;
-    private const uint SWP_NOMOVE = 0x0002;
-    private const uint SWP_NOZORDER = 0x0004;
-    private const uint SWP_NOACTIVATE = 0x0010;
-    private const uint SWP_FRAMECHANGED = 0x0020;
-
-    private static readonly Dictionary<IntPtr, (bool isDark, Color caption, Color text)> _appliedTitleBars = new();
-#endif
 
     public static void ApplyTitleBarTheme(Application app, bool isDark, Color? accentColor = null, Color? accentTextColor = null)
     {
@@ -70,93 +51,11 @@ public static class ThemeResourceApplicator
         if (window.RequestedThemeVariant != targetVariant)
             window.RequestedThemeVariant = targetVariant;
 
-#if IS_WINDOWS
-        if (!OperatingSystem.IsWindows())
-            return;
 
-        IntPtr hwnd = window.TryGetPlatformHandle()?.Handle ?? IntPtr.Zero;
-        if (hwnd == IntPtr.Zero)
-        {
-            EventHandler? onOpened = null;
-            onOpened = (s, e) =>
-            {
-                window.Opened -= onOpened;
-                ApplyTitleBarTheme(window, isDark, accentColor, accentTextColor);
-            };
-            window.Opened += onOpened;
-            return;
-        }
-
-        Color captionColor = isDark ? Color.FromRgb(0x18, 0x18, 0x18) : Color.FromRgb(0xF5, 0xF5, 0xF5);
-        Color textColor = isDark ? Color.FromRgb(0xF5, 0xF5, 0xF5) : Color.FromRgb(0x21, 0x21, 0x21);
-
-        try
-        {
-            // Resolve through the window so Avalonia selects resources for this window's
-            // active theme variant instead of reading the application dictionary directly.
-            if (window.TryFindResource("SkuaSurfaceAltBrush", out object? surfaceBrush) && surfaceBrush is ISolidColorBrush surface)
-                captionColor = surface.Color;
-            if (window.TryFindResource("SkuaTextBrush", out object? foregroundBrush) && foregroundBrush is ISolidColorBrush foreground)
-                textColor = foreground.Color;
-        }
-        catch
-        {
-            // Keep safe system defaults if a custom theme omits title-bar resources.
-        }
-
-        if (accentColor is Color selectedAccent)
-            captionColor = selectedAccent;
-        if (accentTextColor is Color selectedAccentText)
-            textColor = selectedAccentText;
-
-        ApplyNativeTitleBar(hwnd, isDark, captionColor, textColor);
-#endif
     }
 
     public static void ApplyNativeTitleBar(IntPtr hwnd, bool isDark, Color captionColor, Color textColor)
     {
-#if IS_WINDOWS
-        if (hwnd == IntPtr.Zero || !OperatingSystem.IsWindows())
-            return;
-
-        if (_appliedTitleBars.TryGetValue(hwnd, out var current) &&
-            current.isDark == isDark &&
-            current.caption == captionColor &&
-            current.text == textColor)
-        {
-            return;
-        }
-
-        try
-        {
-            int darkMode = isDark ? 1 : 0;
-
-            // 1. DWMWA_USE_IMMERSIVE_DARK_MODE (Windows 10 20H1+ and Windows 11: attr 20; Windows 10 1809-1909: attr 19)
-            int hr = DwmSetWindowAttribute(hwnd, DWMWA_USE_IMMERSIVE_DARK_MODE, ref darkMode, sizeof(int));
-            if (hr != 0)
-            {
-                DwmSetWindowAttribute(hwnd, DWMWA_USE_IMMERSIVE_DARK_MODE_BEFORE_20H1, ref darkMode, sizeof(int));
-            }
-
-            // 2. Windows 11 (build >= 22000): customize caption and title text colors
-            if (Environment.OSVersion.Version.Build >= 22000)
-            {
-                int captionColorRef = (captionColor.B << 16) | (captionColor.G << 8) | captionColor.R;
-                int textColorRef = (textColor.B << 16) | (textColor.G << 8) | textColor.R;
-
-                DwmSetWindowAttribute(hwnd, DWMWA_CAPTION_COLOR, ref captionColorRef, sizeof(int));
-                DwmSetWindowAttribute(hwnd, DWMWA_TEXT_COLOR, ref textColorRef, sizeof(int));
-            }
-
-            // 3. Force non-client area frame to repaint immediately without deactivating or stealing focus
-            SetWindowPos(hwnd, IntPtr.Zero, 0, 0, 0, 0, SWP_NOSIZE | SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE | SWP_FRAMECHANGED);
-            _appliedTitleBars[hwnd] = (isDark, captionColor, textColor);
-        }
-        catch
-        {
-            // Gracefully ignore on unsupported Windows editions
-        }
-#endif
     }
 
     public static void ApplyAccentBrushes(

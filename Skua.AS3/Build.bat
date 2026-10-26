@@ -1,1 +1,0 @@
-pwsh -ExecutionPolicy Bypass -Command "./compile-as3.ps1"

@@ -36,38 +36,7 @@ public partial class App : Application
         AvaloniaXamlLoader.Load(this);
     }
 
-#if IS_WINDOWS
-    [System.Runtime.InteropServices.DllImport("user32.dll", EntryPoint = "SetParent", SetLastError = true)]
-    public static extern IntPtr SetParent_Native(IntPtr hWndChild, IntPtr hWndNewParent);
-
-    [System.Runtime.InteropServices.DllImport("user32.dll", EntryPoint = "GetWindowLong", SetLastError = true)]
-    public static extern int GetWindowLong_Native(IntPtr hWnd, int nIndex);
-
-    [System.Runtime.InteropServices.DllImport("user32.dll", EntryPoint = "SetWindowLong", SetLastError = true)]
-    public static extern int SetWindowLong_Native(IntPtr hWnd, int nIndex, int dwNewLong);
-
-    [System.Runtime.InteropServices.DllImport("user32.dll", EntryPoint = "GetClientRect")]
-    public static extern bool GetClientRect_Native(IntPtr hWnd, out RECT lpRect);
-
-    [System.Runtime.InteropServices.DllImport("user32.dll", EntryPoint = "MoveWindow", SetLastError = true)]
-    public static extern bool MoveWindow_Native(IntPtr hWnd, int X, int Y, int nWidth, int nHeight, bool bRepaint);
-
-    [System.Runtime.InteropServices.DllImport("user32.dll", EntryPoint = "SetWindowPos", SetLastError = true)]
-    public static extern bool SetWindowPos_Native(IntPtr hWnd, IntPtr hWndInsertAfter, int X, int Y, int cx, int cy, uint uFlags);
-
-    [System.Runtime.InteropServices.DllImport("user32.dll", EntryPoint = "PostMessage", SetLastError = true)]
-    [return: System.Runtime.InteropServices.MarshalAs(System.Runtime.InteropServices.UnmanagedType.Bool)]
-    public static extern bool PostMessage_Native(IntPtr hWnd, uint Msg, IntPtr wParam, IntPtr lParam);
-
-    [System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential)]
-    public struct RECT
-    {
-        public int Left;
-        public int Top;
-        public int Right;
-        public int Bottom;
-    }
-#else
+#if IS_LINUX || !IS_WINDOWS
     [System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential)]
     public struct XSetWindowAttributes
     {

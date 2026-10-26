@@ -1,0 +1,36 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="${SCRIPT_DIR}/skua"
+SOURCE_PATH="${PROJECT_ROOT}/src"
+MAIN_SOURCE="${SOURCE_PATH}/skua/Main.as"
+OUTPUT_DIR="${PROJECT_ROOT}/bin"
+OUTPUT_PATH="${OUTPUT_DIR}/skua.swf"
+
+if [ ! -f "${MAIN_SOURCE}" ]; then
+    echo "AS3 entry point was not found: ${MAIN_SOURCE}" >&2
+    exit 1
+fi
+
+MXMLC_CMD="${MXMLC:-mxmlc}"
+if ! command -v "${MXMLC_CMD}" &>/dev/null; then
+    if [ -n "${FLEX_HOME:-}" ] && [ -x "${FLEX_HOME}/bin/mxmlc" ]; then
+        MXMLC_CMD="${FLEX_HOME}/bin/mxmlc"
+    else
+        echo "Apache Flex mxmlc was not found. Install Apache Flex SDK or set FLEX_HOME / MXMLC." >&2
+        exit 1
+    fi
+fi
+
+mkdir -p "${OUTPUT_DIR}"
+
+"${MXMLC_CMD}" \
+    -source-path "${SOURCE_PATH}" \
+    -default-size 958 550 \
+    -output "${OUTPUT_PATH}" \
+    "${MAIN_SOURCE}" \
+    -target-player 28.0 \
+    -optimize
+
+echo "AS3 game content built: ${OUTPUT_PATH}"
