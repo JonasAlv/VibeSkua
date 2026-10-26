@@ -27,13 +27,41 @@ public partial class ScriptOption : ObservableRecipient, IScriptOption, IOptionD
         _isInitializing = true;
         GetOptions();
         OptionDictionary = GenerateDictionary().ToImmutableDictionary();
+        StrongReferenceMessenger.Default.Register<ScriptOption, ScriptStartedMessage, int>(this, (int)MessageChannels.ScriptStatus, ScriptStarted);
         StrongReferenceMessenger.Default.Register<ScriptOption, ScriptStoppedMessage, int>(this, (int)MessageChannels.ScriptStatus, ScriptStopped);
         StrongReferenceMessenger.Default.Register<ScriptOption, MapChangedMessage, int>(this, (int)MessageChannels.GameEvents, MapChanged);
         _isInitializing = false;
     }
 
+    private void ScriptStarted(ScriptOption recipient, ScriptStartedMessage message)
+    {
+        if (!recipient.AutoCrowdMode)
+            return;
+
+        try
+        {
+            var flash = recipient._lazyFlash.Value;
+            if (flash != null)
+            {
+                string current = flash.GetGameObject<string>("litePreference.data.sCrowd") ?? "off";
+                recipient._priorCrowdMode = current;
+                recipient.ApplyCrowdMode(true);
+            }
+        }
+        catch { }
+    }
+
     private void MapChanged(ScriptOption recipient, MapChangedMessage message)
     {
+        if (recipient.AutoCrowdMode && recipient._priorCrowdMode != null)
+        {
+            Task.Run(async () =>
+            {
+                await Task.Delay(500);
+                recipient.ApplyCrowdMode(true);
+            });
+        }
+
         if (recipient.StreamerMode)
         {
             Task.Run(async () => 
@@ -65,6 +93,36 @@ public partial class ScriptOption : ObservableRecipient, IScriptOption, IOptionD
         recipient.AggroAllMonsters = false;
         recipient.AggroMonsters = false;
         recipient.SkipCutscenes = false;
+
+        if (recipient.AutoCrowdMode)
+        {
+            try
+            {
+                string restore = !string.IsNullOrEmpty(recipient._priorCrowdMode)
+                    ? recipient._priorCrowdMode
+                    : "off";
+
+                recipient.ApplyCrowdMode(restore == "on", restore);
+                recipient._priorCrowdMode = null;
+            }
+            catch { }
+        }
+    }
+
+    private void ApplyCrowdMode(bool enabled, string? modeOverride = null)
+    {
+        try
+        {
+            var flash = _lazyFlash.Value;
+            if (flash == null || !flash.IsWorldLoaded)
+                return;
+
+            string mode = modeOverride ?? (enabled ? "on" : "off");
+            flash.SetGameObject("litePreference.data.sCrowd", mode);
+            flash.SetGameObject("world.rootClass.crowdOn", enabled);
+            flash.CallGameFunction("world.rootClass.applyPlayerCache");
+        }
+        catch { }
     }
 
     private readonly Lazy<IFlashUtil> _lazyFlash;
@@ -377,6 +435,11 @@ public partial class ScriptOption : ObservableRecipient, IScriptOption, IOptionD
 
     [ModuleBinding("HidePlayers")]
     private bool _hidePlayers;
+
+    [ObservableProperty]
+    private bool _autoCrowdMode = true;
+
+    private string? _priorCrowdMode;
 
     private string? _reloginServer = "Twilly";
 

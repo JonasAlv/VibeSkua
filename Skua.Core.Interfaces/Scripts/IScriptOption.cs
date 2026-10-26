@@ -169,6 +169,11 @@ public interface IScriptOption : INotifyPropertyChanged
     bool OptimizePlayers { get; set; }
 
     /// <summary>
+    /// When enabled, automatically turns in-game Crowd Mode on when a script runs, and restores it when the script stops.
+    /// </summary>
+    bool AutoCrowdMode { get; set; }
+
+    /// <summary>
     /// Determines whether to use function-based skill calculation.
     /// </summary>
     bool UseFunctionBasedSkills { get; set; }
