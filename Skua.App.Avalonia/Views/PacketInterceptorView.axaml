@@ -23,6 +23,7 @@
             <Grid Grid.Row="0" ColumnDefinitions="*,Auto,Auto" ColumnSpacing="6">
                 <ComboBox Grid.Column="0"
                           Height="32"
+                          HorizontalAlignment="Stretch"
                           ItemsSource="{Binding ServerList}"
                           SelectedItem="{Binding SelectedServer}"
                           PlaceholderText="Select Server...">
@@ -87,7 +88,7 @@
                         <TextBlock Text="Outbound"
                                    FontSize="11"
                                    FontWeight="SemiBold"
-                                   Foreground="#FFD54F"
+                                   Foreground="{DynamicResource SkuaWarningBrush}"
                                    VerticalAlignment="Center" />
                     </Border>
                     <Border CornerRadius="4"
@@ -98,7 +99,7 @@
                         <TextBlock Text="Inbound"
                                    FontSize="11"
                                    FontWeight="SemiBold"
-                                   Foreground="#29B6F6"
+                                   Foreground="{DynamicResource SkuaInfoBrush}"
                                    VerticalAlignment="Center" />
                     </Border>
                     <Border CornerRadius="4"
@@ -109,7 +110,7 @@
                         <TextBlock Text="Blocked"
                                    FontSize="11"
                                    FontWeight="SemiBold"
-                                   Foreground="#EF5350"
+                                   Foreground="{DynamicResource SkuaDangerBrush}"
                                    VerticalAlignment="Center" />
                     </Border>
                 </StackPanel>
@@ -201,11 +202,11 @@
 
             <!-- Row 2: Filter Quick Actions -->
             <Grid Grid.Row="2" ColumnDefinitions="*,*" ColumnSpacing="6">
-                <Button Grid.Column="0"
+                <Button HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Grid.Column="0"
                         Classes="skua-button"
                         Content="Select All"
                         Command="{Binding SelectAllFiltersCommand}" />
-                <Button Grid.Column="1"
+                <Button HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Grid.Column="1"
                         Classes="skua-button"
                         Content="Clear Filters"
                         Command="{Binding ClearFiltersCommand}" />

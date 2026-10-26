@@ -126,11 +126,11 @@
                      Text="{Binding Editor.Travel.Pad, Mode=TwoWay}" />
           </Grid>
           <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
-            <Button Grid.Column="0"
+            <Button HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Grid.Column="0"
                     Classes="skua-button"
                     Content="Get Current"
                     Command="{Binding Editor.GetCurrentCommand}" />
-            <Button Grid.Column="1"
+            <Button HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Grid.Column="1"
                     Classes="skua-button skua-primary"
                     Content="Add Fast Travel"
                     Command="{Binding AddFastTravelCommand}" />

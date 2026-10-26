@@ -64,7 +64,7 @@
             BorderThickness="1"
             CornerRadius="8"
             Padding="6">
-      <ListBox x:Name="DropsList"
+      <ListBox Classes="card-list" x:Name="DropsList"
                ItemsSource="{Binding FilteredCurrentDrops}"
                SelectedItem="{Binding SelectedDrop, Mode=TwoWay}"
                SelectionMode="Multiple"
@@ -72,8 +72,7 @@
                BorderThickness="0">
         <ListBox.ItemTemplate>
           <DataTemplate>
-            <Border Background="{DynamicResource SkuaSurfaceBrush}"
-                    BorderBrush="{DynamicResource SkuaBorderBrush}"
+            <Border Classes="list-card"
                     BorderThickness="1"
                     CornerRadius="6"
                     Margin="0,0,0,4"
@@ -129,7 +128,7 @@
             CornerRadius="8"
             Padding="10">
       <Grid ColumnDefinitions="*,*,*" ColumnSpacing="8">
-        <Button Grid.Column="0"
+        <Button HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Grid.Column="0"
                 Classes="skua-button skua-primary"
                 Height="34"
                 Click="PickupSelected_Click">
@@ -139,7 +138,7 @@
           </StackPanel>
         </Button>
 
-        <Button Grid.Column="1"
+        <Button HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Grid.Column="1"
                 Classes="skua-button"
                 Height="34"
                 Command="{Binding PickupAllCommand}">
@@ -149,12 +148,12 @@
           </StackPanel>
         </Button>
 
-        <Button Grid.Column="2"
+        <Button HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Grid.Column="2"
                 Classes="skua-button"
                 Height="34"
                 Command="{Binding PickupACCommand}">
           <StackPanel Orientation="Horizontal" Spacing="6" HorizontalAlignment="Center">
-            <materialIcons:MaterialIcon Kind="Star" Width="14" Height="14" Foreground="#FFD700" />
+            <materialIcons:MaterialIcon Kind="Star" Width="14" Height="14" Foreground="{DynamicResource SkuaGoldBrush}" />
             <TextBlock Text="Pickup AC Only" VerticalAlignment="Center" />
           </StackPanel>
         </Button>

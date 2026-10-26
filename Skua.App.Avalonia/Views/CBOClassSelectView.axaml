@@ -55,7 +55,7 @@
         <StackPanel Spacing="8">
           <Grid ColumnDefinitions="Auto,*,Auto" VerticalAlignment="Center">
             <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
-              <materialIcons:MaterialIcon Kind="SwordCross" Width="16" Height="16" Foreground="#10B981" />
+              <materialIcons:MaterialIcon Kind="SwordCross" Width="16" Height="16" Foreground="{DynamicResource SkuaSuccessBrush}" />
               <TextBlock Text="Solo Class" FontWeight="Bold" FontSize="13" Foreground="{DynamicResource SkuaTextBrush}" VerticalAlignment="Center" />
             </StackPanel>
             <Border Grid.Column="2" CornerRadius="10" Padding="6,2" Background="#064E3B" BorderBrush="#059669" BorderThickness="1">
@@ -97,7 +97,7 @@
         <StackPanel Spacing="8">
           <Grid ColumnDefinitions="Auto,*,Auto" VerticalAlignment="Center">
             <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
-              <materialIcons:MaterialIcon Kind="SproutOutline" Width="16" Height="16" Foreground="#F59E0B" />
+              <materialIcons:MaterialIcon Kind="SproutOutline" Width="16" Height="16" Foreground="{DynamicResource SkuaWarningBrush}" />
               <TextBlock Text="Farm Class" FontWeight="Bold" FontSize="13" Foreground="{DynamicResource SkuaTextBrush}" VerticalAlignment="Center" />
             </StackPanel>
             <Border Grid.Column="2" CornerRadius="10" Padding="6,2" Background="#451A03" BorderBrush="#D97706" BorderThickness="1">

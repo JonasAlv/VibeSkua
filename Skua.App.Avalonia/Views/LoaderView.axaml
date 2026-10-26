@@ -80,7 +80,7 @@
             BorderThickness="1"
             CornerRadius="8"
             Padding="6">
-      <ListBox x:Name="QuestList"
+      <ListBox Classes="card-list" x:Name="QuestList"
                ItemsSource="{Binding FilteredQuestIDs}"
                SelectedItem="{Binding SelectedQuest, Mode=TwoWay}"
                SelectionMode="Multiple"
@@ -88,8 +88,7 @@
                BorderThickness="0">
         <ListBox.ItemTemplate>
           <DataTemplate>
-            <Border Background="{DynamicResource SkuaSurfaceBrush}"
-                    BorderBrush="{DynamicResource SkuaBorderBrush}"
+            <Border Classes="list-card"
                     BorderThickness="1"
                     CornerRadius="6"
                     Margin="0,0,0,4"

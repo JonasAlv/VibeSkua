@@ -1,3 +1,4 @@
+using Avalonia;
 using Avalonia.Data.Converters;
 using Avalonia.Media;
 using System;
@@ -81,22 +82,29 @@ public class InterceptedPacketTagConverter : IValueConverter
 
 public class InterceptedPacketTagForegroundConverter : IValueConverter
 {
-    private static readonly IBrush OutboundFg = new SolidColorBrush(Color.FromRgb(0xFF, 0xD5, 0x4F));
-    private static readonly IBrush InboundFg = new SolidColorBrush(Color.FromRgb(0x29, 0xB6, 0xF6));
-    private static readonly IBrush BlockedFg = new SolidColorBrush(Color.FromRgb(0xEF, 0x53, 0x50));
     private static readonly IBrush DefaultFg = Brushes.Gray;
 
+    // Theme tokens have a darker light-mode variant, so the tag stays readable on light surfaces.
     public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
     {
         if (value is bool outbound)
         {
-            return outbound ? OutboundFg : InboundFg;
+            return outbound ? ThemeBrush("SkuaWarningBrush") : ThemeBrush("SkuaInfoBrush");
         }
 
         if (value is null)
         {
-            return BlockedFg;
+            return ThemeBrush("SkuaDangerBrush");
         }
+
+        return DefaultFg;
+    }
+
+    private static IBrush ThemeBrush(string key)
+    {
+        Application? app = Application.Current;
+        if (app is not null && app.TryGetResource(key, app.ActualThemeVariant, out object? resource) && resource is IBrush brush)
+            return brush;
 
         return DefaultFg;
     }

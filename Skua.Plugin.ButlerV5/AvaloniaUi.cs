@@ -1,6 +1,8 @@
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Controls.Presenters;
 using Avalonia.Media;
+using Avalonia.Styling;
 
 namespace ButlerV5;
 
@@ -48,10 +50,24 @@ internal static class AvaloniaUi
             button.Background = color;
             button.BorderBrush = color;
             button.Foreground = White;
+            // The shared skua-button hover/pressed styles repaint the presenter grey; keep the colour and dim it instead.
+            button.Styles.Add(ColouredState(":pointerover", color, 0.85));
+            button.Styles.Add(ColouredState(":pressed", color, 0.7));
         }
         button.Click += (_, _) => onClick();
         return button;
     }
+
+    private static Style ColouredState(string pseudoClass, IBrush color, double opacity) => new(x => x.OfType<Button>().Class(pseudoClass).Template().OfType<ContentPresenter>().Name("PART_ContentPresenter"))
+    {
+        Setters =
+        {
+            new Setter(ContentPresenter.BackgroundProperty, color),
+            new Setter(ContentPresenter.BorderBrushProperty, color),
+            new Setter(ContentPresenter.ForegroundProperty, White),
+            new Setter(Visual.OpacityProperty, opacity)
+        }
+    };
 
     public static void SetToolTip(Control control, string text) => ToolTip.SetTip(control, text);
 }

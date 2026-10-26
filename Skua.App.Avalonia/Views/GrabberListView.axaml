@@ -48,7 +48,7 @@
               BorderThickness="1"
               CornerRadius="8"
               Padding="6">
-        <ListBox x:Name="GrabbedItemsList"
+        <ListBox Classes="card-list" x:Name="GrabbedItemsList"
                  ItemsSource="{Binding GrabbedItems}"
                  SelectedItem="{Binding SelectedItem, Mode=TwoWay}"
                  SelectionMode="{Binding IsMultipleSelection, Converter={StaticResource BooleanToSelectionModeConverter}}"
@@ -56,8 +56,7 @@
                  BorderThickness="0">
           <ListBox.ItemTemplate>
             <DataTemplate>
-              <Border Background="{DynamicResource SkuaSurfaceAltBrush}"
-                      BorderBrush="{DynamicResource SkuaBorderBrush}"
+              <Border Classes="list-card alt"
                       BorderThickness="1"
                       CornerRadius="6"
                       Margin="0,0,0,4"

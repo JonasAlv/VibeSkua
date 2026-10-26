@@ -5,7 +5,7 @@
              x:DataType="vmas:AdvancedSkillsViewModel"
              x:Class="Skua.App.Avalonia.Views.AdvancedSkillsView">
     
-    <TabControl SelectedIndex="{Binding SelectedTabIndex}" Margin="6">
+    <TabControl Classes="section-tabs" SelectedIndex="{Binding SelectedTabIndex}" Margin="6">
         
         <!-- Tab 0: Create / Edit Skill -->
         <TabItem Header="Create / Edit Skill">
@@ -153,11 +153,9 @@
                                            Margin="0,0,10,0" />
                                 <CheckBox Grid.Column="1" Content="Enable Rule" IsChecked="{Binding UseRules.UseRuleBool}" VerticalAlignment="Center" />
                                 <CheckBox Grid.Column="2" Content="Multi Aura" IsChecked="{Binding UseRules.MultiAuraBool}" Margin="10,0,0,0" VerticalAlignment="Center" />
-                                <Button Grid.Column="3" Classes="skua-button"
+                                <Button Grid.Column="3" Classes="skua-button small"
                                         Content="Reset"
-                                        Command="{Binding ResetUseRulesCommand}"
-                                        Padding="8,3"
-                                        Height="26" />
+                                        Command="{Binding ResetUseRulesCommand}" />
                             </Grid>
 
                             <Grid Grid.Row="1"
@@ -234,11 +232,10 @@
                                         <ComboBoxItem Content="AND" />
                                         <ComboBoxItem Content="OR" />
                                     </ComboBox>
-                                    <Button Grid.Column="2" Classes="skua-button" Content="Add Aura" 
+                                    <Button Grid.Column="2" Classes="skua-button small w84" Content="Add Aura" 
                                             VerticalAlignment="Center"
                                             DataContext="{Binding UseRules}"
-                                            Command="{Binding AddAuraCheckCommand}"
-                                            Height="28" />
+                                            Command="{Binding AddAuraCheckCommand}" />
                                 </Grid>
 
                                 <!-- Single Aura Row -->
@@ -257,6 +254,7 @@
                                              Watermark="Stacks"
                                              Text="{Binding UseRules.AuraUseValue}" />
                                     <ComboBox Grid.Column="3"
+                                              MinWidth="90"
                                               SelectedIndex="{Binding UseRules.AuraTargetIndex}"
                                               VerticalAlignment="Bottom">
                                         <ComboBoxItem Content="Self" />
@@ -277,6 +275,7 @@
                                                 <TextBox Grid.Column="2" Classes="bottom-line" Watermark="Stacks" 
                                                          Text="{Binding StackCount}" />
                                                 <ComboBox Grid.Column="3"
+                                                          MinWidth="90"
                                                           SelectedIndex="{Binding AuraTargetIndex}"
                                                           VerticalAlignment="Bottom">
                                                     <ComboBoxItem Content="Self" />

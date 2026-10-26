@@ -31,14 +31,14 @@
 
           <!-- Kills -->
           <Grid ColumnDefinitions="Auto,*,Auto" VerticalAlignment="Center">
-            <materialIcons:MaterialIcon Grid.Column="0" Kind="Sword" Width="13" Height="13" Foreground="#10B981" VerticalAlignment="Center" Margin="0,0,6,0" />
+            <materialIcons:MaterialIcon Grid.Column="0" Kind="Sword" Width="13" Height="13" Foreground="{DynamicResource SkuaSuccessBrush}" VerticalAlignment="Center" Margin="0,0,6,0" />
             <TextBlock Grid.Column="1" Text="Kills:" FontSize="11" Foreground="{DynamicResource SkuaTextBrush}" VerticalAlignment="Center" />
             <TextBlock Grid.Column="2" Text="{Binding ScriptStats.Kills}" FontWeight="Bold" FontSize="11" Foreground="{DynamicResource SkuaTextBrush}" VerticalAlignment="Center" />
           </Grid>
 
           <!-- Deaths -->
           <Grid ColumnDefinitions="Auto,*,Auto" VerticalAlignment="Center">
-            <materialIcons:MaterialIcon Grid.Column="0" Kind="SkullOutline" Width="13" Height="13" Foreground="#EF4444" VerticalAlignment="Center" Margin="0,0,6,0" />
+            <materialIcons:MaterialIcon Grid.Column="0" Kind="SkullOutline" Width="13" Height="13" Foreground="{DynamicResource SkuaDangerBrush}" VerticalAlignment="Center" Margin="0,0,6,0" />
             <TextBlock Grid.Column="1" Text="Deaths:" FontSize="11" Foreground="{DynamicResource SkuaTextBrush}" VerticalAlignment="Center" />
             <TextBlock Grid.Column="2" Text="{Binding ScriptStats.Deaths}" FontWeight="Bold" FontSize="11" Foreground="{DynamicResource SkuaTextBrush}" VerticalAlignment="Center" />
           </Grid>
@@ -52,14 +52,14 @@
 
           <!-- Completed -->
           <Grid ColumnDefinitions="Auto,*,Auto" VerticalAlignment="Center">
-            <materialIcons:MaterialIcon Grid.Column="0" Kind="CheckCircleOutline" Width="13" Height="13" Foreground="#34D399" VerticalAlignment="Center" Margin="0,0,6,0" />
+            <materialIcons:MaterialIcon Grid.Column="0" Kind="CheckCircleOutline" Width="13" Height="13" Foreground="{DynamicResource SkuaSuccessBrush}" VerticalAlignment="Center" Margin="0,0,6,0" />
             <TextBlock Grid.Column="1" Text="Completed:" FontSize="11" Foreground="{DynamicResource SkuaTextBrush}" VerticalAlignment="Center" />
             <TextBlock Grid.Column="2" Text="{Binding ScriptStats.QuestsCompleted}" FontWeight="Bold" FontSize="11" Foreground="{DynamicResource SkuaTextBrush}" VerticalAlignment="Center" />
           </Grid>
 
           <!-- Pickups -->
           <Grid ColumnDefinitions="Auto,*,Auto" VerticalAlignment="Center">
-            <materialIcons:MaterialIcon Grid.Column="0" Kind="GiftOutline" Width="13" Height="13" Foreground="#F59E0B" VerticalAlignment="Center" Margin="0,0,6,0" />
+            <materialIcons:MaterialIcon Grid.Column="0" Kind="GiftOutline" Width="13" Height="13" Foreground="{DynamicResource SkuaWarningBrush}" VerticalAlignment="Center" Margin="0,0,6,0" />
             <TextBlock Grid.Column="1" Text="Pickups:" FontSize="11" Foreground="{DynamicResource SkuaTextBrush}" VerticalAlignment="Center" />
             <TextBlock Grid.Column="2" Text="{Binding ScriptStats.Drops}" FontWeight="Bold" FontSize="11" Foreground="{DynamicResource SkuaTextBrush}" VerticalAlignment="Center" />
           </Grid>
@@ -97,7 +97,7 @@
 
           <!-- Inventory Free -->
           <Grid ColumnDefinitions="Auto,*,Auto" VerticalAlignment="Center">
-            <materialIcons:MaterialIcon Grid.Column="0" Kind="BagPersonalOutline" Width="13" Height="13" Foreground="#10B981" VerticalAlignment="Center" Margin="0,0,6,0" />
+            <materialIcons:MaterialIcon Grid.Column="0" Kind="BagPersonalOutline" Width="13" Height="13" Foreground="{DynamicResource SkuaSuccessBrush}" VerticalAlignment="Center" Margin="0,0,6,0" />
             <TextBlock Grid.Column="1" Text="Inventory Free:" FontSize="11" Foreground="{DynamicResource SkuaTextBrush}" VerticalAlignment="Center" />
             <TextBlock Grid.Column="2" Text="{Binding ScriptStats.InventoryFreeSpace}" FontWeight="Bold" FontSize="11" Foreground="{DynamicResource SkuaTextBrush}" VerticalAlignment="Center" />
           </Grid>
@@ -120,7 +120,7 @@
 
           <!-- Bank Free -->
           <Grid ColumnDefinitions="Auto,*,Auto" VerticalAlignment="Center">
-            <materialIcons:MaterialIcon Grid.Column="0" Kind="BankOutline" Width="13" Height="13" Foreground="#F59E0B" VerticalAlignment="Center" Margin="0,0,6,0" />
+            <materialIcons:MaterialIcon Grid.Column="0" Kind="BankOutline" Width="13" Height="13" Foreground="{DynamicResource SkuaWarningBrush}" VerticalAlignment="Center" Margin="0,0,6,0" />
             <TextBlock Grid.Column="1" Text="Bank Free:" FontSize="11" Foreground="{DynamicResource SkuaTextBrush}" VerticalAlignment="Center" />
             <TextBlock Grid.Column="2" Text="{Binding ScriptStats.BankFreeSpace}" FontWeight="Bold" FontSize="11" Foreground="{DynamicResource SkuaTextBrush}" VerticalAlignment="Center" />
           </Grid>
@@ -144,7 +144,7 @@
 
     <!-- Bottom Action Buttons -->
     <Grid Grid.Row="1" ColumnDefinitions="*,*" ColumnSpacing="10">
-      <Button Grid.Column="0"
+      <Button HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Grid.Column="0"
               Classes="skua-button"
               Height="32"
               Command="{Binding ResetStatsCommand}"
@@ -155,7 +155,7 @@
         </StackPanel>
       </Button>
 
-      <Button Grid.Column="1"
+      <Button HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Grid.Column="1"
               Classes="skua-button skua-primary"
               Height="32"
               Command="{Binding GetSpaceCommand}"

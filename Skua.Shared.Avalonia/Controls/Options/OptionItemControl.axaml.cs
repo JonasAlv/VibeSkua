@@ -80,11 +80,6 @@ public partial class OptionItemControl : UserControl
             Height = StandardOptionHeight,
             Margin = new Thickness(2, 0)
         };
-        firstButton[!ToggleButton.IsCheckedProperty] = new Binding(nameof(DisplayOptionItemViewModelBase.Value))
-        {
-            Source = vm,
-            Mode = BindingMode.TwoWay
-        };
 
         ToggleButton secondButton = new()
         {
@@ -93,15 +88,21 @@ public partial class OptionItemControl : UserControl
             Height = StandardOptionHeight,
             Margin = new Thickness(2, 0)
         };
-        secondButton.IsChecked = !(bool)(vm.Value ?? false);
-        secondButton.IsCheckedChanged += (_, _) =>
+
+        // The pair behaves like radio buttons: exactly one is checked, and clicking the checked one keeps it.
+        void SyncChoice()
         {
-            if (secondButton.IsChecked == true)
-                vm.Value = false;
-        };
-        firstButton.IsCheckedChanged += (_, _) =>
+            bool first = vm.Value is true;
+            firstButton.IsChecked = first;
+            secondButton.IsChecked = !first;
+        }
+        SyncChoice();
+        firstButton.Click += (_, _) => { vm.Value = true; SyncChoice(); };
+        secondButton.Click += (_, _) => { vm.Value = false; SyncChoice(); };
+        vm.PropertyChanged += (_, e) =>
         {
-            secondButton.IsChecked = !(firstButton.IsChecked == true);
+            if (e.PropertyName == nameof(DisplayOptionItemViewModelBase.Value))
+                SyncChoice();
         };
 
         grid.Children.Add(title);

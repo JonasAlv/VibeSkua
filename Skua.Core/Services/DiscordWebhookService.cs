@@ -28,9 +28,11 @@ public class DiscordWebhookService : IDiscordWebhookService, IDisposable
 
     // Queue system
     private readonly ConcurrentQueue<Func<Task>> _messageQueue = new();
-
     private readonly SemaphoreSlim _queueSemaphore = new(0);
     private readonly CancellationTokenSource _cts = new();
+    private readonly object _queueLock = new();
+    private readonly Task _queueProcessorTask;
+    private bool _disposed;
 
     // Snapshot state
     private int _startGold;
@@ -45,7 +47,7 @@ public class DiscordWebhookService : IDiscordWebhookService, IDisposable
         _httpClient = new HttpClient();
 
         // Start background queue processor
-        _ = ProcessQueueAsync();
+        _queueProcessorTask = ProcessQueueAsync();
         Initialize();
     }
 
@@ -64,16 +66,24 @@ public class DiscordWebhookService : IDiscordWebhookService, IDisposable
 
     private async Task ProcessQueueAsync()
     {
-        while (!_cts.Token.IsCancellationRequested)
+        try
         {
-            await _queueSemaphore.WaitAsync(_cts.Token);
-            if (_messageQueue.TryDequeue(out var action))
+            while (true)
             {
+                await _queueSemaphore.WaitAsync(_cts.Token);
+                if (!_messageQueue.TryDequeue(out Func<Task>? action) || action is null)
+                    continue;
+
                 try
                 {
                     await action();
+
                     // Rate limit: Max 2 messages per second
                     await Task.Delay(500, _cts.Token);
+                }
+                catch (OperationCanceledException) when (_cts.IsCancellationRequested)
+                {
+                    break;
                 }
                 catch (Exception ex)
                 {
@@ -81,12 +91,22 @@ public class DiscordWebhookService : IDiscordWebhookService, IDisposable
                 }
             }
         }
+        catch (OperationCanceledException) when (_cts.IsCancellationRequested)
+        {
+            // Expected when the service is shutting down.
+        }
     }
 
     private void EnqueueAction(Func<Task> action)
     {
-        _messageQueue.Enqueue(action);
-        _queueSemaphore.Release();
+        lock (_queueLock)
+        {
+            if (_disposed)
+                return;
+
+            _messageQueue.Enqueue(action);
+            _queueSemaphore.Release();
+        }
     }
 
     private string GetBotName()
@@ -395,41 +415,51 @@ public class DiscordWebhookService : IDiscordWebhookService, IDisposable
         return list;
     }
 
-    public async Task TestWebhookAsync()
+    public Task TestWebhookAsync()
     {
-        var url = _settingsService.GetClient()?.DiscordWebhookUrl;
-        if (string.IsNullOrWhiteSpace(url)) return;
+        string? url = _settingsService.GetClient()?.DiscordWebhookUrl;
+        if (string.IsNullOrWhiteSpace(url))
+            return Task.CompletedTask;
+
         EnqueueAction(async () =>
         {
             List<object> fields = BuildDashboardSnapshotFields();
             await SendEmbedToUrlAsync(url, "Discord Webhook Test Successful!", "Your VibeSkua Discord Webhooks are perfectly configured.", 0x00FF00, fields);
         });
+
+        return Task.CompletedTask;
     }
 
-    public async Task TestNexusWebhookAsync()
+    public Task TestNexusWebhookAsync()
     {
-        var url = _settingsService.GetClient()?.NexusWebhookUrl;
-        if (string.IsNullOrWhiteSpace(url)) return;
+        string? url = _settingsService.GetClient()?.NexusWebhookUrl;
+        if (string.IsNullOrWhiteSpace(url))
+            return Task.CompletedTask;
+
         EnqueueAction(async () =>
         {
             List<object> fields = BuildDashboardSnapshotFields();
             await SendEmbedToUrlAsync(url, "Skua Nexus Webhook Test Successful!", "Your VibeSkua Nexus Webhooks are perfectly configured.", 0x00FF00, fields);
         });
+
+        return Task.CompletedTask;
     }
 
-    public async Task SendMessageAsync(string message)
+    public Task SendMessageAsync(string message)
     {
-        EnqueueAction(async () => await PostWebhookAsync(new { content = message }));
+        EnqueueAction(() => PostWebhookAsync(new { content = message }));
+        return Task.CompletedTask;
     }
 
-    public async Task SendScreenshotAsync(string message)
+    public Task SendScreenshotAsync(string message)
     {
         EnqueueAction(async () =>
         {
             try
             {
-                var urls = GetConfiguredWebhookUrls();
-                if (urls.Count == 0) return;
+                List<string> urls = GetConfiguredWebhookUrls();
+                if (urls.Count == 0)
+                    return;
 
                 byte[] screenshotBytes = await _screenshotService.TakeScreenshotAsync();
 
@@ -440,18 +470,18 @@ public class DiscordWebhookService : IDiscordWebhookService, IDisposable
                     image = new { url = "attachment://screenshot.png" }
                 };
 
-                var payloadJson = JsonSerializer.Serialize(new { embeds = new[] { embed } });
+                string payloadJson = JsonSerializer.Serialize(new { embeds = new[] { embed } });
 
-                foreach (var url in urls)
-                {
+                foreach (string url in urls)
                     await PostMultipartToUrlAsync(url, payloadJson, screenshotBytes);
-                }
             }
             catch (Exception ex)
             {
                 System.Diagnostics.Trace.WriteLine($"SendScreenshotAsync failed: {ex.Message}");
             }
         });
+
+        return Task.CompletedTask;
     }
 
     public async Task SendEmbedAsync(string title, string description, int color, List<object>? fields = null)
@@ -559,11 +589,10 @@ public class DiscordWebhookService : IDiscordWebhookService, IDisposable
         var settings = _settingsService.GetClient();
         if (settings == null || !settings.WebhookNotifyItemDrops) return;
 
-        var dropList = settings.WebhookNotifyItemDropsList?.ToLower().Split(',') ?? Array.Empty<string>();
-        foreach (var item in dropList)
+        string[] dropList = settings.WebhookNotifyItemDropsList?.Split(',', StringSplitOptions.TrimEntries) ?? Array.Empty<string>();
+        foreach (string item in dropList)
         {
-            var trimmed = item.Trim();
-            if (!string.IsNullOrWhiteSpace(trimmed) && msg.Item.Name.ToLower().Contains(trimmed))
+            if (!string.IsNullOrWhiteSpace(item) && msg.Item.Name.Contains(item, StringComparison.OrdinalIgnoreCase))
             {
                 string wikiUrl = "https://aqwwiki.wikidot.com/" + Uri.EscapeDataString(msg.Item.Name);
                 _ = SendScreenshotAsync($"🏆 **Rare Drop!** - **{GetBotName()}** just got **[{msg.Item.Name}]({wikiUrl})** x{msg.Item.Quantity}!");
@@ -574,11 +603,39 @@ public class DiscordWebhookService : IDiscordWebhookService, IDisposable
 
     public void Dispose()
     {
-        _cts.Cancel();
-        _cts.Dispose();
+        lock (_queueLock)
+        {
+            if (_disposed)
+                return;
+
+            _disposed = true;
+        }
+
+        StrongReferenceMessenger.Default.UnregisterAll(this);
         _pingTimer?.Dispose();
-        _queueSemaphore.Dispose();
-        _httpClient.Dispose();
+        _pingTimer = null;
+        _cts.Cancel();
+
+        // Let an in-flight webhook finish before disposing resources it may still use.
+        _ = DisposeResourcesAsync();
         GC.SuppressFinalize(this);
+    }
+
+    private async Task DisposeResourcesAsync()
+    {
+        try
+        {
+            await _queueProcessorTask.ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Trace.WriteLine($"Webhook queue shutdown failed: {ex}");
+        }
+        finally
+        {
+            _queueSemaphore.Dispose();
+            _httpClient.Dispose();
+            _cts.Dispose();
+        }
     }
 }

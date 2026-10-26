@@ -40,15 +40,14 @@
                         BorderThickness="1"
                         CornerRadius="6"
                         Padding="4">
-                    <ListBox x:Name="PacketsListBox"
+                    <ListBox Classes="card-list" x:Name="PacketsListBox"
                              ItemsSource="{Binding FilteredPacketLogs}"
                              SelectionMode="Multiple"
                              Background="Transparent"
                              BorderThickness="0">
                         <ListBox.ItemTemplate>
                             <DataTemplate>
-                                <Border Background="{DynamicResource SkuaSurfaceBrush}"
-                                        BorderBrush="{DynamicResource SkuaBorderBrush}"
+                                <Border Classes="list-card"
                                         BorderThickness="1"
                                         CornerRadius="4"
                                         Margin="0,0,0,3"
@@ -67,7 +66,7 @@
                 <!-- Action Buttons Toolbar -->
                 <Grid Grid.Row="2" ColumnDefinitions="Auto,*,*,*,*" ColumnSpacing="6">
                     <Button Grid.Column="0"
-                            Classes="skua-button"
+                            Classes="skua-button w112"
                             Classes.skua-danger="{Binding IsReceivingPackets}"
                             Classes.skua-primary="{Binding !IsReceivingPackets}"
                             Height="32"
@@ -80,25 +79,25 @@
                         </StackPanel>
                     </Button>
 
-                    <Button Grid.Column="1"
+                    <Button HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Grid.Column="1"
                             Classes="skua-button outline"
                             Height="32"
                             Content="Unselect"
                             Click="UnselectAllLogs_Click" />
             
-                    <Button Grid.Column="2"
+                    <Button HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Grid.Column="2"
                             Classes="skua-button"
                             Height="32"
                             Content="Clear Filters"
                             Command="{Binding ClearFiltersCommand}" />
                 
-                    <Button Grid.Column="3"
+                    <Button HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Grid.Column="3"
                             Classes="skua-button skua-danger"
                             Height="32"
                             Content="Clear Logs"
                             Command="{Binding ClearPacketLogsCommand}" />
                     
-                    <Button Grid.Column="4"
+                    <Button HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Grid.Column="4"
                             Classes="skua-button"
                             Height="32"
                             Command="{Binding SavePacketLogsCommand}">

@@ -136,7 +136,7 @@ public class DialogService : IDialogService
         }
 
         bool? result = null;
-        Button ok = new() { Content = "OK", MinWidth = 84, Classes = { "skua-button", "primary" } };
+        Button ok = new() { Content = "OK", MinWidth = 84, Classes = { "skua-button", "skua-primary" } };
         Button cancel = new() { Content = "Cancel", MinWidth = 84, Classes = { "skua-button" }, IsCancel = true };
         ok.IsDefault = true;
 
@@ -274,7 +274,7 @@ public class DialogService : IDialogService
             e.Handled = true;
         }, RoutingStrategies.Tunnel, handledEventsToo: true);
 
-        Button ok = new() { Content = "OK", MinWidth = 84, Classes = { "skua-button", "primary" } };
+        Button ok = new() { Content = "OK", MinWidth = 84, Classes = { "skua-button", "skua-primary" } };
         Button cancel = new() { Content = "Cancel", MinWidth = 84, Classes = { "skua-button" }, IsCancel = true };
         ok.IsDefault = true;
 
@@ -376,7 +376,7 @@ public class DialogService : IDialogService
         };
         help[!TextBlock.ForegroundProperty] = new global::Avalonia.Markup.Xaml.MarkupExtensions.DynamicResourceExtension("SkuaMutedTextBrush");
 
-        Button confirm = new() { Content = "Confirm", MinWidth = 84, Classes = { "skua-button", "primary" } };
+        Button confirm = new() { Content = "Confirm", MinWidth = 84, Classes = { "skua-button", "skua-primary" } };
         Button cancel = new() { Content = "Cancel", MinWidth = 84, Classes = { "skua-button" }, IsCancel = true };
         confirm.IsDefault = true;
 
@@ -490,7 +490,7 @@ public class DialogService : IDialogService
         {
             Content = "Save",
             MinWidth = 84,
-            Classes = { "skua-button", "primary" },
+            Classes = { "skua-button", "skua-primary" },
             IsDefault = true
         };
 
@@ -606,8 +606,7 @@ public class DialogService : IDialogService
         Button copyButton = new()
         {
             Content = "Copy",
-            MinWidth = 74,
-            Classes = { "skua-button" }
+            Classes = { "skua-button", "w84" }
         };
         copyButton.Click += async (_, _) =>
         {
@@ -638,7 +637,7 @@ public class DialogService : IDialogService
 
             if (text == "OK" || text == "Yes")
             {
-                button.Classes.Add("primary");
+                button.Classes.Add("skua-primary");
                 button.IsDefault = true;
             }
             else if (text == "Cancel" || text == "No")
@@ -693,7 +692,7 @@ public class DialogService : IDialogService
             ExtendClientAreaToDecorationsHint = true,
             ExtendClientAreaChromeHints = global::Avalonia.Platform.ExtendClientAreaChromeHints.NoChrome,
             ExtendClientAreaTitleBarHeightHint = 32,
-            Topmost = true,
+            CanResize = false,
             ShowActivated = true,
             Classes = { "skua" }
         };

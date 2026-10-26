@@ -211,6 +211,15 @@ internal static class Program
     {
         AppBuilder builder = AppBuilder.Configure<App>()
             .UsePlatformDetect();
+
+        if (OperatingSystem.IsWindows())
+        {
+            builder = builder.With(new Win32PlatformOptions
+            {
+                RenderingMode = new[] { Win32RenderingMode.AngleEgl, Win32RenderingMode.Software },
+                CompositionMode = new[] { Win32CompositionMode.WinUIComposition, Win32CompositionMode.RedirectionSurface }
+            });
+        }
 #if DEBUG
         builder = builder.WithDeveloperTools();
 #endif

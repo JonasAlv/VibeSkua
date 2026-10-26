@@ -58,6 +58,7 @@ public partial class TabbedHostWindow : Window
     }
 
     private readonly string[] _initialArgs;
+    private bool _initialInstanceStarted = false;
     private readonly Dictionary<TabItem, TabInfo> _tabs = new();
     private bool _needsReposition = false;
     private bool _isRepositioning = false;
@@ -120,6 +121,28 @@ public partial class TabbedHostWindow : Window
         InitializeComponent();
         Skua.Shared.Avalonia.Services.WindowResizeHelper.Attach(this);
         Title = $"VibeSkua V{Skua.Core.Models.ClientFileSources.DisplayVersion}";
+        MainTitleBar.TitleText = Title;
+
+        try
+        {
+            IThemeService? themeService = Ioc.Default.GetService<IThemeService>();
+            Skua.Shared.Avalonia.Controls.Shell.WindowTitleBar.SetArtworkPath(
+                Ioc.Default.GetRequiredService<ISettingsService>().GetShared().TitleBarArtworkPath);
+
+            if (themeService is Skua.Shared.Avalonia.Services.AvaloniaThemeService avaloniaTheme)
+            {
+                MainTitleBar.UseAccentBackground = avaloniaTheme.UseAccentOnMainTitleBar;
+                Skua.Shared.Avalonia.Services.ThemeResourceApplicator.ApplyTitleBarTheme(this, themeService.IsDarkTheme,
+                    avaloniaTheme.UseAccentOnMainTitleBar ? avaloniaTheme.PrimaryColor : (Color?)null,
+                    avaloniaTheme.UseAccentOnMainTitleBar ? avaloniaTheme.PrimaryForegroundColor : (Color?)null);
+            }
+            else
+            {
+                MainTitleBar.UseAccentBackground = false;
+                Skua.Shared.Avalonia.Services.ThemeResourceApplicator.ApplyTitleBarTheme(this, themeService?.IsDarkTheme);
+            }
+        }
+        catch { }
 
         var options = Ioc.Default.GetRequiredService<IScriptOption>();
         MiscOptionsMenu.DataContext = options;
@@ -309,11 +332,32 @@ public partial class TabbedHostWindow : Window
             var themeService = Ioc.Default.GetService<IThemeService>();
             if (themeService != null)
             {
-                themeService.ThemeChanged += _ => Dispatcher.UIThread.Post(() =>
+                void RefreshNativeTitleBar()
                 {
+                    if (themeService is Skua.Shared.Avalonia.Services.AvaloniaThemeService currentTheme)
+                    {
+                        MainTitleBar.UseAccentBackground = currentTheme.UseAccentOnMainTitleBar;
+                        Skua.Shared.Avalonia.Services.ThemeResourceApplicator.ApplyTitleBarTheme(this, themeService.IsDarkTheme,
+                            currentTheme.UseAccentOnMainTitleBar ? currentTheme.PrimaryColor : (Color?)null,
+                            currentTheme.UseAccentOnMainTitleBar ? currentTheme.PrimaryForegroundColor : (Color?)null);
+                    }
+                    else
+                    {
+                        MainTitleBar.UseAccentBackground = false;
+                        Skua.Shared.Avalonia.Services.ThemeResourceApplicator.ApplyTitleBarTheme(this, themeService.IsDarkTheme);
+                    }
+                }
+
+                // Preset changes and single-scheme edits use separate events. Listen to both so
+                // changing a custom primary/foreground color cannot leave the native caption stale.
+                themeService.ThemeChanged += _ => Dispatcher.UIThread.Post(RefreshNativeTitleBar, DispatcherPriority.Background);
+                themeService.SchemeChanged += (_, _) => Dispatcher.UIThread.Post(RefreshNativeTitleBar, DispatcherPriority.Background);
+                if (themeService is Skua.Shared.Avalonia.Services.AvaloniaThemeService avaloniaTheme)
+                    Skua.Shared.Avalonia.Services.ThemeResourceApplicator.ApplyTitleBarTheme(this, themeService.IsDarkTheme,
+                            avaloniaTheme.UseAccentOnMainTitleBar ? avaloniaTheme.PrimaryColor : (Color?)null,
+                            avaloniaTheme.UseAccentOnMainTitleBar ? avaloniaTheme.PrimaryForegroundColor : (Color?)null);
+                else
                     Skua.Shared.Avalonia.Services.ThemeResourceApplicator.ApplyTitleBarTheme(this, themeService.IsDarkTheme);
-                });
-                Skua.Shared.Avalonia.Services.ThemeResourceApplicator.ApplyTitleBarTheme(this, themeService.IsDarkTheme);
             }
         }
         catch { }
@@ -324,7 +368,124 @@ public partial class TabbedHostWindow : Window
         }
         catch { }
 
-        AddNewInstance(_initialArgs);
+        if (!_initialInstanceStarted)
+        {
+            _initialInstanceStarted = true;
+            AddNewInstance(_initialArgs);
+        }
+    }
+
+#if IS_WINDOWS
+    private IntPtr HostWindowSubclassProc(IntPtr hWnd, uint uMsg, IntPtr wParam, IntPtr lParam, nuint uIdSubclass, IntPtr dwRefData)
+    {
+        if (uMsg == HotKeys.WM_SKUA_RELOAD_HOTKEYS)
+        {
+            Dispatcher.UIThread.Post(() =>
+            {
+                try
+                {
+                    Ioc.Default.GetRequiredService<IHotKeyService>().Reload();
+                }
+                catch { }
+            });
+            return IntPtr.Zero;
+        }
+
+        if (uMsg == HotKeys.WM_SKUA_LOAD_SCRIPT_ALL)
+        {
+            Dispatcher.UIThread.Post(() =>
+            {
+                try
+                {
+                    var windowService = Ioc.Default.GetRequiredService<IWindowService>();
+                    windowService.RegisterManagedWindow("Script Repo", Ioc.Default.GetRequiredService<ScriptRepoViewModel>());
+                    windowService.ShowManagedWindow("Script Repo");
+                }
+                catch { }
+            });
+            return IntPtr.Zero;
+        }
+
+        if (uMsg == 0x001A /* WM_SETTINGCHANGE */ || uMsg == 0x031A /* WM_THEMECHANGED */ || uMsg == 0x0320 /* WM_DWMCOLORIZATIONCOLORCHANGED */)
+        {
+            IntPtr res = DefSubclassProc(hWnd, uMsg, wParam, lParam);
+            Dispatcher.UIThread.Post(() =>
+            {
+                try
+                {
+                    var themeService = Ioc.Default.GetService<IThemeService>();
+                    bool isDark = themeService?.IsDarkTheme ?? true;
+                    if (themeService is Skua.Shared.Avalonia.Services.AvaloniaThemeService avaloniaTheme)
+                        Skua.Shared.Avalonia.Services.ThemeResourceApplicator.ApplyTitleBarTheme(this, isDark,
+                            avaloniaTheme.UseAccentOnMainTitleBar ? avaloniaTheme.PrimaryColor : (Color?)null,
+                            avaloniaTheme.UseAccentOnMainTitleBar ? avaloniaTheme.PrimaryForegroundColor : (Color?)null);
+                    else
+                        Skua.Shared.Avalonia.Services.ThemeResourceApplicator.ApplyTitleBarTheme(this, isDark);
+                }
+                catch { }
+            });
+            return res;
+        }
+
+        if (uMsg == WM_NCACTIVATE)
+        {
+            if (wParam == IntPtr.Zero)
+            {
+                IntPtr fg = GetForegroundWindow();
+                if (fg != IntPtr.Zero)
+                {
+                    GetWindowThreadProcessId(fg, out uint fgPid);
+                    uint currentPid = (uint)Environment.ProcessId;
+                    if (fgPid == currentPid || _tabs.Values.Any(t => t.Process != null && !t.Process.HasExited && (uint)t.Process.Id == fgPid))
+                    {
+                        return DefSubclassProc(hWnd, uMsg, (IntPtr)1, lParam);
+                    }
+                }
+            }
+        }
+
+        if (uMsg == WM_SKUA_CHILD_READY)
+        {
+            IntPtr childHwnd = wParam;
+            int pid = lParam.ToInt32();
+
+            Dispatcher.UIThread.Post(() =>
+            {
+                if (_isClosing || childHwnd == IntPtr.Zero) return;
+
+                TabInfo? targetInfo = _tabs.Values.FirstOrDefault(t => t.Process != null && t.Process.Id == pid);
+                if (targetInfo != null)
+                {
+                    AttachChildWindow(targetInfo, childHwnd);
+                }
+            });
+            return IntPtr.Zero;
+        }
+
+        if (uMsg == WM_ENTERSIZEMOVE)
+        {
+            IntPtr res = DefSubclassProc(hWnd, uMsg, wParam, lParam);
+            _isDraggingWindow = false;
+            _lastX = -99999;
+            _lastY = -99999;
+            DoReposition();
+            _isDraggingWindow = true;
+            return res;
+        }
+
+        if (uMsg == WM_EXITSIZEMOVE || uMsg == 0x0215 /* WM_CAPTURECHANGED */)
+        {
+            IntPtr res = DefSubclassProc(hWnd, uMsg, wParam, lParam);
+            _isDraggingWindow = false;
+            _lastX = -99999;
+            _lastY = -99999;
+            DoReposition();
+            return res;
+        }
+
+        return DefSubclassProc(hWnd, uMsg, wParam, lParam);
+    }
+#endif
     }
 
     private void AttachChildWindow(TabInfo info, IntPtr childHwnd)
@@ -485,18 +646,69 @@ public partial class TabbedHostWindow : Window
                         string? line = await sr.ReadLineAsync();
                         if (!string.IsNullOrWhiteSpace(line))
                         {
-                            string[]? parsedArgs = null;
-                            try
+                            if (line.StartsWith("ARTWORK|", StringComparison.Ordinal))
                             {
-                                if (line.TrimStart().StartsWith("["))
+                                string encodedPath = line.Substring("ARTWORK|".Length);
+                                Dispatcher.UIThread.Post(() =>
                                 {
-                                    parsedArgs = System.Text.Json.JsonSerializer.Deserialize<string[]>(line);
-                                }
+                                    try
+                                    {
+                                        string artworkPath = System.Text.Encoding.UTF8.GetString(Convert.FromBase64String(encodedPath));
+                                        Skua.Shared.Avalonia.Controls.Shell.WindowTitleBar.SetArtworkPath(
+                                            string.IsNullOrWhiteSpace(artworkPath) ? null : artworkPath);
+                                    }
+                                    catch (Exception ex)
+                                    {
+                                        Trace.WriteLine($"VibeSkua artwork sync failed: {ex.GetType().Name}: {ex.Message}");
+                                    }
+                                });
                             }
-                            catch { }
+                            else if (line.StartsWith("THEME|", StringComparison.Ordinal))
+                            {
+                                string themePayload = line.Substring("THEME|".Length);
+                                bool useAccentOnMainTitleBar = true;
+                                string themeCsv = themePayload;
+                                int separatorIndex = themePayload.IndexOf('|');
+                                if (separatorIndex >= 0 &&
+                                    bool.TryParse(themePayload[..separatorIndex], out bool parsedAccentSetting))
+                                {
+                                    useAccentOnMainTitleBar = parsedAccentSetting;
+                                    themeCsv = themePayload[(separatorIndex + 1)..];
+                                }
 
-                            parsedArgs ??= ParseRawCommandLine(line);
-                            Dispatcher.UIThread.Post(() => AddNewInstance(parsedArgs));
+                                Dispatcher.UIThread.Post(() =>
+                                {
+                                    try
+                                    {
+                                        Skua.Shared.Avalonia.Services.ThemeItem? themeItem =
+                                            Skua.Shared.Avalonia.Services.ThemeItem.FromString(themeCsv);
+                                        if (themeItem is not null &&
+                                            Ioc.Default.GetService<IThemeService>() is Skua.Shared.Avalonia.Services.AvaloniaThemeService themeService)
+                                        {
+                                            themeService.ApplyExternalThemeSnapshot(themeItem, useAccentOnMainTitleBar);
+                                        }
+                                    }
+                                    catch (Exception ex)
+                                    {
+                                        Trace.WriteLine($"VibeSkua theme sync failed: {ex.GetType().Name}: {ex.Message}");
+                                    }
+                                });
+                            }
+                            else
+                            {
+                                string[]? parsedArgs = null;
+                                try
+                                {
+                                    if (line.TrimStart().StartsWith("["))
+                                    {
+                                        parsedArgs = System.Text.Json.JsonSerializer.Deserialize<string[]>(line);
+                                    }
+                                }
+                                catch { }
+
+                                parsedArgs ??= ParseRawCommandLine(line);
+                                Dispatcher.UIThread.Post(() => AddNewInstance(parsedArgs));
+                            }
                         }
                     }
                 }
@@ -1092,7 +1304,41 @@ public partial class TabbedHostWindow : Window
         }
     }
 
+    /// <summary>
+    /// Hides all embedded game windows to prevent their pixels remaining visible when the client is hidden.
+    /// </summary>
+    public void HideEmbeddedClients()
+    {
+        foreach (TabInfo info in _tabs.Values)
+        {
+            if (info.ChildHwnd != IntPtr.Zero)
+            {
+#if IS_WINDOWS
+                ShowWindow(info.ChildHwnd, SW_HIDE);
+#endif
+#if IS_LINUX || !IS_WINDOWS
+                PlatformHideChild(info.ChildHwnd);
+#endif
+            }
+        }
 
+#if IS_WINDOWS
+        HotKeys.ActiveChildHwnd = IntPtr.Zero;
+#endif
+    }
+
+    /// <summary>
+    /// Restores embedded game windows after the client is shown again.
+    /// </summary>
+    public void ShowEmbeddedClients()
+    {
+        _lastX = int.MinValue;
+        _lastY = int.MinValue;
+        _lastW = int.MinValue;
+        _lastH = int.MinValue;
+        _lastActiveHwnd = IntPtr.Zero;
+        ScheduleReposition();
+    }
 
     private void OnWindowPositionChanged(PixelPoint newPos)
     {

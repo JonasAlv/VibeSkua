@@ -117,13 +117,12 @@
                            FontWeight="Bold"
                            Foreground="{DynamicResource SkuaMutedTextBrush}"
                            Margin="6,4,0,8" />
-                <ListBox ItemsSource="{Binding Events}"
+                <ListBox Classes="card-list" ItemsSource="{Binding Events}"
                          Background="Transparent"
                          BorderThickness="0">
                     <ListBox.ItemTemplate>
                         <DataTemplate>
-                            <Border Background="{DynamicResource SkuaSurfaceBrush}"
-                                    BorderBrush="{DynamicResource SkuaBorderBrush}"
+                            <Border Classes="list-card"
                                     BorderThickness="1"
                                     CornerRadius="6"
                                     Margin="0,0,0,4"

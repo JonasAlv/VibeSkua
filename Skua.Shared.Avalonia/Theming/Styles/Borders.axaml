@@ -20,23 +20,23 @@
         <Setter Property="Background" Value="{DynamicResource SkuaSurfaceBrush}" />
         <Setter Property="BorderBrush" Value="{DynamicResource SkuaBorderBrush}" />
         <Setter Property="BorderThickness" Value="1" />
-        <Setter Property="CornerRadius" Value="6" />
+        <Setter Property="CornerRadius" Value="12" />
     </Style>
 
     <Style Selector="Border.account-row-list">
         <Setter Property="Cursor" Value="Hand" />
         <Setter Property="Background" Value="Transparent" />
         <Setter Property="BorderBrush" Value="Transparent" />
-        <Setter Property="CornerRadius" Value="6" />
+        <Setter Property="CornerRadius" Value="12" />
     </Style>
 
     <Style Selector="Border.account-row-list:pointerover">
         <Setter Property="Background" Value="{DynamicResource SkuaNavHoverBrush}" />
-        <Setter Property="BorderBrush" Value="{DynamicResource SkuaBorderBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource SkuaBorderStrongBrush}" />
     </Style>
 
     <Style Selector="Border.account-row-list.selected">
-        <Setter Property="Background" Value="{DynamicResource SkuaSelectionBrush}" />
+        <Setter Property="Background" Value="{DynamicResource SkuaAccentTintBrush}" />
         <Setter Property="BorderBrush" Value="{DynamicResource SkuaAccentBrush}" />
     </Style>
 
@@ -44,21 +44,21 @@
         <Setter Property="Cursor" Value="Hand" />
         <Setter Property="Background" Value="{DynamicResource SkuaSurfaceBrush}" />
         <Setter Property="BorderBrush" Value="{DynamicResource SkuaBorderBrush}" />
-        <Setter Property="CornerRadius" Value="6" />
+        <Setter Property="CornerRadius" Value="12" />
     </Style>
 
     <Style Selector="Border.account-row-grid:pointerover">
         <Setter Property="Background" Value="{DynamicResource SkuaNavHoverBrush}" />
-        <Setter Property="BorderBrush" Value="{DynamicResource SkuaBorderBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource SkuaBorderStrongBrush}" />
     </Style>
 
     <Style Selector="Border.account-row-grid.selected">
-        <Setter Property="Background" Value="{DynamicResource SkuaSelectionBrush}" />
+        <Setter Property="Background" Value="{DynamicResource SkuaAccentTintBrush}" />
         <Setter Property="BorderBrush" Value="{DynamicResource SkuaAccentBrush}" />
     </Style>
     
     <Style Selector="Border.card">
-        <Setter Property="CornerRadius" Value="8" />
+        <Setter Property="CornerRadius" Value="12" />
         <Setter Property="Padding" Value="10" />
         <Setter Property="Background" Value="{DynamicResource SkuaSurfaceBrush}" />
         <Setter Property="BorderBrush" Value="{DynamicResource SkuaBorderBrush}" />
@@ -66,7 +66,7 @@
     </Style>
 
     <Style Selector="Border.card-flat">
-        <Setter Property="CornerRadius" Value="8" />
+        <Setter Property="CornerRadius" Value="12" />
         <Setter Property="Padding" Value="10" />
         <Setter Property="Background" Value="{DynamicResource SkuaSurfaceAltBrush}" />
         <Setter Property="BorderBrush" Value="{DynamicResource SkuaBorderBrush}" />
@@ -74,14 +74,14 @@
     </Style>
 
     <Style Selector="Border.section-panel">
-        <Setter Property="CornerRadius" Value="6" />
+        <Setter Property="CornerRadius" Value="12" />
         <Setter Property="Background" Value="{DynamicResource SkuaSurfaceBrush}" />
         <Setter Property="BorderBrush" Value="{DynamicResource SkuaBorderBrush}" />
         <Setter Property="BorderThickness" Value="1" />
     </Style>
 
     <Style Selector="Border.list-frame">
-        <Setter Property="CornerRadius" Value="6" />
+        <Setter Property="CornerRadius" Value="12" />
         <Setter Property="Background" Value="{DynamicResource SkuaPageBrush}" />
         <Setter Property="BorderBrush" Value="{DynamicResource SkuaBorderBrush}" />
         <Setter Property="BorderThickness" Value="1" />
@@ -91,8 +91,8 @@
         <Setter Property="Background" Value="{DynamicResource SkuaTagBackgroundBrush}" />
         <Setter Property="BorderBrush" Value="{DynamicResource SkuaTagBorderBrush}" />
         <Setter Property="BorderThickness" Value="1" />
-        <Setter Property="CornerRadius" Value="6" />
-        <Setter Property="Padding" Value="6,1,7,1" />
+        <Setter Property="CornerRadius" Value="12" />
+        <Setter Property="Padding" Value="8,1,8,1" />
         <Setter Property="Margin" Value="0,1,4,2" />
         <Setter Property="Transitions">
             <Transitions>
@@ -115,7 +115,7 @@
         <Setter Property="Background" Value="{DynamicResource SkuaSurfaceAltBrush}" />
         <Setter Property="BorderBrush" Value="{DynamicResource SkuaBorderBrush}" />
         <Setter Property="BorderThickness" Value="1" />
-        <Setter Property="CornerRadius" Value="6" />
+        <Setter Property="CornerRadius" Value="12" />
         <Setter Property="Height" Value="32" />
         <Setter Property="MinHeight" Value="32" />
         <Setter Property="MaxHeight" Value="32" />

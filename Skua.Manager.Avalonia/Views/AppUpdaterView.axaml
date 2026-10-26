@@ -50,7 +50,7 @@
                         IsVisible="{Binding UpdateAvailable}"
                         IsEnabled="{Binding !IsChecking}"
                         Width="160"
-                        Classes="skua-button primary" />
+                        Classes="skua-button skua-primary" />
             </StackPanel>
         </StackPanel>
     </Grid>

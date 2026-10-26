@@ -86,7 +86,7 @@
                 Classes="skua-button outline"
                 Content="Delete"
                 Command="{Binding DeleteLoadoutCommand}"
-                Foreground="#EF4444" />
+                Foreground="{DynamicResource SkuaDangerBrush}" />
       </Grid>
     </Border>
 

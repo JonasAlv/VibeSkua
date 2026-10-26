@@ -65,8 +65,7 @@
                     <!-- Ascending / Descending Toggle -->
                     <ToggleButton Grid.Column="3"
                                   Height="32"
-                                  Padding="8,0"
-                                  Classes="app-toggle"
+                                  Classes="app-toggle w112"
                                   IsChecked="{Binding SortDescending, Mode=TwoWay}"
                                   ToolTip.Tip="Toggle Ascending / Descending sort order">
                         <StackPanel Orientation="Horizontal" Spacing="4">
@@ -89,7 +88,7 @@
                                 IsEnabled="{Binding !IsBusy}"
                                 ToolTip.Tip="Download updates for all outdated scripts">
                             <StackPanel Orientation="Horizontal" Spacing="5">
-                                <materialIcons:MaterialIcon Kind="CloudDownloadOutline" Width="14" Height="14" Foreground="#F59E0B" />
+                                <materialIcons:MaterialIcon Kind="CloudDownloadOutline" Width="14" Height="14" Foreground="{DynamicResource SkuaWarningBrush}" />
                                 <TextBlock Text="Update All" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center" />
                             </StackPanel>
                         </Button>
@@ -101,7 +100,7 @@
                                 IsEnabled="{Binding !IsBusy}"
                                 ToolTip.Tip="Download all available and outdated scripts">
                             <StackPanel Orientation="Horizontal" Spacing="5">
-                                <materialIcons:MaterialIcon Kind="DownloadMultiple" Width="14" Height="14" Foreground="#10B981" />
+                                <materialIcons:MaterialIcon Kind="DownloadMultiple" Width="14" Height="14" Foreground="{DynamicResource SkuaSuccessBrush}" />
                                 <TextBlock Text="Download All" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center" />
                             </StackPanel>
                         </Button>
@@ -259,7 +258,7 @@
                                   Header="Pin / Unpin Script"
                                   IsEnabled="{Binding SelectedItem, Converter={x:Static ObjectConverters.IsNotNull}}">
                             <MenuItem.Icon>
-                                <materialIcons:MaterialIcon Kind="Pin" Width="14" Height="14" Foreground="#F59E0B" />
+                                <materialIcons:MaterialIcon Kind="Pin" Width="14" Height="14" Foreground="{DynamicResource SkuaWarningBrush}" />
                             </MenuItem.Icon>
                         </MenuItem>
                         <Separator />
@@ -274,7 +273,7 @@
                                   Header="Delete Script"
                                   IsEnabled="{Binding SelectedItem.Downloaded, FallbackValue=False}">
                             <MenuItem.Icon>
-                                <materialIcons:MaterialIcon Kind="TrashCanOutline" Width="14" Height="14" Foreground="#EF4444" />
+                                <materialIcons:MaterialIcon Kind="TrashCanOutline" Width="14" Height="14" Foreground="{DynamicResource SkuaDangerBrush}" />
                             </MenuItem.Icon>
                         </MenuItem>
                         <MenuItem Command="{Binding OpenScriptCommand}"
@@ -317,7 +316,7 @@
                                               Header="Delete Script"
                                               IsEnabled="{Binding Downloaded}">
                                         <MenuItem.Icon>
-                                            <materialIcons:MaterialIcon Kind="TrashCanOutline" Width="14" Height="14" Foreground="#EF4444" />
+                                            <materialIcons:MaterialIcon Kind="TrashCanOutline" Width="14" Height="14" Foreground="{DynamicResource SkuaDangerBrush}" />
                                         </MenuItem.Icon>
                                     </MenuItem>
                                     <MenuItem Command="{Binding #Root.((scriptRepo:ScriptRepoViewModel)DataContext).OpenScriptCommand}"
@@ -542,7 +541,7 @@
                                             Command="{Binding #Root.((scriptRepo:ScriptRepoViewModel)DataContext).DownloadCommand}"
                                             CommandParameter="{Binding .}"
                                             ToolTip.Tip="Download script to local computer">
-                                        <materialIcons:MaterialIcon Kind="Download" Width="14" Height="14" Foreground="#10B981" />
+                                        <materialIcons:MaterialIcon Kind="Download" Width="14" Height="14" Foreground="{DynamicResource SkuaSuccessBrush}" />
                                     </Button>
 
                                     <!-- VS Code Action Button (When downloaded) -->
@@ -566,7 +565,7 @@
                                             Command="{Binding #Root.((scriptRepo:ScriptRepoViewModel)DataContext).DeleteCommand}"
                                             CommandParameter="{Binding .}"
                                             ToolTip.Tip="Delete local copy">
-                                        <materialIcons:MaterialIcon Kind="TrashCanOutline" Width="13" Height="13" Foreground="#EF4444" />
+                                        <materialIcons:MaterialIcon Kind="TrashCanOutline" Width="13" Height="13" Foreground="{DynamicResource SkuaDangerBrush}" />
                                     </Button>
                                 </StackPanel>
                             </Grid>
@@ -660,7 +659,7 @@
                 <!-- Activity & Progress Report -->
                 <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
                     <Ellipse Width="6" Height="6"
-                             Fill="#10B981"
+                             Fill="{DynamicResource SkuaSuccessBrush}"
                              VerticalAlignment="Center"
                              IsVisible="{Binding !IsBusy}" />
                     

@@ -60,10 +60,11 @@
                 </Grid>
                 
                 <Grid Grid.Row="4" ColumnDefinitions="*,Auto" ColumnSpacing="8">
-                    <ToggleButton Grid.Column="0"
+                    <ToggleButton HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Grid.Column="0"
                                   Margin="0"
                                   Classes="option-chip"
                                   Content="Pick Drops"
+                                  IsChecked="{Binding Drops.Enabled, Mode=OneWay}"
                                   Command="{Binding ToggleDropsCommand}" />
                     <Button Grid.Column="1"
                             Classes="skua-button"
@@ -137,11 +138,11 @@
                                Foreground="{DynamicResource SkuaMutedTextBrush}" />
 
                     <Grid Grid.Row="1" ColumnDefinitions="*,*" ColumnSpacing="8">
-                        <Button Grid.Column="0"
+                        <Button HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Grid.Column="0"
                                 Classes="skua-button"
                                 Content="Search Inventory"
                                 Click="BoostIdsInventory_Click" />
-                        <Button Grid.Column="1"
+                        <Button HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Grid.Column="1"
                                 Classes="skua-button"
                                 Content="Search Bank"
                                 Click="BoostIdsBank_Click" />
@@ -188,6 +189,7 @@
                                   Margin="0"
                                   Classes="option-chip"
                                   Content="Use Boosts"
+                                  IsChecked="{Binding Boosts.Enabled, Mode=OneWay}"
                                   Command="{Binding ToggleBoostsCommand}" />
                 </Grid>
             </Border>

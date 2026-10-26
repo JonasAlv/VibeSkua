@@ -5,44 +5,57 @@
             <!-- Add Controls for Previewer Here -->
         </Border>
     </Design.PreviewWith>
-    
+
+    <!-- Rules shared by every interactive control: heights 32 (regular) and 26 (.small); fixed widths
+         (.w64 .w84 .w112 .w140) so a label change never resizes a button; hover = NavHover fill + BorderStrong
+         border; pressed = Pressed fill; selected/on = accent tint + accent border; keyboard focus = accent ring;
+         disabled = 45% opacity. -->
+
     <Style Selector="Button, ToggleButton">
         <Setter Property="Cursor" Value="Hand" />
     </Style>
 
-    <!-- Default Button Fluent styling override -->
+    <!-- Keyboard focus: an accent ring 2px outside the control -->
+    <Style Selector="Button, ToggleButton, CheckBox, RadioButton, ToggleSwitch, Slider">
+        <Setter Property="FocusAdorner">
+            <FocusAdornerTemplate>
+                <Border BorderThickness="2" BorderBrush="{DynamicResource SkuaAccentBrush}" CornerRadius="8" Margin="-4" />
+            </FocusAdornerTemplate>
+        </Setter>
+    </Style>
+    <!-- Rows and tabs sit inside clipped containers, so their ring is drawn on their own edge -->
+    <Style Selector="ListBoxItem, TabItem, ComboBoxItem, MenuItem">
+        <Setter Property="FocusAdorner">
+            <FocusAdornerTemplate>
+                <Border BorderThickness="2" BorderBrush="{DynamicResource SkuaAccentBrush}" CornerRadius="6" />
+            </FocusAdornerTemplate>
+        </Setter>
+    </Style>
+
+    <!-- Default Button: the secondary look -->
     <Style Selector="Button">
         <Setter Property="Background" Value="{DynamicResource SkuaSurfaceAltBrush}" />
         <Setter Property="BorderBrush" Value="{DynamicResource SkuaBorderBrush}" />
         <Setter Property="BorderThickness" Value="1" />
-        <Setter Property="CornerRadius" Value="6" />
+        <Setter Property="CornerRadius" Value="12" />
         <Setter Property="Foreground" Value="{DynamicResource SkuaTextBrush}" />
         <Setter Property="FontSize" Value="12" />
-        <Setter Property="FontWeight" Value="Medium" />
+        <Setter Property="FontWeight" Value="SemiBold" />
         <Setter Property="HorizontalContentAlignment" Value="Center" />
         <Setter Property="VerticalContentAlignment" Value="Center" />
     </Style>
-
-    <Style Selector="Button /template/ ContentPresenter#PART_ContentPresenter">
-        <Setter Property="Background" Value="{DynamicResource SkuaSurfaceAltBrush}" />
-        <Setter Property="BorderBrush" Value="{DynamicResource SkuaBorderBrush}" />
-        <Setter Property="BorderThickness" Value="1" />
-        <Setter Property="CornerRadius" Value="6" />
-        <Setter Property="Foreground" Value="{DynamicResource SkuaTextBrush}" />
-    </Style>
-
+    <!-- No rest-state rule on the presenter: it takes Background/BorderBrush from the button and inherits
+         Foreground, so class and local colours (skua-primary, skua-danger, plugins) show through. -->
     <Style Selector="Button:pointerover /template/ ContentPresenter#PART_ContentPresenter">
         <Setter Property="Background" Value="{DynamicResource SkuaNavHoverBrush}" />
-        <Setter Property="BorderBrush" Value="{DynamicResource SkuaBorderBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource SkuaBorderStrongBrush}" />
         <Setter Property="Foreground" Value="{DynamicResource SkuaTextBrush}" />
     </Style>
-
     <Style Selector="Button:pressed /template/ ContentPresenter#PART_ContentPresenter">
-        <Setter Property="Background" Value="{DynamicResource SkuaHoverPressedBrush}" />
-        <Setter Property="BorderBrush" Value="{DynamicResource SkuaBorderBrush}" />
+        <Setter Property="Background" Value="{DynamicResource SkuaPressedBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource SkuaBorderStrongBrush}" />
         <Setter Property="Foreground" Value="{DynamicResource SkuaTextBrush}" />
     </Style>
-
     <Style Selector="Button:disabled /template/ ContentPresenter#PART_ContentPresenter">
         <Setter Property="Opacity" Value="0.45" />
     </Style>
@@ -50,18 +63,17 @@
     <Style Selector="Button.header-gap">
         <Setter Property="Margin" Value="0,0,4,0" />
     </Style>
-    
     <Style Selector="Button.gap-left-8">
         <Setter Property="Margin" Value="8,0,0,0" />
     </Style>
-
     <Style Selector="Button.gap-right-8">
         <Setter Property="Margin" Value="0,0,8,0" />
     </Style>
-    
+
+    <!-- Icon buttons: square, r6, accent glyph; 26 by default, .icon-28 is the regular 32 -->
     <Style Selector="Button.danger-icon, Button.icon">
-        <Setter Property="Width" Value="24" />
-        <Setter Property="Height" Value="24" />
+        <Setter Property="Width" Value="26" />
+        <Setter Property="Height" Value="26" />
         <Setter Property="Padding" Value="0" />
         <Setter Property="Background" Value="Transparent" />
         <Setter Property="BorderThickness" Value="0" />
@@ -71,87 +83,63 @@
         <Setter Property="VerticalContentAlignment" Value="Center" />
         <Setter Property="Foreground" Value="{DynamicResource SkuaAccentBrush}" />
     </Style>
-
     <Style Selector="Button.icon-28">
-        <Setter Property="Width" Value="28" />
-        <Setter Property="Height" Value="28" />
+        <Setter Property="Width" Value="32" />
+        <Setter Property="Height" Value="32" />
     </Style>
-
-    <Style Selector="Button.icon-muted">
-        <Setter Property="Opacity" Value="0.65" />
-        <Setter Property="Foreground" Value="{DynamicResource SkuaMutedTextBrush}" />
-    </Style>
-
     <Style Selector="Button.danger-icon TextBlock, Button.icon TextBlock">
         <Setter Property="Foreground" Value="{DynamicResource SkuaAccentBrush}" />
     </Style>
-
     <Style Selector="Button.danger-icon /template/ ContentPresenter#PART_ContentPresenter, Button.icon /template/ ContentPresenter#PART_ContentPresenter">
         <Setter Property="Background" Value="Transparent" />
         <Setter Property="BorderThickness" Value="0" />
         <Setter Property="CornerRadius" Value="12" />
-        <Setter Property="Foreground" Value="{DynamicResource SkuaAccentBrush}" />
     </Style>
-
-    <Style Selector="Button.danger-icon /template/ Border, Button.icon /template/ Border">
-        <Setter Property="Background" Value="Transparent" />
-        <Setter Property="BorderThickness" Value="0" />
-        <Setter Property="CornerRadius" Value="12" />
-    </Style>
-
     <Style Selector="Button.danger-icon:pointerover /template/ ContentPresenter#PART_ContentPresenter, Button.icon:pointerover /template/ ContentPresenter#PART_ContentPresenter">
-        <Setter Property="Background" Value="{DynamicResource SkuaHoverBrush}" />
-        <Setter Property="BorderThickness" Value="0" />
-        <Setter Property="Foreground" Value="{DynamicResource SkuaAccentBrush}" />
-    </Style>
-
-    <Style Selector="Button.danger-icon:pointerover, Button.icon:pointerover">
-        <Setter Property="Background" Value="{DynamicResource SkuaHoverBrush}" />
-        <Setter Property="BorderThickness" Value="0" />
-        <Setter Property="Foreground" Value="{DynamicResource SkuaAccentBrush}" />
-    </Style>
-
-    <Style Selector="Button.danger-icon:pressed /template/ ContentPresenter#PART_ContentPresenter, Button.icon:pressed /template/ ContentPresenter#PART_ContentPresenter">
-        <Setter Property="Background" Value="{DynamicResource SkuaHoverPressedBrush}" />
-        <Setter Property="BorderThickness" Value="0" />
-        <Setter Property="Foreground" Value="{DynamicResource SkuaAccentPressedBrush}" />
-    </Style>
-
-    <Style Selector="Button.danger-icon:pressed, Button.icon:pressed">
-        <Setter Property="Background" Value="{DynamicResource SkuaHoverPressedBrush}" />
-        <Setter Property="BorderThickness" Value="0" />
-        <Setter Property="Foreground" Value="{DynamicResource SkuaAccentPressedBrush}" />
-    </Style>
-
-    <!-- Outline Buttons (Used extensively in dialogs, helpers, loader, packet tools) -->
-    <Style Selector="Button.outline, Button.skua-outline">
-        <Setter Property="Background" Value="Transparent" />
-        <Setter Property="BorderBrush" Value="{DynamicResource SkuaBorderBrush}" />
-        <Setter Property="BorderThickness" Value="1" />
-        <Setter Property="Foreground" Value="{DynamicResource SkuaTextBrush}" />
-    </Style>
-    <Style Selector="Button.outline /template/ ContentPresenter#PART_ContentPresenter, Button.skua-outline /template/ ContentPresenter#PART_ContentPresenter">
-        <Setter Property="Background" Value="Transparent" />
-        <Setter Property="BorderBrush" Value="{DynamicResource SkuaBorderBrush}" />
-        <Setter Property="BorderThickness" Value="1" />
-        <Setter Property="CornerRadius" Value="6" />
-        <Setter Property="Foreground" Value="{DynamicResource SkuaTextBrush}" />
-    </Style>
-    <Style Selector="Button.outline:pointerover /template/ ContentPresenter#PART_ContentPresenter, Button.skua-outline:pointerover /template/ ContentPresenter#PART_ContentPresenter">
         <Setter Property="Background" Value="{DynamicResource SkuaNavHoverBrush}" />
-        <Setter Property="BorderBrush" Value="{DynamicResource SkuaBorderBrush}" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="Foreground" Value="{DynamicResource SkuaAccentBrush}" />
+    </Style>
+    <Style Selector="Button.danger-icon:pressed /template/ ContentPresenter#PART_ContentPresenter, Button.icon:pressed /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource SkuaPressedBrush}" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="Foreground" Value="{DynamicResource SkuaAccentPressedBrush}" />
+    </Style>
+    <!-- Muted icon buttons: grey glyph that turns white on hover -->
+    <Style Selector="Button.icon-muted">
+        <Setter Property="Foreground" Value="{DynamicResource SkuaMutedTextBrush}" />
+    </Style>
+    <Style Selector="Button.icon-muted TextBlock">
+        <Setter Property="Foreground" Value="{DynamicResource SkuaMutedTextBrush}" />
+    </Style>
+    <Style Selector="Button.icon-muted:pointerover /template/ ContentPresenter#PART_ContentPresenter">
         <Setter Property="Foreground" Value="{DynamicResource SkuaTextBrush}" />
     </Style>
-    <Style Selector="Button.outline:pressed /template/ ContentPresenter#PART_ContentPresenter, Button.skua-outline:pressed /template/ ContentPresenter#PART_ContentPresenter">
-        <Setter Property="Background" Value="{DynamicResource SkuaHoverPressedBrush}" />
+    <!-- Destructive icon buttons: muted glyph at rest, red with a red tint on hover -->
+    <Style Selector="Button.danger-icon">
+        <Setter Property="Foreground" Value="{DynamicResource SkuaMutedTextBrush}" />
+    </Style>
+    <Style Selector="Button.danger-icon TextBlock">
+        <Setter Property="Foreground" Value="{DynamicResource SkuaMutedTextBrush}" />
+    </Style>
+    <Style Selector="Button.danger-icon:pointerover /template/ ContentPresenter#PART_ContentPresenter, Button.danger-icon:pressed /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource SkuaDangerTintBrush}" />
+        <Setter Property="Foreground" Value="{DynamicResource SkuaDangerBrush}" />
+    </Style>
+
+    <!-- Outline buttons share the secondary look now; the class stays so views keep working -->
+    <Style Selector="Button.outline, Button.skua-outline">
+        <Setter Property="Background" Value="{DynamicResource SkuaSurfaceAltBrush}" />
         <Setter Property="BorderBrush" Value="{DynamicResource SkuaBorderBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
         <Setter Property="Foreground" Value="{DynamicResource SkuaTextBrush}" />
     </Style>
 
+    <!-- Secondary (default) button -->
     <Style Selector="Button.skua-button">
         <Setter Property="Height" Value="32" />
-        <Setter Property="Padding" Value="10,4" />
-        <Setter Property="CornerRadius" Value="6" />
+        <Setter Property="Padding" Value="12,0" />
+        <Setter Property="CornerRadius" Value="12" />
         <Setter Property="Background" Value="{DynamicResource SkuaSurfaceAltBrush}" />
         <Setter Property="BorderBrush" Value="{DynamicResource SkuaBorderBrush}" />
         <Setter Property="BorderThickness" Value="1" />
@@ -163,12 +151,9 @@
         <Setter Property="VerticalContentAlignment" Value="Center" />
     </Style>
 
+    <!-- At rest the presenter takes the button's own Background/BorderBrush/Foreground (TemplateBinding),
+         so a local Background on a skua-button is honoured. Only hover/pressed/disabled override it. -->
     <Style Selector="Button.skua-button /template/ ContentPresenter#PART_ContentPresenter">
-        <Setter Property="Background" Value="{DynamicResource SkuaSurfaceAltBrush}" />
-        <Setter Property="BorderBrush" Value="{DynamicResource SkuaBorderBrush}" />
-        <Setter Property="BorderThickness" Value="1" />
-        <Setter Property="CornerRadius" Value="6" />
-        <Setter Property="Foreground" Value="{DynamicResource SkuaTextBrush}" />
         <Setter Property="Transitions">
             <Transitions>
                 <BrushTransition Property="Background" Duration="0:0:0.08" Easing="CubicEaseOut" />
@@ -177,39 +162,55 @@
             </Transitions>
         </Setter>
     </Style>
-
     <Style Selector="Button.skua-button:pointerover /template/ ContentPresenter#PART_ContentPresenter">
         <Setter Property="Background" Value="{DynamicResource SkuaNavHoverBrush}" />
-        <Setter Property="BorderBrush" Value="{DynamicResource SkuaBorderBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource SkuaBorderStrongBrush}" />
         <Setter Property="Foreground" Value="{DynamicResource SkuaTextBrush}" />
     </Style>
-
     <Style Selector="Button.skua-button:pressed /template/ ContentPresenter#PART_ContentPresenter">
-        <Setter Property="Background" Value="{DynamicResource SkuaHoverPressedBrush}" />
-        <Setter Property="BorderBrush" Value="{DynamicResource SkuaBorderBrush}" />
+        <Setter Property="Background" Value="{DynamicResource SkuaPressedBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource SkuaBorderStrongBrush}" />
         <Setter Property="Foreground" Value="{DynamicResource SkuaTextBrush}" />
     </Style>
 
-    <Style Selector="Button.skua-button:disabled">
-        <Setter Property="Opacity" Value="0.45" />
+    <!-- Sizes, declared after .skua-button so they win: .small is the 26px height; .wNN fix the width so
+         the label can change without a resize -->
+    <Style Selector="Button.small, ToggleButton.small">
+        <Setter Property="Height" Value="26" />
+        <Setter Property="MinHeight" Value="26" />
+        <Setter Property="Padding" Value="10,0" />
+        <Setter Property="FontSize" Value="11" />
     </Style>
-    <Style Selector="Button.skua-button:disabled /template/ ContentPresenter#PART_ContentPresenter">
-        <Setter Property="Opacity" Value="0.45" />
+    <Style Selector="Button.w64, ToggleButton.w64">
+        <Setter Property="Width" Value="64" />
+        <Setter Property="Padding" Value="8,0" />
+        <Setter Property="HorizontalContentAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Button.w84, ToggleButton.w84">
+        <Setter Property="Width" Value="84" />
+        <Setter Property="Padding" Value="8,0" />
+        <Setter Property="HorizontalContentAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Button.w112, ToggleButton.w112">
+        <Setter Property="Width" Value="112" />
+        <Setter Property="Padding" Value="8,0" />
+        <Setter Property="HorizontalContentAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Button.w140, ToggleButton.w140">
+        <Setter Property="Width" Value="140" />
+        <Setter Property="Padding" Value="8,0" />
+        <Setter Property="HorizontalContentAlignment" Value="Center" />
     </Style>
 
-    <!-- Specific Skua Primary (Dynamically follows user theme color) -->
+    <!-- Primary: follows the user's theme colour -->
     <Style Selector="Button.skua-primary, Button.skua-button.skua-primary">
         <Setter Property="Background" Value="{DynamicResource SkuaAccentBrush}" />
         <Setter Property="BorderBrush" Value="{DynamicResource SkuaAccentBrush}" />
         <Setter Property="Foreground" Value="{DynamicResource SkuaAccentForegroundBrush}" />
-        <Setter Property="FontWeight" Value="Bold" />
+        <Setter Property="FontWeight" Value="SemiBold" />
         <Setter Property="Cursor" Value="Hand" />
     </Style>
     <Style Selector="Button.skua-primary /template/ ContentPresenter#PART_ContentPresenter, Button.skua-button.skua-primary /template/ ContentPresenter#PART_ContentPresenter">
-        <Setter Property="Background" Value="{DynamicResource SkuaAccentBrush}" />
-        <Setter Property="BorderBrush" Value="{DynamicResource SkuaAccentBrush}" />
-        <Setter Property="Foreground" Value="{DynamicResource SkuaAccentForegroundBrush}" />
-        <Setter Property="FontWeight" Value="Bold" />
         <Setter Property="Transitions">
             <Transitions>
                 <BrushTransition Property="Background" Duration="0:0:0.08" Easing="CubicEaseOut" />
@@ -221,28 +222,22 @@
         <Setter Property="Background" Value="{DynamicResource SkuaAccentHoverBrush}" />
         <Setter Property="BorderBrush" Value="{DynamicResource SkuaAccentHoverBrush}" />
         <Setter Property="Foreground" Value="{DynamicResource SkuaAccentForegroundBrush}" />
-        <Setter Property="FontWeight" Value="Bold" />
     </Style>
     <Style Selector="Button.skua-primary:pressed /template/ ContentPresenter#PART_ContentPresenter, Button.skua-button.skua-primary:pressed /template/ ContentPresenter#PART_ContentPresenter">
         <Setter Property="Background" Value="{DynamicResource SkuaAccentPressedBrush}" />
         <Setter Property="BorderBrush" Value="{DynamicResource SkuaAccentPressedBrush}" />
         <Setter Property="Foreground" Value="{DynamicResource SkuaAccentForegroundBrush}" />
-        <Setter Property="FontWeight" Value="Bold" />
     </Style>
 
-    <!-- Specific Skua Danger (Red) -->
+    <!-- Danger: solid red, for confirms that can't be undone -->
     <Style Selector="Button.skua-danger, Button.skua-button.skua-danger">
-        <Setter Property="Background" Value="#EF4444" />
-        <Setter Property="BorderBrush" Value="#EF4444" />
-        <Setter Property="Foreground" Value="#FFFFFF" />
-        <Setter Property="FontWeight" Value="Bold" />
+        <Setter Property="Background" Value="{DynamicResource SkuaDangerBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource SkuaDangerBrush}" />
+        <Setter Property="Foreground" Value="{DynamicResource SkuaDangerForegroundBrush}" />
+        <Setter Property="FontWeight" Value="SemiBold" />
         <Setter Property="Cursor" Value="Hand" />
     </Style>
     <Style Selector="Button.skua-danger /template/ ContentPresenter#PART_ContentPresenter, Button.skua-button.skua-danger /template/ ContentPresenter#PART_ContentPresenter">
-        <Setter Property="Background" Value="#EF4444" />
-        <Setter Property="BorderBrush" Value="#EF4444" />
-        <Setter Property="Foreground" Value="#FFFFFF" />
-        <Setter Property="FontWeight" Value="Bold" />
         <Setter Property="Transitions">
             <Transitions>
                 <BrushTransition Property="Background" Duration="0:0:0.08" Easing="CubicEaseOut" />
@@ -250,37 +245,55 @@
         </Setter>
     </Style>
     <Style Selector="Button.skua-danger:pointerover /template/ ContentPresenter#PART_ContentPresenter, Button.skua-button.skua-danger:pointerover /template/ ContentPresenter#PART_ContentPresenter">
-        <Setter Property="Background" Value="#DC2626" />
-        <Setter Property="BorderBrush" Value="#DC2626" />
-        <Setter Property="Foreground" Value="#FFFFFF" />
-        <Setter Property="FontWeight" Value="Bold" />
+        <Setter Property="Background" Value="{DynamicResource SkuaDangerHoverBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource SkuaDangerHoverBrush}" />
+        <Setter Property="Foreground" Value="{DynamicResource SkuaDangerForegroundBrush}" />
     </Style>
     <Style Selector="Button.skua-danger:pressed /template/ ContentPresenter#PART_ContentPresenter, Button.skua-button.skua-danger:pressed /template/ ContentPresenter#PART_ContentPresenter">
-        <Setter Property="Background" Value="#B91C1C" />
-        <Setter Property="BorderBrush" Value="#B91C1C" />
-        <Setter Property="Foreground" Value="#FFFFFF" />
-        <Setter Property="FontWeight" Value="Bold" />
+        <Setter Property="Background" Value="{DynamicResource SkuaDangerPressedBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource SkuaDangerPressedBrush}" />
+        <Setter Property="Foreground" Value="{DynamicResource SkuaDangerForegroundBrush}" />
     </Style>
-    
+
+    <!-- Soft danger: red text on a red tint, for stops and removals that can be undone -->
+    <Style Selector="Button.skua-danger-soft, Button.skua-button.skua-danger-soft">
+        <Setter Property="Background" Value="{DynamicResource SkuaDangerTintBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource SkuaDangerSoftBorderBrush}" />
+        <Setter Property="Foreground" Value="{DynamicResource SkuaDangerBrush}" />
+    </Style>
+    <Style Selector="Button.skua-danger-soft:pointerover /template/ ContentPresenter#PART_ContentPresenter, Button.skua-button.skua-danger-soft:pointerover /template/ ContentPresenter#PART_ContentPresenter, Button.skua-danger-soft:pressed /template/ ContentPresenter#PART_ContentPresenter, Button.skua-button.skua-danger-soft:pressed /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource SkuaDangerTintStrongBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource SkuaDangerSoftBorderBrush}" />
+        <Setter Property="Foreground" Value="{DynamicResource SkuaDangerBrush}" />
+    </Style>
+
+    <!-- Ghost buttons: no box at rest (top bar actions and menu-bar style navigation) -->
     <Style Selector="Button.topbar-action">
-        <Setter Property="Height" Value="25" />
+        <Setter Property="Height" Value="28" />
         <Setter Property="MinWidth" Value="34" />
         <Setter Property="Padding" Value="10,0" />
         <Setter Property="Background" Value="Transparent" />
         <Setter Property="BorderThickness" Value="0" />
-        <Setter Property="CornerRadius" Value="4" />
+        <Setter Property="CornerRadius" Value="12" />
         <Setter Property="Cursor" Value="Hand" />
         <Setter Property="Foreground" Value="{DynamicResource SkuaAccentBrush}" />
         <Setter Property="VerticalAlignment" Value="Center" />
     </Style>
-
-    <Style Selector="Button.topbar-action:pointerover">
+    <Style Selector="Button.topbar-action:pointerover /template/ ContentPresenter#PART_ContentPresenter">
         <Setter Property="Background" Value="{DynamicResource SkuaNavHoverBrush}" />
+        <Setter Property="BorderBrush" Value="Transparent" />
         <Setter Property="Foreground" Value="{DynamicResource SkuaAccentBrush}" />
     </Style>
-    
+    <Style Selector="Button.topbar-action:pressed /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource SkuaPressedBrush}" />
+        <Setter Property="BorderBrush" Value="Transparent" />
+        <Setter Property="Foreground" Value="{DynamicResource SkuaAccentBrush}" />
+    </Style>
+
     <Style Selector="Button.top-nav-item, ToggleButton.top-nav-item">
         <Setter Property="Foreground" Value="{DynamicResource SkuaTextBrush}" />
+        <Setter Property="HorizontalContentAlignment" Value="Center" />
+        <Setter Property="VerticalContentAlignment" Value="Center" />
         <Setter Property="Padding" Value="10,0" />
         <Setter Property="MinHeight" Value="28" />
         <Setter Property="Height" Value="28" />
@@ -288,49 +301,26 @@
         <Setter Property="VerticalAlignment" Value="Center" />
         <Setter Property="Background" Value="Transparent" />
         <Setter Property="BorderThickness" Value="0" />
-        <Setter Property="CornerRadius" Value="6" />
+        <Setter Property="CornerRadius" Value="12" />
         <Setter Property="FontSize" Value="12" />
     </Style>
-    
-    <Style Selector="Button.top-nav-item:pointerover, ToggleButton.top-nav-item:pointerover">
-        <Setter Property="Background" Value="{DynamicResource SkuaNavHoverBrush}" />
-        <Setter Property="Foreground" Value="{DynamicResource SkuaTextBrush}" />
-    </Style>
-
     <Style Selector="Button.top-nav-item /template/ ContentPresenter, ToggleButton.top-nav-item /template/ ContentPresenter">
         <Setter Property="TextElement.Foreground" Value="{DynamicResource SkuaTextBrush}" />
     </Style>
-
     <Style Selector="Button.top-nav-item /template/ ContentPresenter#PART_ContentPresenter, ToggleButton.top-nav-item /template/ ContentPresenter#PART_ContentPresenter">
         <Setter Property="Background" Value="Transparent" />
         <Setter Property="BorderThickness" Value="0" />
     </Style>
-    <Style Selector="Button.top-nav-item /template/ Border#PART_RootBorder, ToggleButton.top-nav-item /template/ Border#PART_RootBorder">
-        <Setter Property="Background" Value="Transparent" />
-        <Setter Property="BorderThickness" Value="0" />
-    </Style>
-
     <Style Selector="Button.top-nav-item:pointerover /template/ ContentPresenter#PART_ContentPresenter, ToggleButton.top-nav-item:pointerover /template/ ContentPresenter#PART_ContentPresenter">
         <Setter Property="Background" Value="{DynamicResource SkuaNavHoverBrush}" />
         <Setter Property="BorderThickness" Value="0" />
     </Style>
-    <Style Selector="Button.top-nav-item:pointerover /template/ Border#PART_RootBorder, ToggleButton.top-nav-item:pointerover /template/ Border#PART_RootBorder">
-        <Setter Property="Background" Value="{DynamicResource SkuaNavHoverBrush}" />
+    <Style Selector="Button.top-nav-item:pressed /template/ ContentPresenter#PART_ContentPresenter, ToggleButton.top-nav-item:pressed /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource SkuaPressedBrush}" />
         <Setter Property="BorderThickness" Value="0" />
     </Style>
 
-    <Style Selector="Button.top-nav-item /template/ Border#PART_HoverEffect">
-        <Setter Property="Opacity" Value="0" />
-    </Style>
-
-    <Style Selector="Button.top-nav-item:pointerover /template/ Border#PART_HoverEffect">
-        <Setter Property="Opacity" Value="0" />
-    </Style>
-
-    <Style Selector="Button.top-nav-item:focus-visible /template/ Border#PART_HoverEffect">
-        <Setter Property="Opacity" Value="0" />
-    </Style>
-    
+    <!-- Window title bar buttons (unchanged) -->
     <Style Selector="Button.titlebar">
         <Setter Property="Width" Value="36" />
         <Setter Property="Height" Value="32" />
@@ -340,22 +330,21 @@
         <Setter Property="BorderThickness" Value="0" />
         <Setter Property="Foreground" Value="{DynamicResource SkuaAccentBrush}" />
     </Style>
-
     <Style Selector="Button.titlebar:pointerover">
         <Setter Property="Background" Value="{DynamicResource SkuaNavHoverBrush}" />
     </Style>
     <Style Selector="Button.titlebar:pointerover /template/ ContentPresenter#PART_ContentPresenter">
         <Setter Property="Background" Value="{DynamicResource SkuaNavHoverBrush}" />
+        <Setter Property="BorderBrush" Value="Transparent" />
         <Setter Property="TextBlock.Foreground" Value="{DynamicResource SkuaAccentBrush}" />
     </Style>
-
     <Style Selector="Button.titlebar:pressed">
         <Setter Property="Background" Value="{DynamicResource SkuaSelectionBrush}" />
     </Style>
     <Style Selector="Button.titlebar:pressed /template/ ContentPresenter#PART_ContentPresenter">
         <Setter Property="Background" Value="{DynamicResource SkuaSelectionBrush}" />
+        <Setter Property="BorderBrush" Value="Transparent" />
     </Style>
-
     <Style Selector="Button.titlebar-close:pointerover">
         <Setter Property="Background" Value="{DynamicResource SkuaDangerHoverBrush}" />
         <Setter Property="Foreground" Value="{DynamicResource SkuaDangerForegroundBrush}" />
@@ -364,92 +353,55 @@
         <Setter Property="Background" Value="{DynamicResource SkuaDangerHoverBrush}" />
         <Setter Property="TextBlock.Foreground" Value="{DynamicResource SkuaDangerForegroundBrush}" />
     </Style>
-    
-    <Style Selector="Button.option-pill-action">
-        <Setter Property="Theme" Value="{x:Null}" />
-        <Setter Property="Background" Value="{DynamicResource SkuaSurfaceAltBrush}" />
-        <Setter Property="BorderBrush" Value="{DynamicResource SkuaBorderBrush}" />
-        <Setter Property="BorderThickness" Value="1,1,1,1" />
-        <Setter Property="CornerRadius" Value="0,6,6,0" />
-        <Setter Property="Foreground" Value="{DynamicResource SkuaTextBrush}" />
-        <Setter Property="HorizontalAlignment" Value="Stretch" />
-        <Setter Property="HorizontalContentAlignment" Value="Center" />
-        <Setter Property="VerticalContentAlignment" Value="Center" />
-        <Setter Property="Height" Value="32" />
-        <Setter Property="Padding" Value="12,0" />
-        <Setter Property="FontSize" Value="12" />
-        <Setter Property="FontWeight" Value="SemiBold" />
-    </Style>
 
-    <Style Selector="Button.option-pill-action /template/ ContentPresenter#PART_ContentPresenter">
-        <Setter Property="Background" Value="{DynamicResource SkuaSurfaceAltBrush}" />
-        <Setter Property="BorderBrush" Value="{DynamicResource SkuaBorderBrush}" />
-        <Setter Property="BorderThickness" Value="1" />
-        <Setter Property="CornerRadius" Value="0,6,6,0" />
-    </Style>
-    <Style Selector="Button.option-pill-action /template/ Border#PART_RootBorder">
-        <Setter Property="Background" Value="{DynamicResource SkuaSurfaceAltBrush}" />
-        <Setter Property="BorderBrush" Value="{DynamicResource SkuaBorderBrush}" />
-        <Setter Property="BorderThickness" Value="1" />
-        <Setter Property="CornerRadius" Value="0,6,6,0" />
-    </Style>
-
-    <Style Selector="Button.option-pill-action /template/ ContentPresenter">
-        <Setter Property="VerticalAlignment" Value="Center" />
-        <Setter Property="HorizontalAlignment" Value="Center" />
-        <Setter Property="TextElement.Foreground" Value="{DynamicResource SkuaTextBrush}" />
-    </Style>
-
-    <Style Selector="Button.option-pill-action-auto">
-        <Setter Property="HorizontalAlignment" Value="Right" />
-        <Setter Property="MinWidth" Value="64" />
-    </Style>
-
-    <Style Selector="Button.option-pill-action:pointerover /template/ ContentPresenter#PART_ContentPresenter">
-        <Setter Property="Background" Value="{DynamicResource SkuaNavHoverBrush}" />
-        <Setter Property="BorderBrush" Value="{DynamicResource SkuaBorderBrush}" />
-    </Style>
-    <Style Selector="Button.option-pill-action:pointerover /template/ Border#PART_RootBorder">
-        <Setter Property="Background" Value="{DynamicResource SkuaNavHoverBrush}" />
-        <Setter Property="BorderBrush" Value="{DynamicResource SkuaBorderBrush}" />
-    </Style>
-
-    <Style Selector="Button.option-pill-action:pressed /template/ ContentPresenter#PART_ContentPresenter">
-        <Setter Property="Background" Value="{DynamicResource SkuaHoverPressedBrush}" />
-    </Style>
-    <Style Selector="Button.option-pill-action:pressed /template/ Border#PART_RootBorder">
-        <Setter Property="Background" Value="{DynamicResource SkuaHoverPressedBrush}" />
-    </Style>
-
+    <!-- Option action buttons: the secondary look, without the Fluent control theme -->
     <Style Selector="Button.option-action-button">
         <Setter Property="Theme" Value="{x:Null}" />
-        <Setter Property="Height" Value="34" />
-        <Setter Property="MinHeight" Value="34" />
-        <Setter Property="MaxHeight" Value="34" />
+        <Setter Property="Height" Value="32" />
+        <Setter Property="MinHeight" Value="32" />
+        <Setter Property="MaxHeight" Value="32" />
         <Setter Property="Padding" Value="12,0" />
         <Setter Property="FontSize" Value="12" />
         <Setter Property="FontWeight" Value="SemiBold" />
-        <Setter Property="Background" Value="{DynamicResource SkuaSurfaceBrush}" />
+        <Setter Property="Background" Value="{DynamicResource SkuaSurfaceAltBrush}" />
         <Setter Property="BorderBrush" Value="{DynamicResource SkuaBorderBrush}" />
         <Setter Property="BorderThickness" Value="1" />
-        <Setter Property="CornerRadius" Value="6" />
+        <Setter Property="CornerRadius" Value="12" />
         <Setter Property="Foreground" Value="{DynamicResource SkuaTextBrush}" />
         <Setter Property="HorizontalContentAlignment" Value="Center" />
         <Setter Property="VerticalContentAlignment" Value="Center" />
     </Style>
-
     <Style Selector="Button.option-action-button:pointerover">
         <Setter Property="Background" Value="{DynamicResource SkuaNavHoverBrush}" />
-        <Setter Property="BorderBrush" Value="{DynamicResource SkuaBorderBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource SkuaBorderStrongBrush}" />
+        <Setter Property="Foreground" Value="{DynamicResource SkuaTextBrush}" />
+    </Style>
+    <Style Selector="Button.option-action-button:pressed">
+        <Setter Property="Background" Value="{DynamicResource SkuaPressedBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource SkuaBorderStrongBrush}" />
         <Setter Property="Foreground" Value="{DynamicResource SkuaTextBrush}" />
     </Style>
 
-    <Style Selector="Button.option-action-button:pressed">
-        <Setter Property="Background" Value="{DynamicResource SkuaHoverPressedBrush}" />
+    <!-- Disabled: keep each button's own colours (Fluent would swap in its grey) and fade once, via the
+         generic Button:disabled presenter opacity above. -->
+    <Style Selector="Button.skua-button:disabled /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource SkuaSurfaceAltBrush}" />
         <Setter Property="BorderBrush" Value="{DynamicResource SkuaBorderBrush}" />
         <Setter Property="Foreground" Value="{DynamicResource SkuaTextBrush}" />
+    </Style>
+    <Style Selector="Button.skua-primary:disabled /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource SkuaAccentBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource SkuaAccentBrush}" />
+        <Setter Property="Foreground" Value="{DynamicResource SkuaAccentForegroundBrush}" />
+    </Style>
+    <Style Selector="Button.skua-danger:disabled /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource SkuaDangerBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource SkuaDangerBrush}" />
+        <Setter Property="Foreground" Value="{DynamicResource SkuaDangerForegroundBrush}" />
+    </Style>
+    <Style Selector="Button.skua-danger-soft:disabled /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource SkuaDangerTintBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource SkuaDangerSoftBorderBrush}" />
+        <Setter Property="Foreground" Value="{DynamicResource SkuaDangerBrush}" />
     </Style>
 </Styles>
-
-
-

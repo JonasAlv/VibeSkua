@@ -5,6 +5,12 @@
              x:Class="Skua.Shared.Avalonia.Controls.Shell.WindowTitleBar">
   <Grid Height="32"
         Background="{DynamicResource SkuaSurfaceAltBrush}">
+    <Border Grid.ColumnSpan="3"
+            Background="{DynamicResource SkuaAccentBrush}"
+            IsVisible="{Binding UseAccentBackground, ElementName=Root}"
+            IsHitTestVisible="False" />
+    <Image x:Name="ArtworkImage" Grid.ColumnSpan="3" Stretch="UniformToFill" Opacity="0.62" IsHitTestVisible="False" />
+    <Border Grid.ColumnSpan="3" Background="{DynamicResource SkuaTitleBarOverlayBrush}" IsHitTestVisible="False" />
     <Grid.ColumnDefinitions>
       <ColumnDefinition Width="Auto" />
       <ColumnDefinition Width="*" />
@@ -28,25 +34,26 @@
              VerticalAlignment="Center" />
     </Grid>
 
-    <Viewbox Grid.Column="1"
-             Margin="6,0,0,0"
-             HorizontalAlignment="Left">
-      <TextBlock Text="{Binding TitleText, ElementName=Root}"
-                 Classes="titlebar-title" />
-    </Viewbox>
+    <TextBlock x:Name="TitleTextBlock"
+               Grid.Column="1"
+               Margin="6,0,8,0"
+               VerticalAlignment="Center"
+               Text="{Binding TitleText, ElementName=Root}"
+               TextTrimming="CharacterEllipsis"
+               Classes="titlebar-title" />
 
     <StackPanel Grid.Column="2"
                 Height="28"
                 VerticalAlignment="Top"
                 Orientation="Horizontal">
       <Button x:Name="MinimizeButton"
-              Classes="titlebar flat"
+              Classes="titlebar"
               Content="{materialIcons:MaterialIconExt Kind=WindowMinimize, IconSize=12}" />
       <Button x:Name="MaximizeButton"
-              Classes="titlebar flat"
+              Classes="titlebar"
               Content="{materialIcons:MaterialIconExt Kind=WindowMaximize, IconSize=12}" />
       <Button x:Name="CloseButton"
-              Classes="titlebar flat titlebar-close"
+              Classes="titlebar titlebar-close"
               Content="{materialIcons:MaterialIconExt Kind=WindowClose, IconSize=12}" />
     </StackPanel>
   </Grid>

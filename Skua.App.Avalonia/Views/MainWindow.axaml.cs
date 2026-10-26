@@ -61,6 +61,7 @@ public partial class MainWindow : Window
         _startup = Ioc.Default.GetRequiredService<SkuaStartupHandler>();
         
         DataContext = _mainViewModel;
+        Skua.Shared.Avalonia.Controls.Shell.WindowTitleBar.SetArtworkPath(Ioc.Default.GetRequiredService<ISettingsService>().GetShared().TitleBarArtworkPath);
         MainMenuBar.DataContext = _mainMenuVm;
         ConfigureMainMenu();
         RegisterLifecycleHandlers();

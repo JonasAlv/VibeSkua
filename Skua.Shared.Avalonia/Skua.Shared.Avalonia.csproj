@@ -13,6 +13,7 @@
       <PackageReference Include="Avalonia.Themes.Fluent" />
       <PackageReference Include="Material.Avalonia" />
       <PackageReference Include="Material.Icons.Avalonia" />
+      <PackageReference Include="AnimatedImage.Avalonia" />
       <PackageReference Include="Velopack" />
     </ItemGroup>
 

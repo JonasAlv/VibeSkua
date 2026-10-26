@@ -97,6 +97,15 @@
               </Button>
             </Grid>
 
+            <StackPanel Spacing="3">
+              <CheckBox Content="Use theme accent on the main title bar"
+                        IsChecked="{Binding UseAccentOnMainTitleBar, Mode=TwoWay}" />
+              <TextBlock Text="When enabled, the main VibeSkua window follows the active built-in or custom theme. Turn it off to keep the title bar's normal surface color."
+                         FontSize="11"
+                         Foreground="{DynamicResource SkuaMutedTextBrush}"
+                         TextWrapping="Wrap" />
+            </StackPanel>
+
             <Border Height="1" Background="{DynamicResource SkuaBorderBrush}" />
 
             <!-- Accent Color Settings -->
@@ -128,6 +137,16 @@
                 IsVisible="{Binding SelectedTab, Converter={x:Static ObjectConverters.Equal}, ConverterParameter='Custom Backgrounds'}">
           <StackPanel Spacing="12">
             <StackPanel Spacing="2">
+              <TextBlock Text="Window Appearance" FontWeight="Bold" FontSize="13" Foreground="{DynamicResource SkuaTextBrush}" />
+              <TextBlock Text="Choose artwork for the top title bar. Your existing color theme controls the rest of the window." FontSize="11" Foreground="{DynamicResource SkuaMutedTextBrush}" TextWrapping="Wrap" />
+            </StackPanel>
+            <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8">
+              <TextBox Grid.Column="0" IsReadOnly="True" Text="{Binding BackgroundTheme.TitleBarArtworkPath}" Watermark="No title bar artwork selected" VerticalContentAlignment="Center" />
+              <Button Grid.Column="1" Classes="skua-button" Command="{Binding BackgroundTheme.BrowseTitleBarArtworkCommand}">Choose Image</Button>
+              <Button Grid.Column="2" Classes="skua-button" Command="{Binding BackgroundTheme.ClearTitleBarArtworkCommand}">Clear</Button>
+            </Grid>
+            <Border Height="1" Background="{DynamicResource SkuaBorderBrush}" />
+            <StackPanel Spacing="2">
               <TextBlock Text="Custom Background Images"
                          FontWeight="Bold"
                          FontSize="13"
@@ -147,6 +166,7 @@
               <ComboBox Grid.Row="0"
                         Grid.Column="0"
                         Height="34"
+                        HorizontalAlignment="Stretch"
                         ItemsSource="{Binding AvailableBackgrounds}"
                         SelectedItem="{Binding SelectedBackground}" />
               <Button Grid.Row="0"
@@ -170,7 +190,7 @@
                 </StackPanel>
               </Button>
 
-              <Button Grid.Row="1"
+              <Button HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Grid.Row="1"
                       Grid.Column="0"
                       Classes="skua-button"
                       Height="34"

@@ -2,6 +2,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
+using Avalonia.Media;
 using Avalonia.Platform;
 using Avalonia.Styling;
 using Avalonia.Threading;
@@ -26,12 +27,47 @@ namespace Skua.App.Avalonia;
 public partial class App : Application
 {
     private static int _exceptionDialogShown;
+    private int _parentHostProcessId;
+    private DispatcherTimer? _hostThemeSyncTimer;
+    private AvaloniaThemeService? _pendingHostThemeSync;
 
     public override void Initialize()
     {
         AvaloniaXamlLoader.Load(this);
     }
 
+#if IS_WINDOWS
+    [System.Runtime.InteropServices.DllImport("user32.dll", EntryPoint = "SetParent", SetLastError = true)]
+    public static extern IntPtr SetParent_Native(IntPtr hWndChild, IntPtr hWndNewParent);
+
+    [System.Runtime.InteropServices.DllImport("user32.dll", EntryPoint = "GetWindowLong", SetLastError = true)]
+    public static extern int GetWindowLong_Native(IntPtr hWnd, int nIndex);
+
+    [System.Runtime.InteropServices.DllImport("user32.dll", EntryPoint = "SetWindowLong", SetLastError = true)]
+    public static extern int SetWindowLong_Native(IntPtr hWnd, int nIndex, int dwNewLong);
+
+    [System.Runtime.InteropServices.DllImport("user32.dll", EntryPoint = "GetClientRect")]
+    public static extern bool GetClientRect_Native(IntPtr hWnd, out RECT lpRect);
+
+    [System.Runtime.InteropServices.DllImport("user32.dll", EntryPoint = "MoveWindow", SetLastError = true)]
+    public static extern bool MoveWindow_Native(IntPtr hWnd, int X, int Y, int nWidth, int nHeight, bool bRepaint);
+
+    [System.Runtime.InteropServices.DllImport("user32.dll", EntryPoint = "SetWindowPos", SetLastError = true)]
+    public static extern bool SetWindowPos_Native(IntPtr hWnd, IntPtr hWndInsertAfter, int X, int Y, int cx, int cy, uint uFlags);
+
+    [System.Runtime.InteropServices.DllImport("user32.dll", EntryPoint = "PostMessage", SetLastError = true)]
+    [return: System.Runtime.InteropServices.MarshalAs(System.Runtime.InteropServices.UnmanagedType.Bool)]
+    public static extern bool PostMessage_Native(IntPtr hWnd, uint Msg, IntPtr wParam, IntPtr lParam);
+
+    [System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential)]
+    public struct RECT
+    {
+        public int Left;
+        public int Top;
+        public int Right;
+        public int Bottom;
+    }
+#else
     [System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential)]
     public struct XSetWindowAttributes
     {
@@ -75,8 +111,9 @@ public partial class App : Application
 
     [System.Runtime.InteropServices.DllImport("libX11.so.6")]
     public static extern int XFlush(IntPtr display);
+#endif
 
-    public static System.Threading.Mutex AppMutex;
+    public static System.Threading.Mutex? AppMutex;
 
     public override void OnFrameworkInitializationCompleted()
     {
@@ -150,6 +187,12 @@ public partial class App : Application
                 int.TryParse(args[i + 1], out hostPid);
             }
         }
+
+        _parentHostProcessId = hasEmbedFlag ? hostPid : 0;
+        if (_parentHostProcessId > 0)
+            Skua.Shared.Avalonia.Controls.Shell.WindowTitleBar.ArtworkPathChanged += OnTitleBarArtworkPathChanged;
+        if (_parentHostProcessId > 0 && themeService is AvaloniaThemeService initialTheme)
+            QueueHostThemeSync(initialTheme);
 
         if (!hasEmbedFlag)
         {
@@ -308,6 +351,12 @@ public partial class App : Application
                 SetupTrayIcon();
                 Views.TabbedHostWindow masterWindow = new(clientArgs) { WindowStartupLocation = global::Avalonia.Controls.WindowStartupLocation.CenterScreen };
                 desktop.MainWindow = masterWindow;
+                if (themeService is AvaloniaThemeService activeTheme)
+                    ThemeResourceApplicator.ApplyTitleBarTheme(masterWindow, activeTheme.IsDarkTheme,
+                        activeTheme.UseAccentOnMainTitleBar ? activeTheme.PrimaryColor : (Color?)null,
+                        activeTheme.UseAccentOnMainTitleBar ? activeTheme.PrimaryForegroundColor : (Color?)null);
+                else
+                    ThemeResourceApplicator.ApplyTitleBarTheme(masterWindow, themeService.IsDarkTheme);
             }
             desktop.Exit += OnDesktopExit;
         }
@@ -457,9 +506,10 @@ public partial class App : Application
         if (RequestedThemeVariant != targetVariant)
             RequestedThemeVariant = targetVariant;
 
-        ThemeResourceApplicator.ApplyTitleBarTheme(this, themeService.IsDarkTheme);
         if (themeService is AvaloniaThemeService ats)
         {
+            // Keep accents on secondary windows; the checkbox only controls the main tab host caption.
+            ThemeResourceApplicator.ApplyTitleBarTheme(this, themeService.IsDarkTheme, ats.PrimaryColor, ats.PrimaryForegroundColor);
             ThemeResourceApplicator.ApplyAccentBrushes(
                 this,
                 ats.PrimaryColor,
@@ -467,6 +517,13 @@ public partial class App : Application
                 ats.SecondaryColor,
                 ats.SecondaryForegroundColor,
                 isDarkTheme: themeService.IsDarkTheme);
+            if (!ats.UseAccentOnMainTitleBar &&
+                ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop &&
+                desktop.MainWindow is Views.TabbedHostWindow hostWindow)
+            {
+                ThemeResourceApplicator.ApplyTitleBarTheme(hostWindow, ats.IsDarkTheme);
+            }
+            QueueHostThemeSync(ats);
         }
         else
         {
@@ -487,6 +544,9 @@ public partial class App : Application
 
         if (themeService is AvaloniaThemeService ats)
         {
+            // Scheme edits can change the primary palette without changing the base theme.
+            // Keep accents on secondary windows and control only the main host caption with the checkbox.
+            ThemeResourceApplicator.ApplyTitleBarTheme(this, isDark, ats.PrimaryColor, ats.PrimaryForegroundColor);
             ThemeResourceApplicator.ApplyAccentBrushes(
                 this,
                 ats.PrimaryColor,
@@ -494,6 +554,13 @@ public partial class App : Application
                 ats.SecondaryColor,
                 ats.SecondaryForegroundColor,
                 isDarkTheme: isDark);
+            if (!ats.UseAccentOnMainTitleBar &&
+                ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop &&
+                desktop.MainWindow is Views.TabbedHostWindow hostWindow)
+            {
+                ThemeResourceApplicator.ApplyTitleBarTheme(hostWindow, isDark);
+            }
+            QueueHostThemeSync(ats);
             return;
         }
 
@@ -510,9 +577,9 @@ public partial class App : Application
     {
         bool isDark = themeService.IsDarkTheme;
         RequestedThemeVariant = isDark ? ThemeVariant.Dark : ThemeVariant.Light;
-        ThemeResourceApplicator.ApplyTitleBarTheme(this, isDark);
         if (themeService is AvaloniaThemeService ats)
         {
+            ThemeResourceApplicator.ApplyTitleBarTheme(this, isDark, ats.PrimaryColor, ats.PrimaryForegroundColor);
             ThemeResourceApplicator.ApplyAccentBrushes(
                 this,
                 ats.PrimaryColor,
@@ -525,6 +592,120 @@ public partial class App : Application
 
         string? accentHex = themeService.SelectedColor?.ToString();
         ThemeResourceApplicator.ApplyAccentBrushes(this, accentHex, isDarkTheme: isDark);
+    }
+
+    /// <summary>
+    /// Sends the selected title-bar artwork path to the separate main tab-host process.
+    /// The image is updated independently of palette changes so other clients cannot overwrite it
+    /// with an older in-memory settings value.
+    /// </summary>
+    private void OnTitleBarArtworkPathChanged(string? path)
+    {
+        if (_parentHostProcessId <= 0 || !OperatingSystem.IsWindows())
+            return;
+
+        string encodedPath = Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(path ?? string.Empty));
+        _ = Task.Run(() =>
+        {
+            for (int attempt = 0; attempt < 5; attempt++)
+            {
+                try
+                {
+                    using System.IO.Pipes.NamedPipeClientStream pipe = new(".", "VibeSkuaTabHostPipe", System.IO.Pipes.PipeDirection.Out);
+                    pipe.Connect(500);
+                    using System.IO.StreamWriter writer = new(pipe);
+                    writer.WriteLine("ARTWORK|" + encodedPath);
+                    writer.Flush();
+                    return;
+                }
+                catch
+                {
+                    if (attempt < 4)
+                        System.Threading.Thread.Sleep(100);
+                }
+            }
+        });
+    }
+
+    /// <summary>
+    /// Debounces live palette changes and sends the latest display colors to the parent tab host.
+    /// Embedded clients run in separate processes, so their theme events cannot reach the host directly.
+    /// </summary>
+    private void QueueHostThemeSync(AvaloniaThemeService themeService)
+    {
+        if (_parentHostProcessId <= 0 || !OperatingSystem.IsWindows())
+            return;
+
+        _pendingHostThemeSync = themeService;
+        if (_hostThemeSyncTimer is null)
+        {
+            DispatcherTimer syncTimer = new() { Interval = TimeSpan.FromMilliseconds(100) };
+            syncTimer.Tick += (_, _) =>
+            {
+                syncTimer.Stop();
+                AvaloniaThemeService? latestTheme = _pendingHostThemeSync;
+                _pendingHostThemeSync = null;
+                if (latestTheme is not null)
+                    SendHostThemeSnapshot(latestTheme);
+            };
+            _hostThemeSyncTimer = syncTimer;
+        }
+
+        DispatcherTimer timer = _hostThemeSyncTimer!;
+        timer.Stop();
+        timer.Start();
+    }
+
+    /// <summary>
+    /// Sends the live, already-adjusted theme through the existing local tab-host pipe.
+    /// The snapshot is display-only and is not persisted by the host process.
+    /// </summary>
+    private void SendHostThemeSnapshot(AvaloniaThemeService themeService)
+    {
+        try
+        {
+            ISettingsService settingsService = Ioc.Default.GetRequiredService<ISettingsService>();
+            ThemeItem? savedTheme = ThemeItem.FromString(settingsService.Get<string>("CurrentTheme"));
+            ThemeItem displaySnapshot = new()
+            {
+                Name = savedTheme?.Name ?? "Skua",
+                IsDarkTheme = themeService.IsDarkTheme,
+                PrimaryColor = themeService.PrimaryColor,
+                SecondaryColor = themeService.SecondaryColor,
+                PrimaryForegroundColor = themeService.PrimaryForegroundColor,
+                SecondaryForegroundColor = themeService.SecondaryForegroundColor,
+                UseColorAdjustment = false,
+                DesiredContrastRatio = themeService.DesiredContrastRatio,
+                ContrastValue = themeService.ContrastValue?.ToString() ?? "Medium",
+                ColorSelectionValue = themeService.ColorSelectionValue?.ToString() ?? "All"
+            };
+
+            string message = "THEME|" + themeService.UseAccentOnMainTitleBar.ToString() + "|" + displaySnapshot.ConvertToString();
+            _ = Task.Run(() =>
+            {
+                for (int attempt = 0; attempt < 5; attempt++)
+                {
+                    try
+                    {
+                        using System.IO.Pipes.NamedPipeClientStream pipe = new(".", "VibeSkuaTabHostPipe", System.IO.Pipes.PipeDirection.Out);
+                        pipe.Connect(500);
+                        using System.IO.StreamWriter writer = new(pipe);
+                        writer.WriteLine(message);
+                        writer.Flush();
+                        return;
+                    }
+                    catch
+                    {
+                        if (attempt < 4)
+                            System.Threading.Thread.Sleep(100);
+                    }
+                }
+            });
+        }
+        catch
+        {
+            // Theme synchronization is best effort; the embedded client remains usable if the host is closing.
+        }
     }
 
     private void TrayIcon_Clicked(object? sender, EventArgs e)

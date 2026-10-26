@@ -54,7 +54,7 @@
               Padding="14,12">
         <StackPanel Spacing="6">
           <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center" Margin="0,0,0,2">
-            <materialIcons:MaterialIcon Kind="SwordCross" Width="15" Height="15" Foreground="#10B981" />
+            <materialIcons:MaterialIcon Kind="SwordCross" Width="15" Height="15" Foreground="{DynamicResource SkuaSuccessBrush}" />
             <TextBlock Text="Solo Equipment" FontWeight="Bold" FontSize="13" Foreground="{DynamicResource SkuaTextBrush}" VerticalAlignment="Center" />
           </StackPanel>
 
@@ -90,7 +90,7 @@
               Padding="14,12">
         <StackPanel Spacing="6">
           <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center" Margin="0,0,0,2">
-            <materialIcons:MaterialIcon Kind="SproutOutline" Width="15" Height="15" Foreground="#F59E0B" />
+            <materialIcons:MaterialIcon Kind="SproutOutline" Width="15" Height="15" Foreground="{DynamicResource SkuaWarningBrush}" />
             <TextBlock Text="Farm Equipment" FontWeight="Bold" FontSize="13" Foreground="{DynamicResource SkuaTextBrush}" VerticalAlignment="Center" />
           </StackPanel>
 

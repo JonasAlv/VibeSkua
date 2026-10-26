@@ -30,6 +30,7 @@
                                VerticalAlignment="Center"/>
                     <Button Classes="skua-button"
                             x:Name="RefreshBtn"
+                            MinWidth="112"
                             DockPanel.Dock="Right"
                             HorizontalAlignment="Right"
                             Height="32"
@@ -43,7 +44,7 @@
                 </DockPanel>
 
                 <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
-                    <ItemsControl x:Name="CategoriesControl">
+                    <ItemsControl x:Name="CategoriesControl" Grid.IsSharedSizeScope="True">
                         <ItemsControl.ItemTemplate>
                             <DataTemplate x:DataType="local:QuestCategory">
                                 <Border Background="{DynamicResource SkuaSurfaceAltBrush}"
@@ -76,7 +77,14 @@
                                         <ItemsControl ItemsSource="{Binding Quests}">
                                             <ItemsControl.ItemTemplate>
                                                 <DataTemplate x:DataType="local:QuestItem">
-                                                    <Grid Margin="0,3" ColumnDefinitions="45,*,Auto,Auto">
+                                                    <!-- Shared columns keep the status badges aligned whether or not a row has a Start button -->
+                                                    <Grid Margin="0,3">
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="45" />
+                                                            <ColumnDefinition Width="*" />
+                                                            <ColumnDefinition Width="Auto" SharedSizeGroup="QuestStatus" />
+                                                            <ColumnDefinition Width="Auto" SharedSizeGroup="QuestStart" />
+                                                        </Grid.ColumnDefinitions>
                                                         <TextBlock Grid.Column="0"
                                                                    Text="{Binding ID}"
                                                                    Foreground="{DynamicResource SkuaMutedTextBrush}"

@@ -1,79 +1,84 @@
 @echo off
-setlocal
+setlocal EnableExtensions
+
+rem Run a temporary copy so git pull can safely update this script on disk.
+if defined BUILDPROJECT_RUNNING goto :BuildRunner
+
+set "BUILDPROJECT_ROOT=%~dp0"
+if "%~1"=="" set "BUILDPROJECT_PAUSE=1"
+set "BUILDPROJECT_RUNNING=1"
+set "BUILDPROJECT_TEMP=%TEMP%\BuildProject-%RANDOM%-%RANDOM%.bat"
+
+copy /Y "%~f0" "%BUILDPROJECT_TEMP%" >nul
+if errorlevel 1 (
+    echo Failed to create a temporary copy of the build script.
+    pause
+    exit /b 1
+)
+
+call "%BUILDPROJECT_TEMP%"
+set "BUILDPROJECT_EXIT=%ERRORLEVEL%"
+del "%BUILDPROJECT_TEMP%" >nul 2>&1
+exit /b %BUILDPROJECT_EXIT%
+
+:BuildRunner
+pushd "%BUILDPROJECT_ROOT%" || goto :Failure
+
+echo Updating repository...
+git pull --ff-only
+if errorlevel 1 (
+    echo Failed to pull updates. Resolve any Git issues before building.
+    goto :Failure
+)
 
 echo Closing any running instances...
-taskkill /IM VibeSkua.exe /F >nul 2>&1
-taskkill /IM VibeSkua.Manager.exe /F >nul 2>&1
-taskkill /IM Skua.exe /F >nul 2>&1
-taskkill /IM Skua.Manager.exe /F >nul 2>&1
+for %%P in (VibeSkua.exe VibeSkua.Manager.exe Skua.exe Skua.Manager.exe) do taskkill /IM "%%P" /F >nul 2>&1
 
-echo Preparing Build folder...
-if not exist "%~dp0Build" mkdir "%~dp0Build"
+if not exist "Build" (
+    echo Preparing Build folder...
+    mkdir "Build"
+    if errorlevel 1 goto :Failure
+)
 
-if exist "%~dp0Skua.AS3\skua\bin\skua.swf" (
-    echo Skipping AS3 build ^(skua.swf already exists^). Delete the file to force a rebuild.
+if exist "Skua.AS3\skua\bin\skua.swf" (
+    echo Skipping AS3 build because skua.swf already exists. Delete it to force a rebuild.
 ) else (
     echo Building AS3 Client...
     set "MXMLC_PATH="
     if exist "%USERPROFILE%\Downloads\apache-flex-sdk-4.16.1-bin\bin\mxmlc.bat" set "MXMLC_PATH=%USERPROFILE%\Downloads\apache-flex-sdk-4.16.1-bin\bin\mxmlc.bat"
+
     if defined MXMLC_PATH (
-        powershell -ExecutionPolicy Bypass -File "%~dp0Skua.AS3\compile-as3.ps1" -MxmlcPath "%MXMLC_PATH%"
+        powershell -NoProfile -ExecutionPolicy Bypass -File "Skua.AS3\compile-as3.ps1" -MxmlcPath "%MXMLC_PATH%"
     ) else (
-        powershell -ExecutionPolicy Bypass -File "%~dp0Skua.AS3\compile-as3.ps1"
+        powershell -NoProfile -ExecutionPolicy Bypass -File "Skua.AS3\compile-as3.ps1"
     )
-    if not exist "%~dp0Skua.AS3\skua\bin\skua.swf" (
+
+    if errorlevel 1 (
         echo Failed to build AS3 client.
-        pause
-        exit /b 1
+        goto :Failure
+    )
+    if not exist "Skua.AS3\skua\bin\skua.swf" (
+        echo AS3 build completed without producing skua.swf.
+        goto :Failure
     )
 )
 
-echo Building App (Fast Dev Build)...
-dotnet build .\Skua.App.Avalonia\Skua.App.Avalonia.csproj -c Release
-if %ERRORLEVEL% NEQ 0 (
-    echo Failed to build App.
-    if "%~1"=="" pause
-    exit /b %ERRORLEVEL%
-)
+echo Restoring solution once for faster project builds...
+dotnet restore "Skua.sln"
+if errorlevel 1 goto :Failure
 
-echo Building Manager (Fast Dev Build)...
-dotnet build .\Skua.Manager.Avalonia\Skua.Manager.Avalonia.csproj -c Release
-if %ERRORLEVEL% NEQ 0 (
-    echo Failed to build Manager.
-    if "%~1"=="" pause
-    exit /b %ERRORLEVEL%
-)
-
-echo Building DailyTracker Plugin (Fast Dev Build)...
-dotnet build .\Skua.Plugin.DailyTracker\Skua.Plugin.DailyTracker.csproj -c Release
-if %ERRORLEVEL% NEQ 0 (
-    echo Failed to build DailyTracker Plugin.
-    if "%~1"=="" pause
-    exit /b %ERRORLEVEL%
-)
-
-echo Building ButlerV5 Plugin (Fast Dev Build)...
-dotnet build .\Skua.Plugin.ButlerV5\Skua.Plugin.ButlerV5.csproj -c Release
-if %ERRORLEVEL% NEQ 0 (
-    echo Failed to build ButlerV5 Plugin.
-    if "%~1"=="" pause
-    exit /b %ERRORLEVEL%
-)
-
-echo Building Cosmetics Plugin (Fast Dev Build)...
-dotnet build .\Skua.Plugin.Cosmetics\Skua.Plugin.Cosmetics.csproj -c Release
-if %ERRORLEVEL% NEQ 0 (
-    echo Failed to build Cosmetics Plugin.
-    if "%~1"=="" pause
-    exit /b %ERRORLEVEL%
-)
+call :BuildProject "Skua.App.Avalonia\Skua.App.Avalonia.csproj" "App" || goto :Failure
+call :BuildProject "Skua.Manager.Avalonia\Skua.Manager.Avalonia.csproj" "Manager" || goto :Failure
+call :BuildProject "Skua.Plugin.DailyTracker\Skua.Plugin.DailyTracker.csproj" "DailyTracker Plugin" || goto :Failure
+call :BuildProject "Skua.Plugin.ButlerV5\Skua.Plugin.ButlerV5.csproj" "ButlerV5 Plugin" || goto :Failure
+call :BuildProject "Skua.Plugin.Cosmetics\Skua.Plugin.Cosmetics.csproj" "Cosmetics Plugin" || goto :Failure
 
 echo Packaging and organizing output to match WPF release structure...
-powershell -ExecutionPolicy Bypass -File "%~dp0package-build.ps1"
-if %ERRORLEVEL% NEQ 0 (
-    echo Failed to package build output.
-    if "%~1"=="" pause
-    exit /b %ERRORLEVEL%
+powershell -NoProfile -ExecutionPolicy Bypass -File "package-build.ps1"
+if errorlevel 1 goto :Failure
+if not exist "Build\VibeSkua.exe" (
+    echo Build completed without producing Build\VibeSkua.exe.
+    goto :Failure
 )
 
 echo.
@@ -81,4 +86,24 @@ echo ==========================================================
 echo Fast Build complete! The application is located in the Build folder.
 echo You can run VibeSkua.Manager.exe or VibeSkua.exe from there.
 echo ==========================================================
-if "%~1"=="" pause
+echo Launching VibeSkua...
+start "" "Build\VibeSkua.exe"
+if errorlevel 1 goto :Failure
+set "BUILD_EXIT_CODE=0"
+goto :Finish
+
+:BuildProject
+echo Building %~2 (Fast Dev Build)...
+dotnet build "%~1" -c Release --no-restore
+if errorlevel 1 exit /b 1
+exit /b 0
+
+:Failure
+set "BUILD_EXIT_CODE=1"
+echo.
+echo Fast Build failed. Check the output above for details.
+
+:Finish
+if defined BUILDPROJECT_PAUSE pause
+popd
+exit /b %BUILD_EXIT_CODE%

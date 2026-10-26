@@ -3,7 +3,6 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:materialIcons="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
-             xmlns:materialAssists="clr-namespace:Material.Styles.Assists;assembly=Material.Styles"
              xmlns:managerUc="clr-namespace:Skua.Manager.Avalonia.UserControls"
              xmlns:uc="clr-namespace:Skua.Manager.Avalonia.UserControls"
              x:Class="Skua.Manager.Avalonia.UserControls.AccountGridTile"
@@ -65,7 +64,6 @@
         <Grid RowDefinitions="Auto,Auto" ColumnDefinitions="Auto,*,Auto">
             <CheckBox Grid.Row="0"
                       Grid.Column="0"
-                      materialAssists:SelectionControlAssist.Size="18"
                       IsChecked="{Binding UseCheck}"
                       VerticalAlignment="Center"
                       Padding="0"

@@ -80,7 +80,7 @@
                         ToolTip.Tip="Stop queue completely"
                         Command="{Binding StopQueueCommand}">
                     <StackPanel Orientation="Horizontal" Spacing="6">
-                        <materialIcons:MaterialIcon Kind="StopCircleOutline" Width="16" Height="16" Foreground="#FF5555" />
+                        <materialIcons:MaterialIcon Kind="StopCircleOutline" Width="16" Height="16" Foreground="{DynamicResource SkuaDangerBrush}" />
                         <TextBlock Text="Stop Queue" FontWeight="Bold" FontSize="12" VerticalAlignment="Center" />
                     </StackPanel>
                 </Button>

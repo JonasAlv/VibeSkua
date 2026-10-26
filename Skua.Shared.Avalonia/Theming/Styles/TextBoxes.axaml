@@ -10,9 +10,10 @@
     </Style>
 
     <!-- Sleek, Modern Neutral Dark Base TextBox with crisp high-visibility borders and centered text -->
+    <!-- Height only (MinHeight 0 overrides Fluent's 32): a view's own Height always wins -->
     <Style Selector="TextBox">
-        <Setter Property="Height" Value="34" />
-        <Setter Property="MinHeight" Value="34" />
+        <Setter Property="Height" Value="32" />
+        <Setter Property="MinHeight" Value="0" />
         <Setter Property="Padding" Value="10,0" />
         <Setter Property="CornerRadius" Value="6" />
         <Setter Property="Background" Value="{DynamicResource SkuaSurfaceAltBrush}" />
@@ -33,7 +34,7 @@
         </Setter>
     </Style>
 
-    <Style Selector="TextBox /template/ Border#PART_RootBorder, TextBox /template/ Border#borderElement">
+    <Style Selector="TextBox /template/ Border#PART_BorderElement">
         <Setter Property="CornerRadius" Value="6" />
         <Setter Property="BorderThickness" Value="1" />
         <Setter Property="BorderBrush" Value="{DynamicResource SkuaBorderBrush}" />
@@ -61,13 +62,21 @@
         <Setter Property="Padding" Value="0" />
     </Style>
 
-    <!-- Hover & Focus States -->
+    <!-- Hover changes the border only, so a field never looks like a button; focus gets the accent border -->
     <Style Selector="TextBox:pointerover">
-        <Setter Property="Background" Value="{DynamicResource SkuaNavHoverBrush}" />
-        <Setter Property="BorderBrush" Value="{DynamicResource SkuaBorderBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource SkuaBorderStrongBrush}" />
     </Style>
-    <Style Selector="TextBox:pointerover /template/ Border#PART_RootBorder, TextBox:pointerover /template/ Border#borderElement">
-        <Setter Property="Background" Value="{DynamicResource SkuaNavHoverBrush}" />
+    <Style Selector="TextBox:pointerover /template/ Border#PART_BorderElement">
+        <Setter Property="Background" Value="{DynamicResource SkuaSurfaceAltBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource SkuaBorderStrongBrush}" />
+    </Style>
+    <!-- Disabled: same colours as at rest (Fluent would swap in its grey), faded like every other control -->
+    <Style Selector="TextBox:disabled">
+        <Setter Property="Opacity" Value="0.45" />
+        <Setter Property="Foreground" Value="{DynamicResource SkuaTextBrush}" />
+    </Style>
+    <Style Selector="TextBox:disabled /template/ Border#PART_BorderElement">
+        <Setter Property="Background" Value="{DynamicResource SkuaSurfaceAltBrush}" />
         <Setter Property="BorderBrush" Value="{DynamicResource SkuaBorderBrush}" />
     </Style>
 
@@ -75,15 +84,24 @@
         <Setter Property="Background" Value="{DynamicResource SkuaSurfaceBrush}" />
         <Setter Property="BorderBrush" Value="{DynamicResource SkuaAccentBrush}" />
     </Style>
-    <Style Selector="TextBox:focus /template/ Border#PART_RootBorder, TextBox:focus /template/ Border#borderElement, TextBox:focus-within /template/ Border#PART_RootBorder, TextBox:focus-within /template/ Border#borderElement">
+    <Style Selector="TextBox:focus /template/ Border#PART_BorderElement, TextBox:focus-within /template/ Border#PART_BorderElement">
         <Setter Property="Background" Value="{DynamicResource SkuaSurfaceBrush}" />
         <Setter Property="BorderBrush" Value="{DynamicResource SkuaAccentBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+    </Style>
+
+    <!-- A8: multi-line editors fill their cell and start at the top -->
+    <Style Selector="TextBox[AcceptsReturn=True]">
+        <Setter Property="Height" Value="NaN" />
+        <Setter Property="VerticalAlignment" Value="Stretch" />
+        <Setter Property="VerticalContentAlignment" Value="Top" />
+        <Setter Property="Padding" Value="10,8" />
     </Style>
 
     <!-- Complete Modern Dark AutoCompleteBox -->
     <Style Selector="AutoCompleteBox">
-        <Setter Property="Height" Value="34" />
-        <Setter Property="MinHeight" Value="34" />
+        <Setter Property="Height" Value="32" />
+        <Setter Property="MinHeight" Value="0" />
         <Setter Property="CornerRadius" Value="6" />
         <Setter Property="Background" Value="{DynamicResource SkuaSurfaceAltBrush}" />
         <Setter Property="BorderBrush" Value="{DynamicResource SkuaBorderBrush}" />
@@ -131,7 +149,9 @@
                                          ItemTemplate="{TemplateBinding ItemTemplate}">
                                     <ListBox.Styles>
                                         <Style Selector="ListBoxItem">
-                                            <Setter Property="Padding" Value="8,6" />
+                                            <Setter Property="Padding" Value="10,0" />
+                                            <Setter Property="MinHeight" Value="30" />
+                                            <Setter Property="VerticalContentAlignment" Value="Center" />
                                             <Setter Property="Margin" Value="0,1" />
                                             <Setter Property="CornerRadius" Value="4" />
                                             <Setter Property="FontSize" Value="12" />
@@ -144,13 +164,13 @@
                                             <Setter Property="Foreground" Value="{DynamicResource SkuaTextBrush}" />
                                         </Style>
                                         <Style Selector="ListBoxItem:selected">
-                                            <Setter Property="Background" Value="{DynamicResource SkuaSurfaceAltBrush}" />
+                                            <Setter Property="Background" Value="{DynamicResource SkuaAccentTintBrush}" />
                                             <Setter Property="BorderBrush" Value="{DynamicResource SkuaAccentBrush}" />
                                             <Setter Property="Foreground" Value="{DynamicResource SkuaTextBrush}" />
-                                            <Setter Property="FontWeight" Value="Bold" />
+                                            <Setter Property="FontWeight" Value="SemiBold" />
                                         </Style>
                                         <Style Selector="ListBoxItem:selected:pointerover">
-                                            <Setter Property="Background" Value="{DynamicResource SkuaNavHoverBrush}" />
+                                            <Setter Property="Background" Value="{DynamicResource SkuaAccentTintStrongBrush}" />
                                             <Setter Property="Foreground" Value="{DynamicResource SkuaTextBrush}" />
                                         </Style>
                                     </ListBox.Styles>
@@ -164,8 +184,7 @@
     </Style>
 
     <Style Selector="AutoCompleteBox:pointerover /template/ TextBox#PART_TextBox">
-        <Setter Property="Background" Value="{DynamicResource SkuaNavHoverBrush}" />
-        <Setter Property="BorderBrush" Value="{DynamicResource SkuaBorderBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource SkuaBorderStrongBrush}" />
     </Style>
 
     <Style Selector="AutoCompleteBox:focus /template/ TextBox#PART_TextBox, AutoCompleteBox:focus-within /template/ TextBox#PART_TextBox">
@@ -188,7 +207,7 @@
         <Setter Property="VerticalContentAlignment" Value="Center" />
     </Style>
 
-    <Style Selector="TextBox.option-pill-input /template/ Border#PART_RootBorder, TextBox.option-pill-input /template/ Border#borderElement">
+    <Style Selector="TextBox.option-pill-input /template/ Border#PART_BorderElement">
         <Setter Property="Background" Value="Transparent" />
         <Setter Property="BorderThickness" Value="0" />
         <Setter Property="CornerRadius" Value="6,0,0,6" />

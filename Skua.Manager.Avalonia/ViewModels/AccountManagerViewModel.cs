@@ -29,7 +29,7 @@ namespace Skua.Manager.Avalonia.ViewModels;
 public sealed partial class AccountManagerViewModel : BotControlViewModelBase
 {
     // Constructor and Dependencies
-    public AccountManagerViewModel(ISettingsService settingsService, IDialogService dialogService, IFileDialogService fileService)
+    public AccountManagerViewModel(ISettingsService settingsService, IDialogService dialogService, IFileDialogService fileService, IScriptManager scriptManager)
         : base("Accounts")
     {
         IMessengerExtensions.Register<AccountManagerViewModel, RemoveAccountMessage>(Messenger, this, (r, m) => r._RemoveAccount(m.Account));
@@ -46,6 +46,7 @@ public sealed partial class AccountManagerViewModel : BotControlViewModelBase
         _settingsService = settingsService;
         _dialogService = dialogService;
         _fileService = fileService;
+        _scriptManager = scriptManager;
         ServerList = new();
         Task.Run(async () => await _GetServers());
         Accounts = new();
@@ -64,6 +65,7 @@ public sealed partial class AccountManagerViewModel : BotControlViewModelBase
     private readonly ISettingsService _settingsService;
     private readonly IDialogService _dialogService;
     private readonly IFileDialogService _fileService;
+    private readonly IScriptManager _scriptManager;
 
     // Collections
     public RangedObservableCollection<IAccountItemViewModel> Accounts { get; }
@@ -144,7 +146,10 @@ public sealed partial class AccountManagerViewModel : BotControlViewModelBase
 
     // Script and Server Properties
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasScriptPath))]
     private string _scriptPath = string.Empty;
+
+    public bool HasScriptPath => !string.IsNullOrWhiteSpace(ScriptPath);
 
     partial void OnScriptPathChanged(string value)
     {
@@ -662,20 +667,33 @@ public sealed partial class AccountManagerViewModel : BotControlViewModelBase
 
     public void ApplyTagFilter()
     {
-        FilteredAccounts.Clear();
+        // Filter uses OR logic: shows accounts that have ANY of the selected tags
+        List<IAccountItemViewModel> target = _selectedTagFilters.Count == 0
+            ? Accounts.ToList()
+            : Accounts.Where(a => a.Tags.Any(t => _selectedTagFilters.Contains(t))).ToList();
 
-        if (_selectedTagFilters.Count == 0)
-        {
-            FilteredAccounts.AddRange(Accounts);
+        // Update in place: clearing and refilling rebuilt every row and threw the list back to the top
+        // each time the Manager got focus or a client saved settings.
+        if (FilteredAccounts.SequenceEqual(target))
             return;
+
+        for (int i = FilteredAccounts.Count - 1; i >= 0; i--)
+        {
+            if (!target.Contains(FilteredAccounts[i]))
+                FilteredAccounts.RemoveAt(i);
         }
 
-        // Filter uses OR logic: shows accounts that have ANY of the selected tags
-        IEnumerable<IAccountItemViewModel> filtered = Accounts.Where(a =>
-            a.Tags.Any(t => _selectedTagFilters.Contains(t))
-        );
+        for (int i = 0; i < target.Count; i++)
+        {
+            if (i < FilteredAccounts.Count && ReferenceEquals(FilteredAccounts[i], target[i]))
+                continue;
 
-        FilteredAccounts.AddRange(filtered);
+            int current = FilteredAccounts.IndexOf(target[i]);
+            if (current >= 0)
+                FilteredAccounts.Move(current, i);
+            else
+                FilteredAccounts.Insert(i, target[i]);
+        }
     }
 
     private void _UpdateFilteredTags()
@@ -1049,6 +1067,57 @@ public sealed partial class AccountManagerViewModel : BotControlViewModelBase
     }
 
     // Script Commands
+    /// <summary>
+    /// Opens the selected script's shared options editor in the Manager.
+    /// </summary>
+    [RelayCommand]
+    public async Task EditScriptOptions()
+    {
+        string scriptPath = ScriptPath;
+        if (string.IsNullOrWhiteSpace(scriptPath))
+        {
+            _dialogService.ShowMessageBox("Please select a script first.", "No Script Selected");
+            return;
+        }
+
+        if (!File.Exists(scriptPath))
+        {
+            _dialogService.ShowMessageBox($"Script file not found:\n{scriptPath}", "Script Not Found");
+            return;
+        }
+
+        try
+        {
+            _scriptManager.OverrideStorage = null;
+            _scriptManager.SetLoadedScript(scriptPath);
+            object? compiled = await Task.Run(() => _scriptManager.Compile(File.ReadAllText(scriptPath)));
+            if (compiled == null)
+            {
+                _dialogService.ShowMessageBox("Failed to compile script for configuration.", "Script Error");
+                return;
+            }
+
+            _scriptManager.LoadScriptConfig(compiled);
+            IScriptOptionContainer? config = _scriptManager.Config;
+            if (config != null && (config.Options.Count > 0 || config.MultipleOptions.Count > 0))
+            {
+                config.Configure();
+            }
+            else
+            {
+                _dialogService.ShowMessageBox("The loaded script has no options to configure.", "No Options");
+            }
+        }
+        catch (Exception ex)
+        {
+            _dialogService.ShowMessageBox($"Script cannot be configured as it has compilation errors:\n{ex.Message}", "Script Error");
+        }
+        finally
+        {
+            _scriptManager.OverrideStorage = null;
+        }
+    }
+
     [RelayCommand]
     public void ChangeScriptPath()
     {

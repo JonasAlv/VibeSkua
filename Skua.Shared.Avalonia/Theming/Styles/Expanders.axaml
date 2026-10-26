@@ -30,7 +30,7 @@
         <Setter Property="MinHeight" Value="40" />
         <Setter Property="CornerRadius" Value="8" />
         <Setter Property="Foreground" Value="{DynamicResource SkuaTextBrush}" />
-        <Setter Property="FontWeight" Value="Bold" />
+        <Setter Property="FontWeight" Value="SemiBold" />
         <Setter Property="FontSize" Value="13" />
         <Setter Property="HorizontalContentAlignment" Value="Stretch" />
         <Setter Property="Transitions">
@@ -57,8 +57,8 @@
         <Setter Property="CornerRadius" Value="0,0,8,8" />
     </Style>
 
-    <!-- Header Text / Titles in Expander -->
-    <Style Selector="Expander TextBlock">
+    <!-- Header Text / Titles in Expander: inherited, so buttons inside keep their own text colour -->
+    <Style Selector="Expander">
         <Setter Property="Foreground" Value="{DynamicResource SkuaTextBrush}" />
     </Style>
 

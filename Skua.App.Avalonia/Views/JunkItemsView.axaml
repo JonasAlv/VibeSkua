@@ -71,13 +71,12 @@
             BorderThickness="1"
             CornerRadius="8"
             Padding="6">
-      <ListBox ItemsSource="{Binding FilteredItems}"
+      <ListBox Classes="card-list" ItemsSource="{Binding FilteredItems}"
                Background="Transparent"
                BorderThickness="0">
         <ListBox.ItemTemplate>
           <DataTemplate>
-            <Border Background="{DynamicResource SkuaSurfaceBrush}"
-                    BorderBrush="{DynamicResource SkuaBorderBrush}"
+            <Border Classes="list-card"
                     BorderThickness="1"
                     CornerRadius="6"
                     Margin="0,0,0,4"
@@ -120,25 +119,25 @@
             Padding="10">
       <Grid RowDefinitions="Auto,Auto" RowSpacing="8">
         <Grid Grid.Row="0" ColumnDefinitions="*,*,*,*" ColumnSpacing="8">
-          <Button Grid.Column="0"
+          <Button HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Grid.Column="0"
                   Classes="skua-button outline"
                   Height="32"
                   Content="Select All"
                   Command="{Binding SelectAllCommand}" />
 
-          <Button Grid.Column="1"
+          <Button HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Grid.Column="1"
                   Classes="skua-button outline"
                   Height="32"
                   Content="Clear Selection"
                   Command="{Binding ClearSelectionCommand}" />
 
-          <Button Grid.Column="2"
+          <Button HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Grid.Column="2"
                   Classes="skua-button"
                   Height="32"
                   Content="Mark Selected"
                   Command="{Binding MarkAsJunkCommand}" />
 
-          <Button Grid.Column="3"
+          <Button HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Grid.Column="3"
                   Classes="skua-button"
                   Height="32"
                   Content="Unmark Selected"
@@ -157,13 +156,13 @@
             </StackPanel>
           </Button>
 
-          <Button Grid.Column="1"
+          <Button HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Grid.Column="1"
                   Classes="skua-button"
                   Height="32"
                   Content="Unmark All Junk"
                   Command="{Binding UnmarkAllJunkCommand}" />
 
-          <Button Grid.Column="2"
+          <Button HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Grid.Column="2"
                   Classes="skua-button skua-danger"
                   Height="32"
                   Command="{Binding SellSelectedCommand}">
@@ -173,7 +172,7 @@
             </StackPanel>
           </Button>
 
-          <Button Grid.Column="3"
+          <Button HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Grid.Column="3"
                   Classes="skua-button skua-danger"
                   Height="32"
                   Command="{Binding SellAllJunkCommand}">

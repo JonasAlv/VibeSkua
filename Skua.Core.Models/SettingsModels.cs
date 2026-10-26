@@ -180,6 +180,9 @@ public class SharedSettings
     [JsonPropertyName("CustomBackgroundPath")]
     public string? CustomBackgroundPath { get; set; } = null;
 
+    [JsonPropertyName("TitleBarArtworkPath")]
+    public string? TitleBarArtworkPath { get; set; } = null;
+
     [JsonPropertyName("UpgradeRequired")]
     public bool UpgradeRequired { get; set; } = true;
 

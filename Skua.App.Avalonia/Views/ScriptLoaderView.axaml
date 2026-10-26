@@ -38,7 +38,19 @@
                         VerticalAlignment="Center"
                         ToolTip.Tip="{Binding ScriptErrorToolTip}">
                     <StackPanel Orientation="Horizontal" Spacing="5" VerticalAlignment="Center">
-                        <Ellipse Width="6" Height="6" Fill="#10B981" VerticalAlignment="Center" />
+                        <!-- Status dot: muted when idle/loaded, green running, amber paused/compiling, red on error -->
+                        <Ellipse Width="6" Height="6" VerticalAlignment="Center"
+                                 Classes.running="{Binding ScriptStatus, Converter={x:Static ObjectConverters.Equal}, ConverterParameter='[Running]'}"
+                                 Classes.paused="{Binding ScriptStatus, Converter={x:Static ObjectConverters.Equal}, ConverterParameter='[Paused]'}"
+                                 Classes.compiling="{Binding ScriptStatus, Converter={x:Static ObjectConverters.Equal}, ConverterParameter='Compiling...'}"
+                                 Classes.error="{Binding ScriptStatus, Converter={x:Static ObjectConverters.Equal}, ConverterParameter='[Error]'}">
+                            <Ellipse.Styles>
+                                <Style Selector="Ellipse"><Setter Property="Fill" Value="{DynamicResource SkuaMutedTextBrush}" /></Style>
+                                <Style Selector="Ellipse.running"><Setter Property="Fill" Value="{DynamicResource SkuaSuccessBrush}" /></Style>
+                                <Style Selector="Ellipse.paused, Ellipse.compiling"><Setter Property="Fill" Value="{DynamicResource SkuaWarningBrush}" /></Style>
+                                <Style Selector="Ellipse.error"><Setter Property="Fill" Value="{DynamicResource SkuaDangerBrush}" /></Style>
+                            </Ellipse.Styles>
+                        </Ellipse>
                         <TextBlock FontSize="10"
                                    FontWeight="Bold"
                                    Foreground="{DynamicResource SkuaTextBrush}"

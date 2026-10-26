@@ -18,24 +18,55 @@ public class WindowService : IWindowService
     private readonly Dictionary<string, Window> _managedWindows = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, Func<IManagedWindow>> _managedWindowFactories = new(StringComparer.OrdinalIgnoreCase);
 
+    // One window per view model type for the resolve-from-container overloads: asking again brings the
+    // open window to the front instead of stacking a duplicate.
+    private readonly Dictionary<Type, Window> _typeWindows = new();
+
     public void ShowWindow<TViewModel>(int width, int height) where TViewModel : class
     {
-        TViewModel vm = Ioc.Default.GetRequiredService<TViewModel>();
-        Window window = CreateHostWindow(vm, typeof(TViewModel).Name, width, height);
-        window.Show();
+        ShowSingleWindow<TViewModel>(width, height);
     }
 
     public void ShowWindow<TViewModel>() where TViewModel : class
     {
-        TViewModel vm = Ioc.Default.GetRequiredService<TViewModel>();
-        Window window = CreateHostWindow(vm, typeof(TViewModel).Name, 900, 600);
-        window.Show();
+        ShowSingleWindow<TViewModel>(900, 600);
     }
 
     public void ShowWindow<TViewModel>(TViewModel viewModel) where TViewModel : class
     {
-        Window window = CreateHostWindow(viewModel, typeof(TViewModel).Name, 900, 600);
+        Window window = CreateHostWindow(viewModel, GetWindowTitle(viewModel), 900, 600);
         window.Show();
+    }
+
+    private void ShowSingleWindow<TViewModel>(int width, int height) where TViewModel : class
+    {
+        if (_typeWindows.TryGetValue(typeof(TViewModel), out Window? open))
+        {
+            if (open.WindowState == WindowState.Minimized)
+                open.WindowState = WindowState.Normal;
+            open.Activate();
+            return;
+        }
+
+        TViewModel vm = Ioc.Default.GetRequiredService<TViewModel>();
+        Window window = CreateHostWindow(vm, GetWindowTitle(vm), width, height);
+        _typeWindows[typeof(TViewModel)] = window;
+        window.Closed += (_, _) => _typeWindows.Remove(typeof(TViewModel));
+        window.Show();
+    }
+
+    private static string GetWindowTitle(object viewModel)
+    {
+        if (viewModel is IManagedWindow managed && !string.IsNullOrWhiteSpace(managed.Title))
+            return managed.Title;
+        if (viewModel is Skua.Shared.Avalonia.ViewModels.BotControlViewModelBase control && !string.IsNullOrWhiteSpace(control.Title))
+            return control.Title;
+
+        // "BotWindowViewModel" -> "Bot Window"
+        string name = viewModel.GetType().Name;
+        if (name.EndsWith("ViewModel", StringComparison.Ordinal))
+            name = name[..^"ViewModel".Length];
+        return System.Text.RegularExpressions.Regex.Replace(name, "(?<=[a-z])(?=[A-Z])", " ");
     }
 
     public void ShowManagedWindow(string key)
@@ -143,6 +174,19 @@ public class WindowService : IWindowService
         Skua.Shared.Avalonia.Services.ThemeResourceApplicator.ApplyTitleBarTheme(window);
         Skua.Shared.Avalonia.Services.WindowResizeHelper.Attach(window);
 
+        if (width > 0)
+        {
+            window.Width = width;
+            window.MinWidth = Math.Min(width, 400);
+        }
+        if (height > 0)
+        {
+            window.Height = height;
+            window.MinHeight = Math.Min(height, 300);
+        }
+
+        // Size first, then place: centring a window whose size is still unknown puts it in the wrong spot
+        // and it visibly jumps once Opened corrects it.
         if (initialPos.HasValue)
         {
             window.Position = initialPos.Value;
@@ -154,17 +198,6 @@ public class WindowService : IWindowService
         else
         {
             Skua.Shared.Avalonia.Services.WindowPlacementHelper.CenterOnActiveScreen(window);
-        }
-
-        if (width > 0)
-        {
-            window.Width = width;
-            window.MinWidth = Math.Min(width, 400);
-        }
-        if (height > 0)
-        {
-            window.Height = height;
-            window.MinHeight = Math.Min(height, 300);
         }
 
         return window;

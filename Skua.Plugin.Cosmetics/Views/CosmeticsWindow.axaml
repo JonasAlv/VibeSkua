@@ -41,8 +41,7 @@
             <Setter Property="FontSize" Value="12" />
         </Style>
 
-        <Style Selector="TabControl.cosmetics-tabs TabItem /template/ Border#PART_LayoutRoot,
-                       TabControl.cosmetics-tabs TabItem /template/ Border#PART_RootBorder">
+        <Style Selector="TabControl.cosmetics-tabs TabItem /template/ Border#PART_LayoutRoot">
             <Setter Property="Background" Value="{DynamicResource SkuaSurfaceAltBrush}" />
             <Setter Property="BorderBrush" Value="{DynamicResource SkuaBorderBrush}" />
             <Setter Property="BorderThickness" Value="1" />
@@ -54,8 +53,7 @@
             <Setter Property="TextElement.Foreground" Value="{DynamicResource SkuaMutedTextBrush}" />
         </Style>
 
-        <Style Selector="TabControl.cosmetics-tabs TabItem:pointerover /template/ Border#PART_LayoutRoot,
-                       TabControl.cosmetics-tabs TabItem:pointerover /template/ Border#PART_RootBorder">
+        <Style Selector="TabControl.cosmetics-tabs TabItem:pointerover /template/ Border#PART_LayoutRoot">
             <Setter Property="Background" Value="{DynamicResource SkuaNavHoverBrush}" />
             <Setter Property="BorderBrush" Value="{DynamicResource SkuaBorderBrush}" />
         </Style>
@@ -65,8 +63,7 @@
         </Style>
 
         <!-- Selected State: Clean elevated card with crisp accent border, NO clunky block -->
-        <Style Selector="TabControl.cosmetics-tabs TabItem:selected /template/ Border#PART_LayoutRoot,
-                       TabControl.cosmetics-tabs TabItem:selected /template/ Border#PART_RootBorder">
+        <Style Selector="TabControl.cosmetics-tabs TabItem:selected /template/ Border#PART_LayoutRoot">
             <Setter Property="Background" Value="{DynamicResource SkuaSurfaceBrush}" />
             <Setter Property="BorderBrush" Value="{DynamicResource SkuaAccentBrush}" />
             <Setter Property="BorderThickness" Value="1.5" />
@@ -78,8 +75,7 @@
             <Setter Property="TextElement.FontWeight" Value="SemiBold" />
         </Style>
 
-        <Style Selector="TabControl.cosmetics-tabs TabItem:selected:pointerover /template/ Border#PART_LayoutRoot,
-                       TabControl.cosmetics-tabs TabItem:selected:pointerover /template/ Border#PART_RootBorder">
+        <Style Selector="TabControl.cosmetics-tabs TabItem:selected:pointerover /template/ Border#PART_LayoutRoot">
             <Setter Property="Background" Value="{DynamicResource SkuaSurfaceBrush}" />
             <Setter Property="BorderBrush" Value="{DynamicResource SkuaAccentBrush}" />
         </Style>
@@ -584,15 +580,14 @@
                                     BorderBrush="{DynamicResource SkuaBorderBrush}"
                                     BorderThickness="1"
                                     CornerRadius="6">
-                                <ListBox x:Name="SetsListBox"
+                                <ListBox Classes="card-list" x:Name="SetsListBox"
                                          Background="Transparent"
                                          BorderThickness="0"
                                          SelectionChanged="SetsListBox_SelectionChanged"
                                          DoubleTapped="SetsListBox_DoubleTapped">
                                     <ListBox.ItemTemplate>
                                         <DataTemplate x:DataType="models:CosmeticSet">
-                                            <Border Background="{DynamicResource SkuaSurfaceBrush}"
-                                                    BorderBrush="{DynamicResource SkuaBorderBrush}"
+                                            <Border Classes="list-card"
                                                     BorderThickness="1"
                                                     CornerRadius="6"
                                                     Padding="12"

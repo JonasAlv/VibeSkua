@@ -93,13 +93,12 @@
         <Setter Property="Background" Value="{DynamicResource SkuaScrollThumbPressedBrush}" />
     </Style>
 
-    <!-- Hide chunky legacy arrow buttons for a clean, modern look -->
+    <!-- Hide the arrow buttons. The page buttons (the track either side of the thumb) stay, so a click on
+         the track still pages; Fluent draws them transparent. -->
     <Style Selector="ScrollBar /template/ RepeatButton#PART_LineUpButton,
                      ScrollBar /template/ RepeatButton#PART_LineDownButton,
                      ScrollBar /template/ RepeatButton#PART_LineLeftButton,
-                     ScrollBar /template/ RepeatButton#PART_LineRightButton,
-                     ScrollBar /template/ RepeatButton#PART_PageUpButton,
-                     ScrollBar /template/ RepeatButton#PART_PageDownButton">
+                     ScrollBar /template/ RepeatButton#PART_LineRightButton">
         <Setter Property="IsVisible" Value="False" />
         <Setter Property="Width" Value="0" />
         <Setter Property="Height" Value="0" />

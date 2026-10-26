@@ -119,7 +119,33 @@
             </ControlTemplate>
         </Setter>
     </Style>
-    
+
+    <!-- Fluent check box, radio and switch at the proposed sizes: 18px box and circle, 12px switch knob.
+         Their colours come from the Fluent resource keys overridden in Colors.axaml. The template sets these
+         sizes itself, which beats a plain style; the always-true :not(:skua-never) makes these trigger styles,
+         which win. -->
+    <Style Selector="CheckBox:not(:skua-never) /template/ Border#NormalRectangle">
+        <Setter Property="Width" Value="18" />
+        <Setter Property="Height" Value="18" />
+        <Setter Property="CornerRadius" Value="4" />
+        <Setter Property="BorderThickness" Value="1.5" />
+    </Style>
+    <Style Selector="RadioButton:not(:skua-never) /template/ Ellipse#OuterEllipse, RadioButton:not(:skua-never) /template/ Ellipse#CheckOuterEllipse">
+        <Setter Property="Width" Value="18" />
+        <Setter Property="Height" Value="18" />
+        <Setter Property="StrokeThickness" Value="1.5" />
+    </Style>
+    <Style Selector="RadioButton:not(:skua-never) /template/ Ellipse#CheckGlyph">
+        <Setter Property="Width" Value="6" />
+        <Setter Property="Height" Value="6" />
+    </Style>
+    <Style Selector="ToggleSwitch:not(:skua-never) /template/ :is(Layoutable)#SwitchKnobOn, ToggleSwitch:not(:skua-never) /template/ :is(Layoutable)#SwitchKnobOff">
+        <Setter Property="Width" Value="12" />
+        <Setter Property="Height" Value="12" />
+    </Style>
+    <Style Selector="ToggleSwitch:not(:skua-never) /template/ Border#OuterBorder">
+        <Setter Property="BorderThickness" Value="1.5" />
+    </Style>
 </Styles>
 
 

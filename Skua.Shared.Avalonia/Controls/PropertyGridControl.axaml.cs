@@ -216,8 +216,11 @@ public partial class PropertyGridControl : UserControl
                 ?? item.ToString()
                 ?? itemType.Name;
             string? id = idProperty?.GetValue(item)?.ToString();
+            PropertyInfo? quantityProperty = itemType.GetProperty("Quantity", BindingFlags.Public | BindingFlags.Instance);
+            string? quantity = quantityProperty?.GetValue(item)?.ToString();
 
-            return !string.IsNullOrWhiteSpace(id) ? $"[{id}] {name}" : name;
+            string displayName = !string.IsNullOrWhiteSpace(quantity) ? $"{name} x{quantity}" : name;
+            return !string.IsNullOrWhiteSpace(id) ? $"[{id}] {displayName}" : displayName;
         }
         catch
         {

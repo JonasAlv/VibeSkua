@@ -2,6 +2,7 @@ using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Threading;
+using Avalonia.VisualTree;
 using Skua.App.Avalonia.ViewModels.AppLogs;
 using System;
 using System.Collections.Specialized;
@@ -12,45 +13,58 @@ namespace Skua.App.Avalonia.UserControls;
 
 public partial class LogTabUserControl : UserControl
 {
+    // The tab whose Logs we listen to. The view is reused across log tabs, so the old tab has to be
+    // unsubscribed when the DataContext changes, not the new one.
+    private LogTabViewModel? _subscribed;
+
     public LogTabUserControl()
     {
         InitializeComponent();
-        this.AttachedToVisualTree += (_, _) =>
-        {
-            if (DataContext is LogTabViewModel vm)
-            {
-                vm.Logs.CollectionChanged += Logs_CollectionChanged;
-                if (vm.Logs.Count > 0)
-                    LogsListBox.ScrollIntoView(vm.Logs.Count - 1);
-            }
-        };
-        this.DetachedFromVisualTree += (_, _) =>
-        {
-            if (DataContext is LogTabViewModel vm)
-                vm.Logs.CollectionChanged -= Logs_CollectionChanged;
-        };
+        this.AttachedToVisualTree += (_, _) => Subscribe(DataContext as LogTabViewModel);
+        this.DetachedFromVisualTree += (_, _) => Subscribe(null);
         this.DataContextChanged += (_, _) =>
         {
-            if (DataContext is LogTabViewModel vm)
-            {
-                vm.Logs.CollectionChanged -= Logs_CollectionChanged;
-                vm.Logs.CollectionChanged += Logs_CollectionChanged;
-                if (vm.Logs.Count > 0)
-                    LogsListBox.ScrollIntoView(vm.Logs.Count - 1);
-            }
+            if (this.IsAttachedToVisualTree())
+                Subscribe(DataContext as LogTabViewModel);
         };
+    }
+
+    private void Subscribe(LogTabViewModel? vm)
+    {
+        if (ReferenceEquals(_subscribed, vm))
+            return;
+
+        if (_subscribed is not null)
+            _subscribed.Logs.CollectionChanged -= Logs_CollectionChanged;
+
+        _subscribed = vm;
+        if (vm is null)
+            return;
+
+        vm.Logs.CollectionChanged += Logs_CollectionChanged;
+        if (vm.Logs.Count > 0)
+            Dispatcher.UIThread.Post(() => ScrollToEnd(vm), DispatcherPriority.Loaded);
     }
 
     private void Logs_CollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
     {
-        if (DataContext is LogTabViewModel vm && vm.Logs.Count > 0)
-        {
-            Dispatcher.UIThread.Post(() =>
-            {
-                if (vm.Logs.Count > 0)
-                    LogsListBox.ScrollIntoView(vm.Logs.Count - 1);
-            });
-        }
+        LogTabViewModel? vm = _subscribed;
+        if (vm is null || vm.Logs.Count == 0)
+            return;
+
+        // Follow new lines only while the list is already at the bottom, so older lines stay readable
+        // while a script is logging. Layout hasn't run yet, so these are the pre-insert sizes.
+        if (LogsListBox.Scroll is ScrollViewer scroll && scroll.Extent.Height > scroll.Viewport.Height
+            && scroll.Offset.Y + scroll.Viewport.Height < scroll.Extent.Height - 24)
+            return;
+
+        Dispatcher.UIThread.Post(() => ScrollToEnd(vm));
+    }
+
+    private void ScrollToEnd(LogTabViewModel vm)
+    {
+        if (ReferenceEquals(_subscribed, vm) && vm.Logs.Count > 0)
+            LogsListBox.ScrollIntoView(vm.Logs.Count - 1);
     }
 
     private async void LogsListBox_KeyDown(object? sender, KeyEventArgs e)

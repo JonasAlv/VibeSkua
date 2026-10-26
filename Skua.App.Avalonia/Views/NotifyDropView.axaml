@@ -123,7 +123,7 @@
             BorderThickness="1"
             CornerRadius="8"
             Padding="6">
-      <ListBox x:Name="NotifyDropListBox"
+      <ListBox Classes="card-list" x:Name="NotifyDropListBox"
                ItemsSource="{Binding NotifyDropList}"
                SelectionMode="Multiple"
                KeyDown="NotifyDropListBox_KeyDown"
@@ -131,8 +131,7 @@
                BorderThickness="0">
         <ListBox.ItemTemplate>
           <DataTemplate>
-            <Border Background="{DynamicResource SkuaSurfaceBrush}"
-                    BorderBrush="{DynamicResource SkuaBorderBrush}"
+            <Border Classes="list-card"
                     BorderThickness="1"
                     CornerRadius="6"
                     Margin="0,0,0,4"

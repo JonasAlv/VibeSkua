@@ -68,15 +68,14 @@
                 BorderThickness="1"
                 CornerRadius="8"
                 Padding="4">
-            <ListBox ItemsSource="{Binding ScriptQueue}"
+            <ListBox Classes="card-list" ItemsSource="{Binding ScriptQueue}"
                      SelectedItem="{Binding SelectedScript}"
                      Background="Transparent"
                      BorderThickness="0"
                      HorizontalAlignment="Stretch">
                 <ListBox.ItemTemplate>
                     <DataTemplate>
-                        <Border Background="{DynamicResource SkuaSurfaceBrush}"
-                                BorderBrush="{DynamicResource SkuaBorderBrush}"
+                        <Border Classes="list-card"
                                 BorderThickness="1"
                                 CornerRadius="6"
                                 Margin="0,0,0,4"
@@ -110,7 +109,7 @@
                                               Command="{Binding DataContext.RemoveScriptCommand, RelativeSource={RelativeSource AncestorType=ListBox}}"
                                               CommandParameter="{Binding}">
                                         <MenuItem.Icon>
-                                            <materialIcons:MaterialIcon Kind="Close" Width="14" Height="14" Foreground="#EF4444" />
+                                            <materialIcons:MaterialIcon Kind="Close" Width="14" Height="14" Foreground="{DynamicResource SkuaDangerBrush}" />
                                         </MenuItem.Icon>
                                     </MenuItem>
                                 </ContextMenu>
@@ -196,7 +195,7 @@
                                         Padding="0"
                                         Margin="4,0,0,0"
                                         ToolTip.Tip="Remove from queue">
-                                    <materialIcons:MaterialIcon Kind="Close" Width="15" Height="15" Foreground="#EF4444" />
+                                    <materialIcons:MaterialIcon Kind="Close" Width="15" Height="15" Foreground="{DynamicResource SkuaDangerBrush}" />
                                 </Button>
                             </Grid>
                         </Border>
@@ -235,7 +234,7 @@
             </Button>
             
             <Button Command="{Binding ToggleQueueCommand}"
-                    Classes="skua-button"
+                    Classes="skua-button w112"
                     Classes.skua-danger="{Binding IsRunningQueue}"
                     Classes.skua-primary="{Binding !IsRunningQueue}">
                 <StackPanel Orientation="Horizontal" Spacing="6">
