@@ -276,6 +276,9 @@ public partial class TabbedHostWindow : Window
     private static extern int XCloseDisplay(IntPtr display);
 
     [DllImport("libX11.so.6")]
+    private static extern int XSync(IntPtr display, int discard);
+
+    [DllImport("libX11.so.6")]
     private static extern int XFlush(IntPtr display);
 
     private static IntPtr _xDisplay;
@@ -684,11 +687,11 @@ public partial class TabbedHostWindow : Window
             lock (_xLock)
             {
                 XUnmapWindow(display, childHwnd);
-                XSetWindowAttributes attrs = new() { override_redirect = 1 };
-                XChangeWindowAttributes(display, childHwnd, new UIntPtr(1 << 9) /* CWOverrideRedirect */, ref attrs);
-                XSetTransientForHint(display, childHwnd, _hostHwnd);
+                XSync(display, 0);
+                XReparentWindow(display, childHwnd, _hostHwnd, 0, 36);
+                XSync(display, 0);
                 XMapWindow(display, childHwnd);
-                XFlush(display);
+                XSync(display, 0);
             }
         }
 #endif
@@ -1453,15 +1456,7 @@ public partial class TabbedHostWindow : Window
                         tile.Height,
                         SWP_SHOWWINDOW | SWP_NOACTIVATE | SWP_ASYNCWINDOWPOS | SWP_NOZORDER);
 #elif IS_LINUX
-                    IntPtr display = GetDisplay();
-                    if (display != IntPtr.Zero)
-                    {
-                        lock (_xLock)
-                        {
-                            XMoveResizeWindow(display, tile.Hwnd, newPos.X + tile.OffsetX, newPos.Y + tile.OffsetY, (uint)tile.Width, (uint)tile.Height);
-                            XFlush(display);
-                        }
-                    }
+                    // On Linux, child window is reparented into _hostHwnd and moves with it automatically in X11.
 #endif
                 }
             }
@@ -1489,15 +1484,7 @@ public partial class TabbedHostWindow : Window
                 _childHeight,
                 SWP_SHOWWINDOW | SWP_NOACTIVATE | SWP_ASYNCWINDOWPOS | SWP_NOZORDER);
 #elif IS_LINUX
-            IntPtr display = GetDisplay();
-            if (display != IntPtr.Zero)
-            {
-                lock (_xLock)
-                {
-                    XMoveResizeWindow(display, activeChildHwnd, targetX, targetY, (uint)_childWidth, (uint)_childHeight);
-                    XFlush(display);
-                }
-            }
+            // On Linux, child window is reparented into _hostHwnd and moves with it automatically in X11.
 #endif
         }
     }
@@ -1586,34 +1573,12 @@ public partial class TabbedHostWindow : Window
             int w = Math.Max(screenBR.X - screenTL.X, 1);
             int h = Math.Max(screenBR.Y - screenTL.Y, 1);
 #elif IS_LINUX
+            // On Linux, child windows are reparented into _hostHwnd, so coordinates are relative to _hostHwnd
             int x = 0;
-            int y = 0;
+            int y = 36;
             int w = (int)Math.Max(HostContainer.Bounds.Width, 1);
             int h = (int)Math.Max(HostContainer.Bounds.Height, 1);
-
             IntPtr display = GetDisplay();
-            if (display != IntPtr.Zero && _hostHwnd != IntPtr.Zero)
-            {
-                lock (_xLock)
-                {
-                    IntPtr root = XDefaultRootWindow(display);
-                    // HostContainer begins at (0, 36) relative to _hostHwnd (below the 36px Tab bar)
-                    XTranslateCoordinates(display, _hostHwnd, root, 0, 36, out x, out y, out _);
-                }
-            }
-            else
-            {
-                try
-                {
-                    PixelPoint screenTL = HostContainer.PointToScreen(new Point(0, 0));
-                    PixelPoint screenBR = HostContainer.PointToScreen(new Point(HostContainer.Bounds.Width, HostContainer.Bounds.Height));
-                    x = screenTL.X;
-                    y = screenTL.Y;
-                    w = Math.Max(screenBR.X - screenTL.X, 1);
-                    h = Math.Max(screenBR.Y - screenTL.Y, 1);
-                }
-                catch { }
-            }
 #endif
 
             if (w <= 1 || h <= 1)
@@ -1681,8 +1646,8 @@ public partial class TabbedHostWindow : Window
                     {
                         lock (_xLock)
                         {
-                            int tileX = x + (c * cellW);
-                            int tileY = y + (r * cellH);
+                            int tileX = c * cellW;
+                            int tileY = 36 + (r * cellH);
                             XMoveResizeWindow(display, activeWindows[i].ChildHwnd, tileX, tileY, (uint)cellW, (uint)cellH);
                             XMapWindow(display, activeWindows[i].ChildHwnd);
                             XRaiseWindow(display, activeWindows[i].ChildHwnd);

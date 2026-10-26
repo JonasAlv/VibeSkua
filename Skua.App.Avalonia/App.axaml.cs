@@ -97,7 +97,19 @@ public partial class App : Application
     public static extern int XCloseDisplay(IntPtr display);
 
     [System.Runtime.InteropServices.DllImport("libX11.so.6")]
+    public static extern int XUnmapWindow(IntPtr display, IntPtr w);
+
+    [System.Runtime.InteropServices.DllImport("libX11.so.6")]
+    public static extern int XMapWindow(IntPtr display, IntPtr w);
+
+    [System.Runtime.InteropServices.DllImport("libX11.so.6")]
+    public static extern int XReparentWindow(IntPtr display, IntPtr w, IntPtr parent, int x, int y);
+
+    [System.Runtime.InteropServices.DllImport("libX11.so.6")]
     public static extern int XChangeWindowAttributes(IntPtr display, IntPtr w, UIntPtr valuemask, ref XSetWindowAttributes attributes);
+
+    [System.Runtime.InteropServices.DllImport("libX11.so.6")]
+    public static extern int XSync(IntPtr display, int discard);
 
     [System.Runtime.InteropServices.DllImport("libX11.so.6")]
     public static extern int XFlush(IntPtr display);
@@ -244,18 +256,24 @@ public partial class App : Application
                             PostMessage_Native(new IntPtr(embedHwnd), 0x0400 + 440 /* WM_SKUA_CHILD_READY */, childHwnd, new IntPtr(Environment.ProcessId));
                         }
 #elif IS_LINUX
-                        try
+                        if (embedHwnd != 0)
                         {
-                            IntPtr disp = XOpenDisplay(IntPtr.Zero);
-                            if (disp != IntPtr.Zero)
+                            try
                             {
-                                XSetWindowAttributes attrs = new() { override_redirect = 1 };
-                                XChangeWindowAttributes(disp, childHwnd, new UIntPtr(1 << 9) /* CWOverrideRedirect */, ref attrs);
-                                XFlush(disp);
-                                XCloseDisplay(disp);
+                                IntPtr disp = XOpenDisplay(IntPtr.Zero);
+                                if (disp != IntPtr.Zero)
+                                {
+                                    XUnmapWindow(disp, childHwnd);
+                                    XSync(disp, 0);
+                                    XReparentWindow(disp, childHwnd, new IntPtr(embedHwnd), 0, 36);
+                                    XSync(disp, 0);
+                                    XMapWindow(disp, childHwnd);
+                                    XSync(disp, 0);
+                                    XCloseDisplay(disp);
+                                }
                             }
+                            catch { }
                         }
-                        catch { }
 
                         try
                         {
