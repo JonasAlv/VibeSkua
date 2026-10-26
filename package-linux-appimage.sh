@@ -54,10 +54,11 @@ name = "$app_name"
 
 img = Image.open(src)
 
-# Save root 256x256 icon and .DirIcon
+# Save root 256x256 icon and .DirIcon (direct PNG, not a dangling symlink)
 root_icon = os.path.join(appdir, f"{name}.png")
 img_256 = img.resize((256, 256), Image.Resampling.LANCZOS)
 img_256.save(root_icon)
+img_256.save(os.path.join(appdir, ".DirIcon"), format="PNG")
 
 # Generate standard hicolor sizes
 sizes = [16, 32, 48, 64, 128, 256, 512]
@@ -67,8 +68,6 @@ for s in sizes:
     out_path = os.path.join(dir_path, f"{name}.png")
     img.resize((s, s), Image.Resampling.LANCZOS).save(out_path)
 EOF
-
-    ln -sf "${app_name}.png" "$appdir/.DirIcon"
 }
 
 # ==============================================================================
@@ -167,6 +166,25 @@ chmod +x "$OUTPUT_DIR/VibeSkua-Manager-x86_64.AppImage"
 # Clean up temporary AppDir directories
 rm -rf "$SKUA_APPDIR" "$MGR_APPDIR"
 
+# ==============================================================================
+# 5. Create clean portable archive containing only the two AppImages
+# ==============================================================================
+APPIMAGE_BUNDLE_DIR="$BUILD_DIR/VibeSkua-linux-AppImage"
+rm -rf "$APPIMAGE_BUNDLE_DIR"
+mkdir -p "$APPIMAGE_BUNDLE_DIR"
+cp -f "$OUTPUT_DIR/VibeSkua-x86_64.AppImage" "$APPIMAGE_BUNDLE_DIR/"
+cp -f "$OUTPUT_DIR/VibeSkua-Manager-x86_64.AppImage" "$APPIMAGE_BUNDLE_DIR/"
+
+echo "Compressing AppImage release archives..."
+(
+    cd "$BUILD_DIR"
+    rm -f "VibeSkua-linux-AppImage.zip" "VibeSkua-linux-AppImage.tar.gz"
+    zip -q -r "VibeSkua-linux-AppImage.zip" "VibeSkua-linux-AppImage"
+    tar -czf "VibeSkua-linux-AppImage.tar.gz" "VibeSkua-linux-AppImage"
+)
+
 echo "=== Linux AppImages successfully built! ==="
 echo "Client:  $OUTPUT_DIR/VibeSkua-x86_64.AppImage ($(du -h "$OUTPUT_DIR/VibeSkua-x86_64.AppImage" | cut -f1))"
 echo "Manager: $OUTPUT_DIR/VibeSkua-Manager-x86_64.AppImage ($(du -h "$OUTPUT_DIR/VibeSkua-Manager-x86_64.AppImage" | cut -f1))"
+echo "ZIP:     $BUILD_DIR/VibeSkua-linux-AppImage.zip ($(du -h "$BUILD_DIR/VibeSkua-linux-AppImage.zip" | cut -f1))"
+echo "Tarball: $BUILD_DIR/VibeSkua-linux-AppImage.tar.gz ($(du -h "$BUILD_DIR/VibeSkua-linux-AppImage.tar.gz" | cut -f1))"
