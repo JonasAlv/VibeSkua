@@ -1,3 +1,23 @@
+## VibeSkua v2.0.9
+
+This release introduces the native Skua Cosmetics Plugin for client-side appearance customization and outfit management.
+
+Special thanks to **Lord Exelot**, **bogalj**, and everyone else who contributed their work to the cosmetics tooling.
+
+### What's Changed
+
+### Skua Cosmetics Plugin
+The `Skua.Plugin.Cosmetics` plugin enables client-side character customization without owning items or altering server state:
+- **Comprehensive Item Catalog**: Browsable database of over 67,000 weapons, armors, helms, capes, and pets with instant search and background catalog updates.
+- **Client-Side Equipment Spoofing**: Hooks Flash MovieClip rendering to preview and equip any cosmetic item locally with zero network footprint.
+- **Full 6-Channel Color Customization**: Complete character recoloring across Base, Trim, Accessory, Eye, Skin, and Hair channels with real-time Flash synchronization.
+- **Target Look Replication**: Inspect and clone any player's visual loadout, color palette, and pet state in a single click.
+- **Outfit Presets**: Save, name, and switch between custom visual outfits with safe set management.
+- **Authentic Reset to Real Gear**: Instantly revert visual equipment and all six color channels back to genuine server-equipped inventory items.
+- **Modern Dark UI**: Elevated card design with responsive accent borders and streamlined category filtering chips.
+
+---
+
 ## VibeSkua v2.0.7
 
 This release introduces the Army Queue automation suite for sequential multi-squad execution, a universal auto-relogin watchdog engine with smart in-game intent recognition, granular Discord webhook health ping controls, and account management safety confirmations.

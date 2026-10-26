@@ -208,11 +208,23 @@ public partial class LoaderViewModel : BotControlViewModelBase, IManagedWindow
     {
         IsLoading = true;
         ProgressReport = "Getting quests";
-        QuestIDs.Clear();
-        QuestIDs.AddRange(await _questLoader.GetFromFileAsync("QuestData.json"));
-        ApplySearch();
-        ProgressReport = string.Empty;
-        IsLoading = false;
+
+        try
+        {
+            List<QuestData> questData = await _questLoader.GetFromFileAsync("QuestData.json");
+            QuestIDs.Clear();
+            QuestIDs.AddRange(questData);
+            ApplySearch();
+            ProgressReport = string.Empty;
+        }
+        catch (Exception ex)
+        {
+            ProgressReport = $"Failed to load quests: {ex.Message}";
+        }
+        finally
+        {
+            IsLoading = false;
+        }
     }
 
     [RelayCommand]
@@ -287,10 +299,13 @@ public partial class LoaderViewModel : BotControlViewModelBase, IManagedWindow
             IsLoading = false;
             ProgressReport = string.Empty;
         }
-        catch (Exception)
+        catch (Exception ex)
+        {
+            ProgressReport = $"Failed to update quest: {ex.Message}";
+        }
+        finally
         {
             IsLoading = false;
-            ProgressReport = string.Empty;
         }
     }
 

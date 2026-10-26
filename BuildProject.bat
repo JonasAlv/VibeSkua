@@ -60,6 +60,14 @@ if %ERRORLEVEL% NEQ 0 (
     exit /b %ERRORLEVEL%
 )
 
+echo Building Cosmetics Plugin (Fast Dev Build)...
+dotnet build .\Skua.Plugin.Cosmetics\Skua.Plugin.Cosmetics.csproj -c Release
+if %ERRORLEVEL% NEQ 0 (
+    echo Failed to build Cosmetics Plugin.
+    if "%~1"=="" pause
+    exit /b %ERRORLEVEL%
+)
+
 echo Packaging and organizing output to match WPF release structure...
 powershell -ExecutionPolicy Bypass -File "%~dp0package-build.ps1"
 if %ERRORLEVEL% NEQ 0 (

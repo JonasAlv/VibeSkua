@@ -135,10 +135,12 @@ public class GrabberService : IGrabberService
             }
             progress.Report("Map items acquired");
         }
-        catch
+        catch (Exception ex)
         {
             if (token.IsCancellationRequested)
                 progress.Report("Task cancelled.");
+            else
+                progress.Report($"Operation failed: {ex.Message}");
         }
     }
 
@@ -156,10 +158,12 @@ public class GrabberService : IGrabberService
         {
             await Task.Run(() => map.Jump(monster.Cell, "Left"), token);
         }
-        catch
+        catch (Exception ex)
         {
             if (token.IsCancellationRequested)
                 progress.Report("Task cancelled.");
+            else
+                progress.Report($"Operation failed: {ex.Message}");
         }
     }
 
@@ -193,10 +197,12 @@ public class GrabberService : IGrabberService
                 }
             }, token);
         }
-        catch
+        catch (Exception ex)
         {
             if (token.IsCancellationRequested)
                 progress.Report("Task cancelled.");
+            else
+                progress.Report($"Operation failed: {ex.Message}");
         }
 
         return;
@@ -278,7 +284,7 @@ public class GrabberService : IGrabberService
         catch
         {
             if (token.IsCancellationRequested)
-                progress.Report("Task cancelled.");
+            progress.Report("Task cancelled.");
             else
                 progress.Report("Failed to complete quest.");
         }
@@ -308,10 +314,12 @@ public class GrabberService : IGrabberService
                 progress.Report("Finished.");
             }
         }
-        catch
+        catch (Exception ex)
         {
             if (token.IsCancellationRequested)
                 progress.Report("Task cancelled.");
+            else
+                progress.Report($"Operation failed: {ex.Message}");
         }
     }
 
@@ -329,10 +337,12 @@ public class GrabberService : IGrabberService
             await Task.Run(() => Ioc.Default.GetService<IScriptShop>()!.Load(shopInfo.ID), token);
             progress.Report($"Shop {shopInfo.Name} [{shopInfo.ID}] loaded.");
         }
-        catch
+        catch (Exception ex)
         {
             if (token.IsCancellationRequested)
                 progress.Report("Task cancelled.");
+            else
+                progress.Report($"Operation failed: {ex.Message}");
         }
     }
 
@@ -395,10 +405,12 @@ public class GrabberService : IGrabberService
                 await Task.Run(() => shop.BuyItem(item.ID, item.ShopItemID, quantity), token);
                 progress.Report($"Bought {quantity} {item.Name}");
             }
-            catch
+            catch (Exception ex)
             {
                 if (token.IsCancellationRequested)
                     progress.Report("Task cancelled.");
+                else
+                    progress.Report($"Operation failed: {ex.Message}");
             }
 
             return;
@@ -431,10 +443,12 @@ public class GrabberService : IGrabberService
                     await Task.Delay(1000, token);
             }
         }
-        catch
+        catch (Exception ex)
         {
             if (token.IsCancellationRequested)
                 progress.Report("Task cancelled.");
+            else
+                progress.Report($"Operation failed: {ex.Message}");
         }
     }
 
@@ -480,10 +494,12 @@ public class GrabberService : IGrabberService
             await Task.Run(() => shop.SellItem(item.ID, quantity), token);
             progress.Report($"Sold {quantity} {item.Name}");
         }
-        catch
+        catch (Exception ex)
         {
             if (token.IsCancellationRequested)
                 progress.Report("Task cancelled.");
+            else
+                progress.Report($"Operation failed: {ex.Message}");
         }
     }
 
@@ -539,10 +555,12 @@ public class GrabberService : IGrabberService
                 progress.Report($"Bought {result} {item.Name}");
                 return;
             }
-            catch
+            catch (Exception ex)
             {
                 if (token.IsCancellationRequested)
                     progress.Report("Task cancelled.");
+                else
+                    progress.Report($"Operation failed: {ex.Message}");
             }
         }
 
@@ -578,10 +596,12 @@ public class GrabberService : IGrabberService
                     await Task.Delay(1000, token);
             }
         }
-        catch
+        catch (Exception ex)
         {
             if (token.IsCancellationRequested)
                 progress.Report("Task cancelled.");
+            else
+                progress.Report($"Operation failed: {ex.Message}");
         }
 
         return;
@@ -630,10 +650,12 @@ public class GrabberService : IGrabberService
             await Task.Run(() => shop.SellItem(item.ID, result), token);
             progress.Report($"Sold {result} {item.Name}");
         }
-        catch
+        catch (Exception ex)
         {
             if (token.IsCancellationRequested)
                 progress.Report("Task cancelled.");
+            else
+                progress.Report($"Operation failed: {ex.Message}");
         }
     }*/
 
@@ -665,10 +687,12 @@ public class GrabberService : IGrabberService
             await Task.Run(() => shop.SellItem(item.ID), token);
             progress.Report($"Sold {quantity} {item.Name}");
         }
-        catch
+        catch (Exception ex)
         {
             if (token.IsCancellationRequested)
                 progress.Report("Task cancelled.");
+            else
+                progress.Report($"Operation failed: {ex.Message}");
         }
     }
 
@@ -708,10 +732,12 @@ public class GrabberService : IGrabberService
                     await Task.Delay(1000, token);
             }
         }
-        catch
+        catch (Exception ex)
         {
             if (token.IsCancellationRequested)
                 progress.Report("Task cancelled.");
+            else
+                progress.Report($"Operation failed: {ex.Message}");
         }
     }
 }

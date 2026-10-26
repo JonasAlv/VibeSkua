@@ -130,6 +130,13 @@ foreach ($Target in $Targets) {
             Copy-Item $butlerDll (Join-Path $PluginsDir "ButlerV5.dll") -Force
         }
     }
+    $CosmeticsSourceDir = Join-Path $RootDir "Skua.Plugin.Cosmetics\bin\Release\net10.0"
+    if (Test-Path $CosmeticsSourceDir) {
+        $cosmeticsDll = Join-Path $CosmeticsSourceDir "Skua.Plugin.Cosmetics.dll"
+        if (Test-Path $cosmeticsDll) {
+            Copy-Item $cosmeticsDll (Join-Path $PluginsDir "Skua.Plugin.Cosmetics.dll") -Force
+        }
+    }
 
     # 9. Clean up stray files from target root
     $AllowedRootFiles = @(

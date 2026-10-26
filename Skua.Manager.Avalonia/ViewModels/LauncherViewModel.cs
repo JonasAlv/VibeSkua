@@ -122,15 +122,26 @@ public partial class LauncherViewModel : BotControlViewModelBase, IDisposable
         });
     }
 
-    public void KillAllSkuaProcesses()
+    public Task KillAllSkuaProcesses()
     {
-        Task.Factory.StartNew(() =>
+        // Snapshot on the caller's (UI) thread: IDispatcherService.Invoke only posts, so reading the
+        // collection through it from the background task returned an empty list and closed nothing.
+        List<ProcessInfo> processes = SkuaProcesses.ToList();
+
+        return Task.Run(async () =>
         {
-            foreach (ProcessInfo procInfo in SkuaProcesses)
+            await Task.WhenAll(processes.Select(async procInfo =>
             {
-                procInfo.Process.Kill();
-                _dispatcherService.Invoke(() => SkuaProcesses.Remove(procInfo));
-            }
+                try
+                {
+                    await ProcessCloser.CloseAsync(procInfo.Process, ProcessCloser.DefaultTimeout);
+                    _dispatcherService.Invoke(() => SkuaProcesses.Remove(procInfo));
+                }
+                catch (Exception ex)
+                {
+                    Trace.WriteLine($"Failed to stop process {procInfo.Process.Id}: {ex.Message}");
+                }
+            }));
         });
     }
 
@@ -158,10 +169,17 @@ public partial class LauncherViewModel : BotControlViewModelBase, IDisposable
         if (procInfo == null)
             return;
 
-        await Task.Run(() =>
+        await Task.Run(async () =>
         {
-            procInfo.Process.Kill();
-            _dispatcherService.Invoke(() => SkuaProcesses.Remove(procInfo));
+            try
+            {
+                await ProcessCloser.CloseAsync(procInfo.Process, ProcessCloser.DefaultTimeout);
+                _dispatcherService.Invoke(() => SkuaProcesses.Remove(procInfo));
+            }
+            catch (Exception ex)
+            {
+                Trace.WriteLine($"Failed to stop process: {ex}");
+            }
         });
     }
 
@@ -186,16 +204,20 @@ public partial class LauncherViewModel : BotControlViewModelBase, IDisposable
                 StrongReferenceMessenger.Default.Unregister<UpdateStartedMessage>(this);
                 StrongReferenceMessenger.Default.Unregister<AddProcessMessage>(this);
 
-                // Clear and kill any remaining processes
-                foreach (ProcessInfo procInfo in SkuaProcesses)
+                // Close any remaining processes, killing those that don't exit in time
+                List<ProcessInfo> remaining = SkuaProcesses.ToList();
+                try
                 {
-                    try
+                    Task.Run(() => Task.WhenAll(remaining.Select(async procInfo =>
                     {
-                        if (!procInfo.HasExited)
-                            procInfo.Process.Kill();
-                    }
-                    catch { }
+                        try
+                        {
+                            await ProcessCloser.CloseAsync(procInfo.Process, ProcessCloser.DefaultTimeout);
+                        }
+                        catch { }
+                    }))).Wait(ProcessCloser.DefaultTimeout + TimeSpan.FromSeconds(2));
                 }
+                catch { }
                 SkuaProcesses?.Clear();
             }
             _disposed = true;

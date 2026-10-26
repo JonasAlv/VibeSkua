@@ -1458,7 +1458,21 @@ public partial class TabbedHostWindow : Window
 
         if (_tabs.Count == 0 || !InstancesTabControl.Items.OfType<TabItem>().Any())
         {
-            Close();
+            // Keep the host window alive when the final account tab closes.
+            // This allows the user to open another tab without restarting VibeSkua.
+            _lastSelectedTab = null;
+            _lastActiveHwnd = IntPtr.Zero;
+            _isGridViewEnabled = false;
+
+            // Explicitly keep the host alive and visible after the final child exits.
+            // The host is the desktop MainWindow, so closing a child tab must not leave
+            // the application with no visible window or trigger an accidental shutdown.
+            if (!IsVisible)
+                Show();
+            if (WindowState == WindowState.Minimized)
+                WindowState = WindowState.Normal;
+            Activate();
+            DoReposition();
             return;
         }
 
@@ -1651,7 +1665,12 @@ public partial class TabbedHostWindow : Window
 
         EnqueueSpawn(() =>
         {
-            if (_isClosing) return;
+            if (_isClosing || !_tabs.ContainsKey(newTab))
+            {
+                _isSpawning = false;
+                ProcessNextSpawn();
+                return;
+            }
             
             Process p = new Process();
             string exe = Environment.ProcessPath ?? Process.GetCurrentProcess().MainModule?.FileName ?? "";
@@ -1683,7 +1702,23 @@ public partial class TabbedHostWindow : Window
                 });
             };
 
-            p.Start();
+            try
+            {
+                p.Start();
+            }
+            catch (Exception ex)
+            {
+                p.Dispose();
+                _isSpawning = false;
+                Trace.WriteLine($"VibeSkua failed to start child process for tab '{tabName}': {ex}");
+                Dispatcher.UIThread.Post(() =>
+                {
+                    if (_tabs.ContainsKey(newTab))
+                        CloseTab(newTab);
+                    ProcessNextSpawn();
+                }, DispatcherPriority.Background);
+                return;
+            }
             info.Process = p;
             HotKeys.RegisterSkuaPid((uint)p.Id);
 

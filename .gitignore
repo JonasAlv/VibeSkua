@@ -414,3 +414,5 @@ skua_global_*.txt
 !Skua.AS3/skua/bin/skua.swf
 
 
+Skua.sln
+*.sln

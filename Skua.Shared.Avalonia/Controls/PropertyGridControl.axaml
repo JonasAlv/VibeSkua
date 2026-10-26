@@ -31,7 +31,20 @@
                        Classes="option-pill-input"
                        IsReadOnly="True"
                        VerticalAlignment="Center"
-                       Text="{Binding Value}" />
+                       Text="{Binding Value}"
+                       IsVisible="{Binding IsNotCollection}" />
+              <StackPanel Grid.Column="1"
+                          Orientation="Horizontal"
+                          Spacing="6"
+                          IsVisible="{Binding IsCollection}">
+                <TextBlock Text="{Binding Value}"
+                           VerticalAlignment="Center" />
+                <Button Content="..."
+                        Padding="8,2"
+                        MinWidth="32"
+                        VerticalAlignment="Center"
+                        Click="OpenCollection_Click" />
+              </StackPanel>
             </Grid>
           </DataTemplate>
         </ItemsControl.ItemTemplate>

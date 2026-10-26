@@ -18,6 +18,6 @@ public partial class LauncherUserControl : UserControl
 
     private void KillAll_Click(object? sender, RoutedEventArgs e)
     {
-        _viewModel.KillAllSkuaProcesses();
+        _ = _viewModel.KillAllSkuaProcesses();
     }
 }

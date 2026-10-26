@@ -239,46 +239,50 @@ public partial class ScriptLoaderViewModel : BotControlViewModelBase
 
     private async void StartScript(ScriptLoaderViewModel recipient, StartScriptMessage message)
     {
-        bool startNew = false;
-        string msgPathFileName = Path.GetFileName(message.Path) ?? string.Empty;
-        string runningScriptMessage = $"Script {LoadedScript} is already running. Do you want to stop it?";
-
         ToggleScriptEnabled = false;
 
-        if (ScriptManager.ScriptRunning)
+        try
         {
-            if (Path.GetFileName(ScriptManager.LoadedScript) != msgPathFileName)
-            {
-                runningScriptMessage = $"{LoadedScript} is running. Do you want to stop it and start {msgPathFileName}?";
-                startNew = true;
-            }
+            bool startNew = false;
+            string msgPathFileName = Path.GetFileName(message.Path) ?? string.Empty;
+            string runningScriptMessage = $"Script {LoadedScript} is already running. Do you want to stop it?";
 
-            DialogResult dialogResult = _dialogService.ShowMessageBox(runningScriptMessage, "Script Error", "No", "Yes");
-
-            if (dialogResult.Text == "Yes")
+            if (ScriptManager.ScriptRunning)
             {
-                ToggleScriptEnabled = false;
+                if (!string.Equals(Path.GetFileName(ScriptManager.LoadedScript), msgPathFileName, StringComparison.OrdinalIgnoreCase))
+                {
+                    runningScriptMessage = $"{LoadedScript} is running. Do you want to stop it and start {msgPathFileName}?";
+                    startNew = true;
+                }
+
+                DialogResult dialogResult = _dialogService.ShowMessageBox(runningScriptMessage, "Script Error", "No", "Yes");
+                if (dialogResult.Text != "Yes")
+                    return;
+
                 await ScriptManager.StopScript();
 
-                if (startNew)
-                {
-                    LoadedScript = Path.GetFileName(message.Path) ?? string.Empty;
-                    await Task.Delay(5000);
-                    await recipient.StartScriptAsync(message.Path);
-                }
+                if (!startNew)
+                    return;
+
+                LoadedScript = msgPathFileName;
+                await Task.Delay(5000);
+            }
+            else
+            {
+                LoadedScript = msgPathFileName;
             }
 
+            await recipient.StartScriptAsync(message.Path);
+        }
+        catch (Exception ex)
+        {
+            _dialogService.ShowMessageBox($"Failed to start script: {ex.Message}", "Script Error");
+        }
+        finally
+        {
             ToggleScriptEnabled = true;
             OnPropertyChanged(nameof(ToggleScriptText));
-            return;
         }
-        else
-        {
-            LoadedScript = Path.GetFileName(message.Path) ?? string.Empty;
-        }
-
-        await recipient.StartScriptAsync(message.Path);
-        OnPropertyChanged(nameof(ToggleScriptText));
     }
 
     private void EditScript(ScriptLoaderViewModel recipient, EditScriptMessage message)

@@ -218,10 +218,11 @@ public partial class App : Application
         StrongReferenceMessenger.Default.Send<CheckClientUpdateMessage>();
     }
 
-    private void TrayExit_Click(object? sender, EventArgs e)
+    private async void TrayExit_Click(object? sender, EventArgs e)
     {
         LauncherViewModel launcher = Ioc.Default.GetRequiredService<LauncherViewModel>();
-        launcher.KillAllSkuaProcesses();
+        // Wait for the clients to close themselves (or be killed) before the manager exits.
+        await launcher.KillAllSkuaProcesses();
         StrongReferenceMessenger.Default.Send<ExitManagerMessage>();
 
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)

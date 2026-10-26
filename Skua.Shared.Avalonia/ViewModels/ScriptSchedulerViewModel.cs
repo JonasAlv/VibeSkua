@@ -1,3 +1,4 @@
+using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
@@ -33,7 +34,7 @@ public partial class ScriptSchedulerViewModel : BotControlViewModelBase
         _windowService = windowService;
         _dialogService = dialogService;
         
-        StrongReferenceMessenger.Default.Register<ScriptSchedulerViewModel, ScriptStoppedMessage, int>(this, (int)MessageChannels.ScriptStatus, (r, m) => r.OnScriptStopped());
+        StrongReferenceMessenger.Default.Register<ScriptSchedulerViewModel, ScriptStoppedMessage, int>(this, (int)MessageChannels.ScriptStatus, (r, m) => Dispatcher.UIThread.Post(r.OnScriptStopped));
         StrongReferenceMessenger.Default.Register<ScriptSchedulerViewModel, QueueScriptMessage, int>(this, (int)MessageChannels.ScriptStatus, (r, m) => r.OnQueueScript(m));
     }
 
@@ -167,12 +168,14 @@ public partial class ScriptSchedulerViewModel : BotControlViewModelBase
                 _manager.Config.Configure();
             else
                 _dialogService.ShowMessageBox("The loaded script has no options to configure.", "No Options");
-            
-            _manager.OverrideStorage = null;
         }
         catch (Exception ex)
         {
             _dialogService.ShowMessageBox($"Script cannot be configured as it has compilation errors:\r\n{ex}", "Script Error");
+        }
+        finally
+        {
+            _manager.OverrideStorage = null;
         }
     }
 
@@ -234,7 +237,21 @@ public partial class ScriptSchedulerViewModel : BotControlViewModelBase
             ScriptQueue[CurrentIndex].Status = "Stopped";
             ScriptQueue[CurrentIndex].Duration = GetFormattedDuration();
         }
-        await _manager.StopScript();
+
+        try
+        {
+            await _manager.StopScript();
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Trace.WriteLine($"Failed to stop the current scheduler script: {ex}");
+        }
+        finally
+        {
+            _queueCts?.Dispose();
+            _queueCts = null;
+        }
+
         _ = _discord.SendEmbedAsync("Scheduler Stopped", "**Scheduler** playlist execution manually halted.", 0xFF0000);
     }
 
@@ -255,11 +272,18 @@ public partial class ScriptSchedulerViewModel : BotControlViewModelBase
         }
 
         string? path = _fileDialog.Save("JSON Files (*.json)|*.json|All files (*.*)|*.*");
-        if (path != null)
+        if (path == null)
+            return;
+
+        try
         {
             var data = ScriptQueue.Select(x => new SavedScriptItem { Path = x.Path, Id = x.Id, Name = x.Name }).ToList();
             File.WriteAllText(path, System.Text.Json.JsonSerializer.Serialize(data, new System.Text.Json.JsonSerializerOptions { WriteIndented = true }));
             _dialogService.ShowMessageBox("Playlist saved successfully.", "Save Playlist");
+        }
+        catch (Exception ex)
+        {
+            _dialogService.ShowMessageBox($"Failed to save playlist: {ex.Message}", "Save Error");
         }
     }
 
@@ -329,7 +353,10 @@ public partial class ScriptSchedulerViewModel : BotControlViewModelBase
         if (CurrentIndex >= ScriptQueue.Count)
         {
             IsRunningQueue = false;
+            QueueStartedTime = string.Empty;
             _discord.SuppressDefaultNotifications = false;
+            _queueCts?.Dispose();
+            _queueCts = null;
             _ = _discord.SendEmbedAsync("Scheduler Finished", "All scripts in the **Scheduler** playlist have completed!", 0x00FF00);
             return;
         }
@@ -456,14 +483,18 @@ public partial class ScriptSchedulerViewModel : BotControlViewModelBase
             }
         }
 
-        Task.Run(async () => 
+        System.Threading.CancellationToken queueToken = _queueCts?.Token ?? System.Threading.CancellationToken.None;
+        _ = Task.Run(async () =>
         {
             try
             {
-                await Task.Delay(2000, _queueCts!.Token);
-                RunNextScript();
+                await Task.Delay(2000, queueToken);
+                Dispatcher.UIThread.Post(RunNextScript);
             }
-            catch (TaskCanceledException) { }
+            catch (TaskCanceledException)
+            {
+                // The queue was stopped while waiting to start the next script.
+            }
         });
     }
 

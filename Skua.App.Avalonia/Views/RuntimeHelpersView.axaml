@@ -140,14 +140,10 @@
                         <Button Grid.Column="0"
                                 Classes="skua-button"
                                 Content="Search Inventory"
-                                Command="{Binding SetBoostIDsCommand}"
-                                CommandParameter="{StaticResource FalseValue}"
                                 Click="BoostIdsInventory_Click" />
                         <Button Grid.Column="1"
                                 Classes="skua-button"
                                 Content="Search Bank"
-                                Command="{Binding SetBoostIDsCommand}"
-                                CommandParameter="{StaticResource TrueValue}"
                                 Click="BoostIdsBank_Click" />
                     </Grid>
                     

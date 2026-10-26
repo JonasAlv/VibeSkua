@@ -118,50 +118,102 @@ public partial class ClientUpdatesViewModel : BotControlViewModelBase
             return;
 
         IsBusy = true;
-        await _updateService.DownloadUpdateAsync(_progress);
-        await Task.Delay(1000);
-        ProgressStatus = null;
-        IsBusy = false;
+        Status = "Downloading update...";
+        try
+        {
+            await _updateService.DownloadUpdateAsync(_progress);
+            Status = "Update downloaded successfully.";
+            await Task.Delay(1000);
+            ProgressStatus = null;
+        }
+        catch (OperationCanceledException)
+        {
+            Status = "Update cancelled.";
+        }
+        catch (Exception ex)
+        {
+            Status = $"Update failed: {ex.Message}";
+        }
+        finally
+        {
+            IsBusy = false;
+        }
     }
 
     [RelayCommand]
     public async Task ResetScripts(CancellationToken token)
     {
-        IsBusy = true;
-        string skuaPath = ClientFileSources.SkuaScriptsDIR;
-        if (Directory.Exists(skuaPath))
-            Directory.Delete(skuaPath, true);
+        if (IsBusy)
+            return;
 
-        if (!Directory.Exists(skuaPath))
+        IsBusy = true;
+        Status = "Resetting scripts...";
+        try
+        {
+            string skuaPath = ClientFileSources.SkuaScriptsDIR;
+            if (Directory.Exists(skuaPath))
+                Directory.Delete(skuaPath, true);
+
             Directory.CreateDirectory(skuaPath);
 
-        if (File.Exists(ClientFileSources.SkuaScriptsCommitFile))
-            File.Delete(ClientFileSources.SkuaScriptsCommitFile);
+            if (File.Exists(ClientFileSources.SkuaScriptsCommitFile))
+                File.Delete(ClientFileSources.SkuaScriptsCommitFile);
 
-        await UpdateScripts(token);
+            await UpdateScriptsCore(token);
+        }
+        catch (OperationCanceledException)
+        {
+            Status = "Reset cancelled.";
+        }
+        catch (Exception ex)
+        {
+            Status = $"Error resetting scripts: {ex.Message}";
+        }
+        finally
+        {
+            IsBusy = false;
+        }
     }
 
     [RelayCommand]
     public async Task UpdateScripts(CancellationToken token)
     {
+        if (IsBusy)
+            return;
+
         IsBusy = true;
+        Status = "Updating scripts...";
+        try
+        {
+            await UpdateScriptsCore(token);
+        }
+        finally
+        {
+            IsBusy = false;
+            ProgressStatus = null;
+        }
+    }
+
+    private async Task UpdateScriptsCore(CancellationToken token)
+    {
         try
         {
             await _scriptsService.RefreshScriptsAsync(_progress, token);
-
             int count = await Task.Run(async () => await _scriptsService.DownloadAllWhereAsync(s => !s.Downloaded || s.Outdated));
             ProgressStatus = $"Downloaded {count} scripts.";
+            Status = "Scripts are up to date.";
         }
         catch (OperationCanceledException)
         {
             ProgressStatus = "Task cancelled.";
+            Status = "Script update cancelled.";
         }
-        catch { }
-        finally
+        catch (Exception ex)
         {
-            await Task.Delay(1000);
-            IsBusy = false;
-            ProgressStatus = null;
+            ProgressStatus = "Update failed.";
+            Status = $"Error updating scripts: {ex.Message}";
         }
+
+        await Task.Delay(1000);
     }
 }

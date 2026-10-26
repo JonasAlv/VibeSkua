@@ -80,14 +80,27 @@ public sealed partial class NotifyDropViewModel : BotControlViewModelBase
     [RelayCommand]
     private void TestBeep()
     {
-        Task.Factory.StartNew<Task>(async () =>
+        _ = PlayBeepsAsync();
+    }
+
+    private async Task PlayBeepsAsync()
+    {
+        int soundCount = Math.Max(0, SoundCount);
+        int soundDelay = Math.Max(0, SoundDelay);
+
+        try
         {
-            for (int i = 0; i < SoundCount; i++)
+            for (int i = 0; i < soundCount; i++)
             {
                 _soundService.Beep();
-                await Task.Delay((int)SoundDelay);
+                if (i < soundCount - 1)
+                    await Task.Delay(soundDelay);
             }
-        });
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Trace.WriteLine($"Notify Drop beep failed: {ex}");
+        }
     }
 
     private void ItemDropped(NotifyDropViewModel recipient, ItemDroppedMessage message)
@@ -96,14 +109,7 @@ public sealed partial class NotifyDropViewModel : BotControlViewModelBase
         {
             if (item == message.Item.Name)
             {
-                Task.Factory.StartNew<Task>(async () =>
-                {
-                    for (int i = 0; i < recipient.SoundCount; i++)
-                    {
-                        recipient._soundService.Beep();
-                        await Task.Delay((int)recipient.SoundDelay);
-                    }
-                });
+                _ = recipient.PlayBeepsAsync();
                 break;
             }
         }
