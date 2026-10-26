@@ -12,14 +12,14 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Skua.Core.Interfaces\Skua.Core.Interfaces.csproj" />
-    <ProjectReference Include="..\Skua.Core.Models\Skua.Core.Models.csproj" />
-    <ProjectReference Include="..\Skua.Shared.Avalonia\Skua.Shared.Avalonia.csproj" />
+    <ProjectReference Include="../Skua.Core.Interfaces/Skua.Core.Interfaces.csproj" />
+    <ProjectReference Include="../Skua.Core.Models/Skua.Core.Models.csproj" />
+    <ProjectReference Include="../Skua.Shared.Avalonia/Skua.Shared.Avalonia.csproj" />
   </ItemGroup>
 
   <Target Name="PostBuild" AfterTargets="PostBuildEvent">
-    <MakeDir Directories="..\Build\plugins" Condition="'$(Configuration)' == 'Release'" />
-    <Copy SourceFiles="$(TargetDir)Skua.Plugin.DailyTracker.dll" DestinationFolder="..\Build\plugins" Condition="'$(Configuration)' == 'Release'" ContinueOnError="true" />
+    <MakeDir Directories="../Build/plugins" Condition="'$(Configuration)' == 'Release'" />
+    <Copy SourceFiles="$(TargetDir)Skua.Plugin.DailyTracker.dll" DestinationFolder="../Build/plugins" Condition="'$(Configuration)' == 'Release'" ContinueOnError="true" />
   </Target>
 
 </Project>
