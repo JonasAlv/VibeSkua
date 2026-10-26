@@ -35,10 +35,15 @@
                          FontSize="11"
                          FontWeight="SemiBold"
                          Foreground="{DynamicResource SkuaMutedTextBrush}" />
-              <TextBlock Text="{Binding CurrentPlayer, FallbackValue='Not Logged In'}"
-                         FontSize="12"
-                         FontWeight="Bold"
-                         Foreground="{DynamicResource SkuaTextBrush}" />
+              <ComboBox ItemsSource="{Binding Profiles}"
+                        SelectedItem="{Binding SelectedProfile}"
+                        PlaceholderText="Not Logged In"
+                        MinWidth="160"
+                        Height="26"
+                        FontSize="12"
+                        FontWeight="Bold"
+                        DropDownOpened="ProfileComboBox_DropDownOpened"
+                        ToolTip.Tip="Edit the CoreBots options of an account logged in on any open tab" />
             </StackPanel>
             <TextBlock Text="CoreBots automated routine preferences"
                        FontSize="10"

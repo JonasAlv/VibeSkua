@@ -1,4 +1,42 @@
 {
+  "Kathool Adept": {
+    "Base": {
+      "skillUseMode": "WaitForCooldown",
+      "skillTimeout": 100,
+      "skills": [
+        {
+          "skillId": 1
+        },
+        {
+          "skillId": 3,
+          "rules": [
+            {
+              "type": "Aura",
+              "value": 5,
+              "comparison": "greater",
+              "auraName": "Feeding",
+              "auraTarget": "self"
+            }
+          ]
+        },
+        {
+          "skillId": 2
+        },
+        {
+          "skillId": 4,
+          "rules": [
+            {
+              "type": "Aura",
+              "value": 5,
+              "comparison": "greater",
+              "auraName": "Madness",
+              "auraTarget": "target"
+            }
+          ]
+        }
+      ]
+    }
+  },
   "ArchMage": {
     "Base": {
       "skillUseMode": "WaitForCooldown",

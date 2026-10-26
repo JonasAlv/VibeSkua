@@ -17,9 +17,22 @@ public class LoadoutService : ILoadoutService
     private readonly IDispatcherService _dispatcherService;
     private List<LoadoutProfile> _loadouts = new();
     private string _currentUsername = string.Empty;
+    private string? _profile;
 
     public event System.Action? LoadoutsChanged;
     public bool IsLoggedIn => _bot.Player.LoggedIn;
+
+    public string? Profile
+    {
+        get => _profile;
+        set
+        {
+            _profile = value;
+            Refresh();
+        }
+    }
+
+    private string Account => string.IsNullOrEmpty(_profile) ? _bot.Player.Username : _profile;
 
     public List<LoadoutProfile> Loadouts
     {
@@ -41,7 +54,7 @@ public class LoadoutService : ILoadoutService
             if (!Directory.Exists(dir))
                 Directory.CreateDirectory(dir);
             
-            return Path.Combine(dir, $"{_bot.Player.Username}.json");
+            return Path.Combine(dir, $"{Account}.json");
         }
     }
 
@@ -94,9 +107,9 @@ public class LoadoutService : ILoadoutService
             return;
         }
             
-        if (_currentUsername != _bot.Player.Username)
+        if (_currentUsername != Account)
         {
-            _currentUsername = _bot.Player.Username;
+            _currentUsername = Account;
             LoadFromFile();
         }
     }
@@ -105,6 +118,7 @@ public class LoadoutService : ILoadoutService
     {
         _dispatcherService.Invoke(() =>
         {
+            _profile = null;
             _currentUsername = string.Empty;
             _loadouts.Clear();
             LoadoutsChanged?.Invoke();
@@ -124,7 +138,7 @@ public class LoadoutService : ILoadoutService
             return;
         }
 
-        _currentUsername = _bot.Player.Username;
+        _currentUsername = Account;
         LoadFromFile();
     }
 
@@ -237,7 +251,7 @@ public class LoadoutService : ILoadoutService
         return profile;
     }
 
-    public async Task<List<string>> EquipLoadoutAsync(LoadoutProfile loadout)
+    public async Task<List<string>> EquipLoadoutAsync(LoadoutProfile loadout, string? enhanceProfile = null)
     {
         EnsureLoaded();
         _logger.ScriptLog($"[Loadouts] Equipping Loadout: {loadout.Name}");
@@ -268,47 +282,56 @@ public class LoadoutService : ILoadoutService
                     return missingItems;
                 }
 
-                int cPattern = loadout.ClassPatternID > 0 ? loadout.ClassPatternID : ParsePatternID(loadout.ClassEnhancement);
-                int cProc = loadout.ClassPatternID > 0 ? loadout.ClassProcID : ParseProcID(loadout.ClassEnhancement);
-                int wPattern = loadout.WeaponPatternID > 0 ? loadout.WeaponPatternID : ParsePatternID(loadout.WeaponEnhancement);
-                int wProc = loadout.WeaponPatternID > 0 ? loadout.WeaponProcID : ParseProcID(loadout.WeaponEnhancement);
-                int hPattern = loadout.HelmPatternID > 0 ? loadout.HelmPatternID : ParsePatternID(loadout.HelmEnhancement);
-                int hProc = loadout.HelmPatternID > 0 ? loadout.HelmProcID : ParseProcID(loadout.HelmEnhancement);
-                int capePattern = loadout.CapePatternID > 0 ? loadout.CapePatternID : ParsePatternID(loadout.CapeEnhancement);
-                int capeProc = loadout.CapePatternID > 0 ? loadout.CapeProcID : ParseProcID(loadout.CapeEnhancement);
-
                 bool needsEnhancement = false;
                 var scriptBody = new System.Text.StringBuilder();
 
-                var classItem = _bot.Inventory.Items.FirstOrDefault(i => i.Equipped && i.Name.Replace("&amp;", "&").Equals(loadout.Class, StringComparison.OrdinalIgnoreCase));
-                if (classItem != null && (classItem.EnhancementPatternID != cPattern || classItem.ProcID != cProc))
+                // The CoreBots class profile replaces the enhancements saved with the loadout
+                if (enhanceProfile != null)
                 {
-                    scriptBody.AppendLine($@"        adv.EnhanceItem(""{loadout.Class}"", (EnhancementType){cPattern}, CapeSpecial.None, HelmSpecial.None, WeaponSpecial.None);");
+                    scriptBody.AppendLine($@"        adv.EnhanceEquippedWithProfile(""{enhanceProfile}"");");
                     needsEnhancement = true;
                 }
-
-                var weaponItem = _bot.Inventory.Items.FirstOrDefault(i => i.Equipped && i.Name.Replace("&amp;", "&").Equals(loadout.Weapon, StringComparison.OrdinalIgnoreCase));
-                if (weaponItem != null && (weaponItem.EnhancementPatternID != wPattern || weaponItem.ProcID != wProc))
+                else
                 {
-                    int wBaseEnh = wPattern > 9 ? 9 : wPattern;
-                    scriptBody.AppendLine($@"        adv.EnhanceItem(""{loadout.Weapon}"", (EnhancementType){wBaseEnh}, CapeSpecial.None, HelmSpecial.None, {MapWeaponSpecial(wPattern, wProc)});");
-                    needsEnhancement = true;
-                }
+                    int cPattern = loadout.ClassPatternID > 0 ? loadout.ClassPatternID : ParsePatternID(loadout.ClassEnhancement);
+                    int cProc = loadout.ClassPatternID > 0 ? loadout.ClassProcID : ParseProcID(loadout.ClassEnhancement);
+                    int wPattern = loadout.WeaponPatternID > 0 ? loadout.WeaponPatternID : ParsePatternID(loadout.WeaponEnhancement);
+                    int wProc = loadout.WeaponPatternID > 0 ? loadout.WeaponProcID : ParseProcID(loadout.WeaponEnhancement);
+                    int hPattern = loadout.HelmPatternID > 0 ? loadout.HelmPatternID : ParsePatternID(loadout.HelmEnhancement);
+                    int hProc = loadout.HelmPatternID > 0 ? loadout.HelmProcID : ParseProcID(loadout.HelmEnhancement);
+                    int capePattern = loadout.CapePatternID > 0 ? loadout.CapePatternID : ParsePatternID(loadout.CapeEnhancement);
+                    int capeProc = loadout.CapePatternID > 0 ? loadout.CapeProcID : ParseProcID(loadout.CapeEnhancement);
 
-                var helmItem = _bot.Inventory.Items.FirstOrDefault(i => i.Equipped && i.Name.Replace("&amp;", "&").Equals(loadout.Helm, StringComparison.OrdinalIgnoreCase));
-                if (helmItem != null && (helmItem.EnhancementPatternID != hPattern || helmItem.ProcID != hProc))
-                {
-                    int hBaseEnh = hPattern > 9 ? 9 : hPattern;
-                    scriptBody.AppendLine($@"        adv.EnhanceItem(""{loadout.Helm}"", (EnhancementType){hBaseEnh}, CapeSpecial.None, {MapHelmSpecial(hPattern)}, WeaponSpecial.None);");
-                    needsEnhancement = true;
-                }
+                    var classItem = _bot.Inventory.Items.FirstOrDefault(i => i.Equipped && i.Name.Replace("&amp;", "&").Equals(loadout.Class, StringComparison.OrdinalIgnoreCase));
+                    if (classItem != null && (classItem.EnhancementPatternID != cPattern || classItem.ProcID != cProc))
+                    {
+                        scriptBody.AppendLine($@"        adv.EnhanceItem(""{loadout.Class}"", (EnhancementType){cPattern}, CapeSpecial.None, HelmSpecial.None, WeaponSpecial.None);");
+                        needsEnhancement = true;
+                    }
 
-                var capeItem = _bot.Inventory.Items.FirstOrDefault(i => i.Equipped && i.Name.Replace("&amp;", "&").Equals(loadout.Cape, StringComparison.OrdinalIgnoreCase));
-                if (capeItem != null && (capeItem.EnhancementPatternID != capePattern || capeItem.ProcID != capeProc))
-                {
-                    int capeBaseEnh = capePattern > 9 ? 9 : capePattern;
-                    scriptBody.AppendLine($@"        adv.EnhanceItem(""{loadout.Cape}"", (EnhancementType){capeBaseEnh}, {MapCapeSpecial(capePattern)}, HelmSpecial.None, WeaponSpecial.None);");
-                    needsEnhancement = true;
+                    var weaponItem = _bot.Inventory.Items.FirstOrDefault(i => i.Equipped && i.Name.Replace("&amp;", "&").Equals(loadout.Weapon, StringComparison.OrdinalIgnoreCase));
+                    if (weaponItem != null && (weaponItem.EnhancementPatternID != wPattern || weaponItem.ProcID != wProc))
+                    {
+                        int wBaseEnh = wPattern > 9 ? 9 : wPattern;
+                        scriptBody.AppendLine($@"        adv.EnhanceItem(""{loadout.Weapon}"", (EnhancementType){wBaseEnh}, CapeSpecial.None, HelmSpecial.None, {MapWeaponSpecial(wPattern, wProc)});");
+                        needsEnhancement = true;
+                    }
+
+                    var helmItem = _bot.Inventory.Items.FirstOrDefault(i => i.Equipped && i.Name.Replace("&amp;", "&").Equals(loadout.Helm, StringComparison.OrdinalIgnoreCase));
+                    if (helmItem != null && (helmItem.EnhancementPatternID != hPattern || helmItem.ProcID != hProc))
+                    {
+                        int hBaseEnh = hPattern > 9 ? 9 : hPattern;
+                        scriptBody.AppendLine($@"        adv.EnhanceItem(""{loadout.Helm}"", (EnhancementType){hBaseEnh}, CapeSpecial.None, {MapHelmSpecial(hPattern)}, WeaponSpecial.None);");
+                        needsEnhancement = true;
+                    }
+
+                    var capeItem = _bot.Inventory.Items.FirstOrDefault(i => i.Equipped && i.Name.Replace("&amp;", "&").Equals(loadout.Cape, StringComparison.OrdinalIgnoreCase));
+                    if (capeItem != null && (capeItem.EnhancementPatternID != capePattern || capeItem.ProcID != capeProc))
+                    {
+                        int capeBaseEnh = capePattern > 9 ? 9 : capePattern;
+                        scriptBody.AppendLine($@"        adv.EnhanceItem(""{loadout.Cape}"", (EnhancementType){capeBaseEnh}, {MapCapeSpecial(capePattern)}, HelmSpecial.None, WeaponSpecial.None);");
+                        needsEnhancement = true;
+                    }
                 }
 
                 if (!needsEnhancement)
@@ -317,9 +340,9 @@ public class LoadoutService : ILoadoutService
                     return missingItems;
                 }
 
+                // Map.Name has no room number; CoreBots.Join would turn "battleon-3" into an invalid "battleon-3-<room>".
                 string currentMapName = _bot.Map.Name?.ToLowerInvariant() ?? "home";
-                string currentMapFullName = _bot.Map.FullName ?? "home";
-                
+
                 string returnJoin;
                 if (currentMapName == "house")
                 {
@@ -332,7 +355,7 @@ public class LoadoutService : ILoadoutService
                 }
                 else
                 {
-                    returnJoin = $"core.Join(\"{currentMapFullName}\");";
+                    returnJoin = $"core.Join(\"{currentMapName}\");";
                 }
 
                 string scriptPath = Path.Combine(ClientFileSources.SkuaScriptsDIR, "LoadoutEnhancerTemp.cs");
@@ -355,8 +378,12 @@ public class LoadoutEnhancerTemp
 }}";
                 File.WriteAllText(scriptPath, scriptContent);
                 _manager.SetLoadedScript(scriptPath);
-                await _manager.StartScript();
-                
+                if (await _manager.StartScript() is System.Exception error)
+                {
+                    _logger.ScriptLog($"[Loadouts] The enhance script could not start: {error.Message}");
+                    return missingItems;
+                }
+
                 // Wait for the script to completely finish running before letting the task resolve
                 while (_manager.ScriptRunning)
                 {

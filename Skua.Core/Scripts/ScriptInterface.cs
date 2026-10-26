@@ -286,6 +286,7 @@ public class ScriptInterface : IScriptInterface, IScriptInterfaceManager, IDispo
         int lastConnChange = 0;
         string lastConnDetail = "";
         bool wasPlaying = false;
+        int disconnectedSince = 0;
 
         Stopwatch sw = new();
 
@@ -304,6 +305,7 @@ public class ScriptInterface : IScriptInterface, IScriptInterfaceManager, IDispo
                         try { Options.Reset(); } catch { }
                     }
                     wasPlaying = true;
+                    disconnectedSince = 0;
                     Servers.LastIP = Player.ServerIP ?? Servers.LastIP;
                     if (Servers.IsIntentionalLogout)
                         Servers.IsIntentionalLogout = false;
@@ -327,13 +329,21 @@ public class ScriptInterface : IScriptInterface, IScriptInterfaceManager, IDispo
                     catching = false;
                     if ((wasPlaying || Manager.ScriptRunning) && !_waitForLogin && !Servers.IsIntentionalLogout && Options.AutoRelogin)
                     {
-                        wasPlaying = false;
-                        Log("Unexpected disconnection detected by watchdog. Triggering auto re-login.");
-                        BeginLogout();
+                        // A busy Flash makes reads fail and return false; only act if the disconnect persists.
+                        if (disconnectedSince == 0)
+                            disconnectedSince = Environment.TickCount;
+                        else if (Environment.TickCount - disconnectedSince >= 10000)
+                        {
+                            wasPlaying = false;
+                            disconnectedSince = 0;
+                            Log("Unexpected disconnection detected by watchdog. Triggering auto re-login.");
+                            BeginLogout();
+                        }
                     }
                     else
                     {
                         wasPlaying = false;
+                        disconnectedSince = 0;
                     }
                 }
 
@@ -396,9 +406,13 @@ public class ScriptInterface : IScriptInterface, IScriptInterfaceManager, IDispo
     private (int newTime, string newText) CheckStuckonLoading(int lastConnChange, string lastConnDetail)
     {
         string connDetail = Flash.IsNull("mcConnDetail.stage") ? "null" : Flash.GetGameObject("mcConnDetail.txtDetail.text", "null")!;
+        // After a relogin the overlay can stay on stage with its last text while the player is fully in game;
+        // acting on it would log a healthy account out (without re-login) once LoadTimeout passes.
+        if (connDetail != "null" && Servers.IsConnected && Flash.IsWorldLoaded && !Map.Loading && Player.Loaded)
+            connDetail = "null";
         if (connDetail == "null")
             return (Environment.TickCount, connDetail);
-        if (connDetail.Contains("has been lost") && !_waitForLogin)
+        if (connDetail.Contains("has been lost") && !_waitForLogin && !Servers.IsConnected)
         {
             if (!Servers.IsIntentionalLogout)
             {

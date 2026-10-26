@@ -37,6 +37,13 @@ public partial class ScriptRepoViewModel : BotControlViewModelBase
     private bool _isLoadingInitial;
     private readonly SemaphoreSlim _refreshSemaphore = new(1, 1);
 
+    // Temporary scripts the client writes into the Scripts folder; never list them as local scripts.
+    private static readonly HashSet<string> _generatedScriptNames = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "ClassEnhanceTemp.cs",
+        "LoadoutEnhancerTemp.cs"
+    };
+
     protected override void OnActivated()
     {
         _getScriptsService.PropertyChanged += GetScriptsService_PropertyChanged;
@@ -511,6 +518,44 @@ public partial class ScriptRepoViewModel : BotControlViewModelBase
                 // 2. Custom Folders and Custom Scripts (shown when FilterBy is "All", "Local", or "Pinned")
                 if (isAllFilter || isLocalFilter || isPinnedFilter)
                 {
+                    // Scripts installed by hand into the Scripts folder (e.g. a third-party pack) that the repository doesn't know about
+                    try
+                    {
+                        HashSet<string> repoFiles = new(
+                            _getScriptsService?.Scripts?.Select(s => Path.GetFullPath(s.LocalFile)) ?? Enumerable.Empty<string>(),
+                            StringComparer.OrdinalIgnoreCase);
+                        string cachedScriptsDir = Path.GetFullPath(Path.Combine(ClientFileSources.SkuaScriptsDIR, "Cached-Scripts")) + Path.DirectorySeparatorChar;
+
+                        foreach (string filePath in existingLocalFiles.Keys)
+                        {
+                            if (repoFiles.Contains(filePath) || filePath.StartsWith(cachedScriptsDir, StringComparison.OrdinalIgnoreCase))
+                                continue;
+                            if (_generatedScriptNames.Contains(Path.GetFileName(filePath)))
+                                continue;
+
+                            string localKey = filePath.Replace('\\', '/').Trim();
+                            bool isPinned = pinnedSet.Contains(localKey);
+                            if (isPinnedFilter && !isPinned) continue;
+
+                            FileInfo file = new(filePath);
+                            ScriptInfo info = new()
+                            {
+                                Name = Path.GetFileNameWithoutExtension(file.Name),
+                                FileName = file.Name,
+                                FilePath = file.FullName,
+                                Description = $"Local Script ({Path.GetRelativePath(ClientFileSources.SkuaScriptsDIR, file.DirectoryName ?? string.Empty).Replace('\\', '/')}), not in the repository",
+                                Tags = new[] { "Local" },
+                                CreationDate = file.CreationTime,
+                                Size = (int)file.Length,
+                                Sha256 = null,
+                                CachedDownloaded = true,
+                                CachedLocalSize = (int)file.Length
+                            };
+                            viewModels.Add(new ScriptInfoViewModel(info, file.FullName, isCustom: true, isDownloaded: true, localSize: (int)file.Length, isPinned: isPinned));
+                        }
+                    }
+                    catch { }
+
                     try
                     {
                         string? localFolder = settingsService?.Get<string>("UserCustomScriptsFolder");

@@ -19,6 +19,7 @@ internal class CoreBots
         List<TabItemViewModel> tabs = new()
         {
             new((string)"Loadout", (ObservableObject)s.GetRequiredService<CBOLoadoutViewModel>()),
+            new((string)"Class Enhance", (ObservableObject)s.GetRequiredService<CBOClassEnhanceViewModel>()),
             new((string)"Options", (ObservableObject)s.GetRequiredService<CBOptionsViewModel>()),
             new((string)"Other", (ObservableObject)CreateOtherOptions(s)),
         };

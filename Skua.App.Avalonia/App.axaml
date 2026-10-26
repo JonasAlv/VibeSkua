@@ -84,6 +84,9 @@
     <DataTemplate DataType="vms:CurrentDropsViewModel">
       <views:CurrentDropsView />
     </DataTemplate>
+    <DataTemplate DataType="vms:UltraWikiViewModel">
+      <views:UltraWikiView />
+    </DataTemplate>
     <DataTemplate DataType="runtime:JunkItemsViewModel">
       <views:JunkItemsView />
     </DataTemplate>
@@ -125,6 +128,9 @@
     </DataTemplate>
     <DataTemplate DataType="coreBotsOptions:CBOClassEquipmentViewModel">
       <views:CBOClassEquipmentView />
+    </DataTemplate>
+    <DataTemplate DataType="coreBotsOptions:CBOClassEnhanceViewModel">
+      <views:CBOClassEnhanceView />
     </DataTemplate>
     <DataTemplate DataType="coreBotsOptions:CBOptionsViewModel">
       <views:CBOptionsView />

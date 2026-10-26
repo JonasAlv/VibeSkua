@@ -275,6 +275,14 @@ public partial class MainWindow : Window
                         string file = System.IO.Path.Combine(dir, $"{Environment.ProcessId}.txt");
                         System.IO.File.WriteAllText(file, username);
                     }
+
+                    // Enhance pressed on another tab with this account's profile selected
+                    if (Skua.Core.Models.ConnectedAccounts.TakeEnhanceRequest())
+                    {
+                        var classEnhance = Ioc.Default.GetRequiredService<Skua.App.Avalonia.ViewModels.CoreBotsOptions.CBOClassEnhanceViewModel>();
+                        classEnhance.SetValues(Skua.App.Avalonia.ViewModels.CoreBotsOptions.CoreBotsViewModel.ReadProfile(username) ?? new());
+                        classEnhance.EnhanceCommand.Execute(null);
+                    }
                 }
             }
             catch { }

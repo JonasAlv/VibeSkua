@@ -44,6 +44,7 @@ internal class MainMenu
         windowService.RegisterManagedWindow<FastTravelViewModel>("Fast Travel");
         windowService.RegisterManagedWindow<CurrentDropsViewModel>("Current Drops");
         windowService.RegisterManagedWindow<JunkItemsViewModel>("Junk Items");
+        windowService.RegisterManagedWindow<UltraWikiViewModel>("Ultra Wiki");
 
         windowService.RegisterManagedWindow<LoaderViewModel>("Loader");
         windowService.RegisterManagedWindow<GrabberViewModel>("Grabber");
@@ -88,7 +89,8 @@ internal class MainMenu
                 new("Loader"),
                 new("Grabber"),
                 new("Current Drops"),
-                new("Junk Items")
+                new("Junk Items"),
+                new("Ultra Wiki")
             }),
             new("Combat", new List<MainMenuItemViewModel>()
             {

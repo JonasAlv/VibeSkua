@@ -148,6 +148,9 @@ public partial class ScriptManager : ObservableObject, IScriptManager, IDisposab
 
             UnloadPreviousScript();
 
+            // Script updates bring back an unpatched CoreAdvanced.cs; re-apply the class enhance profile patch.
+            await Task.Run(CoreAdvancedPatcher.EnsurePatched);
+
             string scriptContent = File.ReadAllText(LoadedScript);
             object? script = await Task.Run(() => Compile(scriptContent));
 
@@ -310,6 +313,17 @@ public partial class ScriptManager : ObservableObject, IScriptManager, IDisposab
         await Task.Run(async () =>
         {
             await Task.Delay(5000);
+
+            // Scripts (CoreBots) restart themselves when stopped by a logout; starting while still disconnected
+            // makes them stop with "Please log-in". Wait for auto relogin to bring the player back first.
+            IScriptInterface bot = _lazyBot.Value;
+            Stopwatch waited = Stopwatch.StartNew();
+            while (!(bot.Player.LoggedIn && bot.Flash.IsWorldLoaded) && bot.Options.AutoRelogin && waited.Elapsed < TimeSpan.FromMinutes(10))
+                await Task.Delay(1000);
+
+            // Auto relogin may have restarted it already
+            if (ScriptRunning)
+                return;
             await StartScript();
         });
     }

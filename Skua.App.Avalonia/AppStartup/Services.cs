@@ -117,6 +117,7 @@ public static class Services
             new("Fast Travel", () => s.GetRequiredService<FastTravelViewModel>()),
             new("Current Drops", () => s.GetRequiredService<CurrentDropsViewModel>()),
             new("Junk Items", () => s.GetRequiredService<JunkItemsViewModel>()),
+            new("Ultra Wiki", () => s.GetRequiredService<UltraWikiViewModel>()),
             new("Runtime", () => s.GetRequiredService<RuntimeHelpersViewModel>()),
             new("Loader", () => s.GetRequiredService<LoaderViewModel>()),
             new("Grabber", () => s.GetRequiredService<GrabberViewModel>()),
@@ -178,6 +179,7 @@ public static class Services
         services.AddTransient<RegisteredQuestsViewModel>();
         services.AddTransient<CurrentDropsViewModel>();
         services.AddTransient<JunkItemsViewModel>();
+        services.AddTransient<UltraWikiViewModel>();
 
         services.AddThemeViewModels();
 
@@ -186,9 +188,11 @@ public static class Services
         services.AddTransient<HotKeysViewModel>();
         // Hotkey command map is registered in App startup for this app host.
 
-        services.AddTransient(CoreBots.CreateViewModel);
+        // Singleton so the Loadouts Manager can open it on a class (ClassEnhanceProfiles)
+        services.AddSingleton(CoreBots.CreateViewModel);
         services.AddTransient(CoreBots.CreateOptions);
         services.AddTransient<CBOClassEquipmentViewModel>();
+        services.AddTransient<CBOClassEnhanceViewModel>();
         services.AddTransient<CBOClassSelectViewModel>();
         services.AddTransient<CBOLoadoutViewModel>();
 

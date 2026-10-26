@@ -26,6 +26,11 @@ public class LoadoutProfile
     public int CapePatternID { get; set; }
     public int CapeProcID { get; set; }
 
+    /// <summary>
+    /// Enhance with the CoreBots Options class profile instead of the enhancements saved above.
+    /// </summary>
+    public bool UseClassEnhanceProfile { get; set; }
+
     public string Pet { get; set; } = string.Empty;
     public string Amulet { get; set; } = string.Empty;
 }

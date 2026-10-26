@@ -48,6 +48,8 @@
     </ItemGroup>
 
     <ItemGroup>
+        <EmbeddedResource Include="ClassEnhancePresets.json" LogicalName="ClassEnhancePresets.json" />
+        <EmbeddedResource Include="UltraWiki.json" LogicalName="UltraWiki.json" />
         <None Include="..\Skua.AS3\skua\bin\skua.swf" Link="skua.swf" Condition="Exists('..\Skua.AS3\skua\bin\skua.swf')">
           <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
         </None>

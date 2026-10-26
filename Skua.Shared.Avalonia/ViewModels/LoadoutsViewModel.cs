@@ -1,8 +1,10 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Skua.Core.Interfaces;
+using Skua.Core.Models;
 using Skua.Core.Models.Items;
 using Skua.Shared.Avalonia.ViewModels.Dialogs;
+using System;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Threading.Tasks;
@@ -14,6 +16,9 @@ public partial class LoadoutsViewModel : BotControlViewModelBase
     private readonly ILoadoutService _loadoutService;
     private readonly IDialogService _dialogService;
     private readonly IDispatcherService _dispatcherService;
+    private readonly IScriptPlayer _player;
+    private readonly IClassEnhanceProfiles _classEnhanceProfiles;
+    private bool _switchingProfile;
 
     [ObservableProperty]
     private ObservableCollection<LoadoutProfile> _loadouts;
@@ -21,16 +26,26 @@ public partial class LoadoutsViewModel : BotControlViewModelBase
     [ObservableProperty]
     private LoadoutProfile? _selectedLoadout;
 
-    public LoadoutsViewModel(ILoadoutService loadoutService, IDialogService dialogService, IDispatcherService dispatcherService)
+    /// <summary>
+    /// Accounts whose loadouts can be edited here: the one logged in on this tab and the ones logged in on the other open tabs.
+    /// </summary>
+    public ObservableCollection<string> Profiles { get; } = new();
+
+    [ObservableProperty]
+    private string? _selectedProfile;
+
+    public LoadoutsViewModel(ILoadoutService loadoutService, IDialogService dialogService, IDispatcherService dispatcherService, IScriptPlayer player, IClassEnhanceProfiles classEnhanceProfiles)
         : base("Loadouts Manager", 600, 500)
     {
         _loadoutService = loadoutService;
         _dialogService = dialogService;
         _dispatcherService = dispatcherService;
+        _player = player;
+        _classEnhanceProfiles = classEnhanceProfiles;
 
         _loadoutService.LoadoutsChanged += () =>
         {
-            _dispatcherService.Invoke(() => 
+            _dispatcherService.Invoke(() =>
             {
                 Loadouts.Clear();
                 foreach (var l in _loadoutService.Loadouts)
@@ -41,6 +56,53 @@ public partial class LoadoutsViewModel : BotControlViewModelBase
         };
 
         Loadouts = new ObservableCollection<LoadoutProfile>(_loadoutService.Loadouts);
+    }
+
+    protected override void OnActivated()
+    {
+        // Always open on the account logged in here
+        SetProfileSilently(_player.Username);
+        base.OnActivated();
+    }
+
+    /// <summary>
+    /// Equipping and saving the equipped items only work on the account logged in here.
+    /// </summary>
+    public bool IsOwnProfile => string.IsNullOrEmpty(_loadoutService.Profile);
+
+    private string Account => _loadoutService.Profile ?? _player.Username;
+
+    public void RefreshProfiles() => SetProfileSilently(SelectedProfile);
+
+    private void SetProfileSilently(string? selected)
+    {
+        _switchingProfile = true;
+        try
+        {
+            Profiles.Clear();
+            foreach (string name in ConnectedAccounts.Get(_player.Username))
+                Profiles.Add(name);
+            SelectedProfile = Profiles.FirstOrDefault(p => p.Equals(selected, StringComparison.OrdinalIgnoreCase)) ?? Profiles.FirstOrDefault();
+        }
+        finally
+        {
+            _switchingProfile = false;
+        }
+        ApplyProfile(SelectedProfile);
+    }
+
+    partial void OnSelectedProfileChanged(string? value)
+    {
+        if (!_switchingProfile)
+            ApplyProfile(value);
+    }
+
+    private void ApplyProfile(string? profile)
+    {
+        string? other = string.IsNullOrEmpty(profile) || profile.Equals(_player.Username, StringComparison.OrdinalIgnoreCase) ? null : profile;
+        if (other != _loadoutService.Profile)
+            _loadoutService.Profile = other;
+        OnPropertyChanged(nameof(IsOwnProfile));
     }
 
     [RelayCommand]
@@ -61,8 +123,11 @@ public partial class LoadoutsViewModel : BotControlViewModelBase
         if (SelectedLoadout == null)
             return;
 
-        var missingItems = await _loadoutService.EquipLoadoutAsync(SelectedLoadout);
-        
+        string? enhanceProfile = SelectedLoadout.UseClassEnhanceProfile && !string.IsNullOrWhiteSpace(SelectedLoadout.Class)
+            ? _classEnhanceProfiles.Resolve(Account, SelectedLoadout.Class)
+            : null;
+        var missingItems = await _loadoutService.EquipLoadoutAsync(SelectedLoadout, enhanceProfile);
+
         if (missingItems != null && missingItems.Count > 0)
         {
             string missingList = string.Join("\n• ", missingItems);
@@ -90,21 +155,26 @@ public partial class LoadoutsViewModel : BotControlViewModelBase
         string name = dialog.DialogTextInput.Trim();
 
         var profile = _loadoutService.CreateFromCurrentEquipped(name);
-        
+
         if (!_loadoutService.SaveLoadout(profile))
         {
             _dialogService.ShowMessageBox("You must be logged in to save loadouts.", "Save Failed");
             return;
         }
-        
-        // Force synchronous update of the collection to prevent ComboBox selection race condition
+
+        ReloadAndSelect(profile.Name);
+    }
+
+    // Force synchronous update of the collection to prevent ComboBox selection race condition
+    private void ReloadAndSelect(string name)
+    {
         Loadouts.Clear();
         foreach (var l in _loadoutService.Loadouts)
         {
             Loadouts.Add(l);
         }
-        
-        SelectedLoadout = Loadouts.FirstOrDefault(l => l.Name == profile.Name);
+
+        SelectedLoadout = Loadouts.FirstOrDefault(l => l.Name == name);
     }
 
     [RelayCommand]
@@ -130,6 +200,8 @@ public partial class LoadoutsViewModel : BotControlViewModelBase
     partial void OnSelectedLoadoutChanged(LoadoutProfile? value)
     {
         OnPropertyChanged(nameof(SelectedLoadoutName));
+        OnPropertyChanged(nameof(UseClassEnhanceProfile));
+        OnPropertyChanged(nameof(ClassEnhanceProfile));
     }
 
     public string SelectedLoadoutName
@@ -151,11 +223,52 @@ public partial class LoadoutsViewModel : BotControlViewModelBase
                     _dialogService.ShowMessageBox("You must be logged in to rename loadouts.", "Rename Failed");
                     return;
                 }
-                
+
                 // No manual rebuilding needed here since LoadoutsChanged will be fired by the service
                 OnPropertyChanged();
             }
         }
+    }
+
+    public bool UseClassEnhanceProfile
+    {
+        get => SelectedLoadout?.UseClassEnhanceProfile ?? false;
+        set
+        {
+            LoadoutProfile? loadout = SelectedLoadout;
+            if (loadout == null || loadout.UseClassEnhanceProfile == value)
+                return;
+
+            loadout.UseClassEnhanceProfile = value;
+            // Saving rebuilds the list, which clears the selection
+            if (loadout.Name != "Currently Equipped" && _loadoutService.SaveLoadout(loadout))
+                ReloadAndSelect(loadout.Name);
+            OnPropertyChanged();
+        }
+    }
+
+    /// <summary>
+    /// The CoreBots class profile the selected loadout would be enhanced with.
+    /// </summary>
+    public string ClassEnhanceProfile
+    {
+        get
+        {
+            if (string.IsNullOrWhiteSpace(SelectedLoadout?.Class) || string.IsNullOrEmpty(Account))
+                return string.Empty;
+
+            string[] p = _classEnhanceProfiles.Resolve(Account, SelectedLoadout.Class).Split('|');
+            return $"{p[0]} · Weapon {p[1]} / {p[2]} · Cape {p[3]} · Helm {p[4]}";
+        }
+    }
+
+    [RelayCommand]
+    private void EditClassEnhanceProfile()
+    {
+        if (string.IsNullOrWhiteSpace(SelectedLoadout?.Class) || string.IsNullOrEmpty(Account))
+            return;
+
+        _classEnhanceProfiles.Edit(Account, SelectedLoadout.Class);
     }
 
     [RelayCommand]
@@ -171,7 +284,7 @@ public partial class LoadoutsViewModel : BotControlViewModelBase
         var existing = Loadouts.FirstOrDefault(l => l.Name == "Currently Equipped");
         if (existing != null)
             Loadouts.Remove(existing);
-            
+
         Loadouts.Insert(0, current);
         SelectedLoadout = current;
     }
