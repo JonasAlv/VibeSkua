@@ -517,11 +517,13 @@ public partial class App : Application
                 ats.SecondaryColor,
                 ats.SecondaryForegroundColor,
                 isDarkTheme: themeService.IsDarkTheme);
-            if (!ats.UseAccentOnMainTitleBar &&
-                ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop &&
+            if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop &&
                 desktop.MainWindow is Views.TabbedHostWindow hostWindow)
             {
-                ThemeResourceApplicator.ApplyTitleBarTheme(hostWindow, ats.IsDarkTheme);
+                hostWindow.MainTitleBar.UseAccentBackground = ats.UseAccentOnMainTitleBar;
+                ThemeResourceApplicator.ApplyTitleBarTheme(hostWindow, ats.IsDarkTheme,
+                    ats.UseAccentOnMainTitleBar ? ats.PrimaryColor : (Color?)null,
+                    ats.UseAccentOnMainTitleBar ? ats.PrimaryForegroundColor : (Color?)null);
             }
             QueueHostThemeSync(ats);
         }
@@ -554,11 +556,13 @@ public partial class App : Application
                 ats.SecondaryColor,
                 ats.SecondaryForegroundColor,
                 isDarkTheme: isDark);
-            if (!ats.UseAccentOnMainTitleBar &&
-                ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop &&
+            if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop &&
                 desktop.MainWindow is Views.TabbedHostWindow hostWindow)
             {
-                ThemeResourceApplicator.ApplyTitleBarTheme(hostWindow, isDark);
+                hostWindow.MainTitleBar.UseAccentBackground = ats.UseAccentOnMainTitleBar;
+                ThemeResourceApplicator.ApplyTitleBarTheme(hostWindow, isDark,
+                    ats.UseAccentOnMainTitleBar ? ats.PrimaryColor : (Color?)null,
+                    ats.UseAccentOnMainTitleBar ? ats.PrimaryForegroundColor : (Color?)null);
             }
             QueueHostThemeSync(ats);
             return;
@@ -601,7 +605,7 @@ public partial class App : Application
     /// </summary>
     private void OnTitleBarArtworkPathChanged(string? path)
     {
-        if (_parentHostProcessId <= 0 || !OperatingSystem.IsWindows())
+        if (_parentHostProcessId <= 0)
             return;
 
         string encodedPath = Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(path ?? string.Empty));
@@ -633,7 +637,7 @@ public partial class App : Application
     /// </summary>
     private void QueueHostThemeSync(AvaloniaThemeService themeService)
     {
-        if (_parentHostProcessId <= 0 || !OperatingSystem.IsWindows())
+        if (_parentHostProcessId <= 0)
             return;
 
         _pendingHostThemeSync = themeService;

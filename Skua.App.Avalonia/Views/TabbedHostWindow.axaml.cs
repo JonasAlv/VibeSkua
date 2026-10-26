@@ -352,12 +352,7 @@ public partial class TabbedHostWindow : Window
                 // changing a custom primary/foreground color cannot leave the native caption stale.
                 themeService.ThemeChanged += _ => Dispatcher.UIThread.Post(RefreshNativeTitleBar, DispatcherPriority.Background);
                 themeService.SchemeChanged += (_, _) => Dispatcher.UIThread.Post(RefreshNativeTitleBar, DispatcherPriority.Background);
-                if (themeService is Skua.Shared.Avalonia.Services.AvaloniaThemeService avaloniaTheme)
-                    Skua.Shared.Avalonia.Services.ThemeResourceApplicator.ApplyTitleBarTheme(this, themeService.IsDarkTheme,
-                            avaloniaTheme.UseAccentOnMainTitleBar ? avaloniaTheme.PrimaryColor : (Color?)null,
-                            avaloniaTheme.UseAccentOnMainTitleBar ? avaloniaTheme.PrimaryForegroundColor : (Color?)null);
-                else
-                    Skua.Shared.Avalonia.Services.ThemeResourceApplicator.ApplyTitleBarTheme(this, themeService.IsDarkTheme);
+                RefreshNativeTitleBar();
             }
         }
         catch { }
@@ -486,7 +481,6 @@ public partial class TabbedHostWindow : Window
         return DefSubclassProc(hWnd, uMsg, wParam, lParam);
     }
 #endif
-    }
 
     private void AttachChildWindow(TabInfo info, IntPtr childHwnd)
     {
@@ -686,6 +680,7 @@ public partial class TabbedHostWindow : Window
                                             Ioc.Default.GetService<IThemeService>() is Skua.Shared.Avalonia.Services.AvaloniaThemeService themeService)
                                         {
                                             themeService.ApplyExternalThemeSnapshot(themeItem, useAccentOnMainTitleBar);
+                                            MainTitleBar.UseAccentBackground = useAccentOnMainTitleBar;
                                         }
                                     }
                                     catch (Exception ex)
@@ -1413,11 +1408,31 @@ public partial class TabbedHostWindow : Window
                 return;
             }
 
-            // On Linux, child windows are reparented into _hostHwnd, so coordinates are relative to _hostHwnd
-            int x = 0;
-            int y = 36;
+#if IS_WINDOWS
+            PixelPoint screenTL;
+            PixelPoint screenBR;
+            try
+            {
+                screenTL = HostContainer.PointToScreen(new Point(0, 0));
+                screenBR = HostContainer.PointToScreen(new Point(HostContainer.Bounds.Width, HostContainer.Bounds.Height));
+            }
+            catch
+            {
+                return;
+            }
+
+            int x = screenTL.X;
+            int y = screenTL.Y;
+            int w = Math.Max(screenBR.X - screenTL.X, 1);
+            int h = Math.Max(screenBR.Y - screenTL.Y, 1);
+#endif
+#if IS_LINUX || !IS_WINDOWS
+            Point? hostPos = HostContainer.TranslatePoint(new Point(0, 0), this);
+            int x = (int)(hostPos?.X ?? 0);
+            int y = (int)(hostPos?.Y ?? 68);
             int w = (int)Math.Max(HostContainer.Bounds.Width, 1);
             int h = (int)Math.Max(HostContainer.Bounds.Height, 1);
+#endif
 
             if (w <= 1 || h <= 1)
             {
@@ -1473,9 +1488,14 @@ public partial class TabbedHostWindow : Window
                         Width = cellW,
                         Height = cellH
                     });
-                    int tileX = c * cellW;
-                    int tileY = 36 + (r * cellH);
+                    int tileX = x + (c * cellW);
+                    int tileY = y + (r * cellH);
+#if IS_WINDOWS
+                    MoveWindow(activeWindows[i].ChildHwnd, tileX, tileY, cellW, cellH, true);
+#endif
+#if IS_LINUX || !IS_WINDOWS
                     PlatformMoveResizeChild(activeWindows[i].ChildHwnd, tileX, tileY, cellW, cellH);
+#endif
 
                     if (activeWindows[i].IsThrottled)
                     {
@@ -1520,7 +1540,12 @@ public partial class TabbedHostWindow : Window
 
                 if (activeChildHwnd != IntPtr.Zero)
                 {
+#if IS_WINDOWS
+                    MoveWindow(activeChildHwnd, x, y, w, h, true);
+#endif
+#if IS_LINUX || !IS_WINDOWS
                     PlatformMoveResizeChild(activeChildHwnd, x, y, w, h, focus: true);
+#endif
 
                     if (activeInfo != null)
                     {

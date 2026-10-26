@@ -63,6 +63,7 @@ public partial class WindowTitleBar : UserControl
     public WindowTitleBar()
     {
         InitializeComponent();
+        ActualThemeVariantChanged += (_, _) => ApplyAccentForeground();
         PropertyChanged += (_, e) =>
         {
             if (e.Property == UseAccentBackgroundProperty)
