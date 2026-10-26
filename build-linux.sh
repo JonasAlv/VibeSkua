@@ -30,8 +30,16 @@ if [ -f "$SCRIPT_DIR/Skua.AS3/skua/bin/skua.swf" ]; then
     cp -f "$SCRIPT_DIR/Skua.AS3/skua/bin/skua.swf" "$BUILD_DIR/skua.swf"
 fi
 
-# 5. Set executable permissions
+# 5. Copy Mugetsu binary if present in mugetsu repo
+MUGETSU_SRC="$SCRIPT_DIR/../mugetsu/source/build/out/Mugetsu"
+if [ -f "$MUGETSU_SRC" ]; then
+    cp -f "$MUGETSU_SRC" "$BUILD_DIR/Mugetsu"
+    chmod +x "$BUILD_DIR/Mugetsu"
+fi
+
+# 6. Set executable permissions
 chmod +x "$BUILD_DIR/VibeSkua" 2>/dev/null || true
 chmod +x "$BUILD_DIR/VibeSkua.Manager" 2>/dev/null || true
+chmod +x "$BUILD_DIR/Mugetsu" 2>/dev/null || true
 
 echo "=== Build complete! Artifacts are in: $BUILD_DIR ==="

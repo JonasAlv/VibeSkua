@@ -85,6 +85,8 @@ public class FlashUtil : IFlashUtil
             WinFormsFlashHost.HostResized += OnHostResized;
             WinFormsFlashHost.KeyForwarded += OnKeyForwarded;
             WinFormsFlashHost.TextForwarded += OnTextForwarded;
+            WinFormsFlashHost.FocusForwarded += OnFocusForwarded;
+            WinFormsFlashHost.ClearKeysForwarded += OnClearKeysForwarded;
         }
 
         _cts = new CancellationTokenSource();
@@ -311,6 +313,23 @@ public class FlashUtil : IFlashUtil
         }
     }
 
+    private void OnFocusForwarded(bool focused)
+    {
+        SendJsonLine(new
+        {
+            cmd = "focus",
+            focused
+        });
+    }
+
+    private void OnClearKeysForwarded()
+    {
+        SendJsonLine(new
+        {
+            cmd = "clear_keys"
+        });
+    }
+
     private bool SendJsonLine(object payload)
     {
         lock (_writeLock)
@@ -476,6 +495,8 @@ public class FlashUtil : IFlashUtil
         WinFormsFlashHost.HostResized -= OnHostResized;
         WinFormsFlashHost.KeyForwarded -= OnKeyForwarded;
         WinFormsFlashHost.TextForwarded -= OnTextForwarded;
+        WinFormsFlashHost.FocusForwarded -= OnFocusForwarded;
+        WinFormsFlashHost.ClearKeysForwarded -= OnClearKeysForwarded;
         CleanupMugetsu();
     }
 }

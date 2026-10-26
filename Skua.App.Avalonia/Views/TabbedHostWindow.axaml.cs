@@ -224,7 +224,33 @@ public partial class TabbedHostWindow : Window
         SizeChanged += (s, e) => { DoReposition(); UpdateTabScrollButtons(); };
         
         PropertyChanged += (s, e) => { if (e.Property == WindowStateProperty || e.Property == IsVisibleProperty) DoReposition(); };
-        Activated += (s, e) => { DoReposition(); UpdateTabScrollButtons(); };
+        Activated += (s, e) =>
+        {
+            DoReposition();
+            UpdateTabScrollButtons();
+            if (_isGridViewEnabled)
+            {
+                foreach (var info in _tabs.Values)
+                {
+                    if (info.ChildHwnd != IntPtr.Zero)
+                        PostChildMessage(info.ChildHwnd, (uint)HotKeys.WM_SKUA_FOCUS, new IntPtr(1), IntPtr.Zero);
+                }
+            }
+            else
+            {
+                IntPtr active = HotKeys.ActiveChildHwnd;
+                if (active != IntPtr.Zero)
+                    PostChildMessage(active, (uint)HotKeys.WM_SKUA_FOCUS, new IntPtr(1), IntPtr.Zero);
+            }
+        };
+        Deactivated += (s, e) =>
+        {
+            foreach (var info in _tabs.Values)
+            {
+                if (info.ChildHwnd != IntPtr.Zero)
+                    PostChildMessage(info.ChildHwnd, (uint)HotKeys.WM_SKUA_FOCUS, IntPtr.Zero, IntPtr.Zero);
+            }
+        };
         Closing += OnWindowClosing;
         Closed += OnWindowClosed;
 
@@ -1300,6 +1326,7 @@ public partial class TabbedHostWindow : Window
                         activeWindows[i].IsThrottled = false;
                         PostChildMessage(activeWindows[i].ChildHwnd, WM_SKUA_THROTTLE, new IntPtr(0), IntPtr.Zero);
                     }
+                    PostChildMessage(activeWindows[i].ChildHwnd, (uint)HotKeys.WM_SKUA_FOCUS, new IntPtr(1), IntPtr.Zero);
                 }
                 _lastGridViewState = true;
                 _lastActiveHwnd = IntPtr.Zero;
@@ -1350,6 +1377,7 @@ public partial class TabbedHostWindow : Window
                         activeInfo.IsThrottled = false;
                         PostChildMessage(activeChildHwnd, WM_SKUA_THROTTLE, new IntPtr(0), IntPtr.Zero);
                     }
+                    PostChildMessage(activeChildHwnd, (uint)HotKeys.WM_SKUA_FOCUS, new IntPtr(1), IntPtr.Zero);
                 }
 
                 foreach (var kvp in _tabs)
@@ -1364,6 +1392,7 @@ public partial class TabbedHostWindow : Window
                         info.IsThrottled = true;
                         PostChildMessage(info.ChildHwnd, WM_SKUA_THROTTLE, new IntPtr(1), IntPtr.Zero);
                     }
+                    PostChildMessage(info.ChildHwnd, (uint)HotKeys.WM_SKUA_FOCUS, IntPtr.Zero, IntPtr.Zero);
 
                     if (display != IntPtr.Zero)
                     {

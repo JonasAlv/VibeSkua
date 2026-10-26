@@ -216,6 +216,7 @@ public class HotKeys
     public const int WM_SKUA_RELOAD_HOTKEYS = 0x0400 + 461;
     public const int WM_SKUA_EXECUTE_HOTKEY = 0x0400 + 462;
     public const int WM_SKUA_LOAD_SCRIPT_ALL = 0x0400 + 463;
+    public const int WM_SKUA_FOCUS = 0x0400 + 464;
 
     private static readonly HashSet<uint> _skuaPids = new() { (uint)Environment.ProcessId };
 

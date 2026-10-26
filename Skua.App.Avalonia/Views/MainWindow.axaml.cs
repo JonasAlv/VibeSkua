@@ -62,6 +62,7 @@ public partial class MainWindow : Window
     private int _preThrottleFPS = -1;
     private string? _preThrottleQuality = null;
     private bool _isInGridView = false;
+    private readonly System.Collections.Generic.HashSet<global::Avalonia.Input.Key> _pressedKeys = new();
     private readonly CancellationTokenSource _ipcCancelCts = new();
 
     public void HideTitleBar()
@@ -248,6 +249,16 @@ public partial class MainWindow : Window
         Opened += MainWindow_Opened;
         Closing += (s, e) => App.DisposeTrayIcon();
         Closed += MainWindow_Closed;
+        Deactivated += (s, e) =>
+        {
+            ReleaseAllPressedKeys();
+            Skua.App.Avalonia.Controls.WinFormsFlashHost.ForwardFocus(false);
+        };
+        Activated += (s, e) =>
+        {
+            ReleaseAllPressedKeys();
+            Skua.App.Avalonia.Controls.WinFormsFlashHost.ForwardFocus(true);
+        };
 
         if (_options is System.ComponentModel.INotifyPropertyChanged notifyOptions)
         {
@@ -356,6 +367,19 @@ public partial class MainWindow : Window
             Focus();
     }
 
+    private void ReleaseAllPressedKeys()
+    {
+        foreach (var key in _pressedKeys)
+        {
+            string keyStr = key.ToString();
+            string? symbol = TryMapSpecialKeyToSymbol(key);
+            string logical = !string.IsNullOrEmpty(symbol) ? symbol : (keyStr.Length == 1 && char.IsLetter(keyStr[0]) ? keyStr.ToLowerInvariant() : keyStr);
+            Skua.App.Avalonia.Controls.WinFormsFlashHost.ForwardKey(false, keyStr, logical, false, false, false);
+        }
+        _pressedKeys.Clear();
+        Skua.App.Avalonia.Controls.WinFormsFlashHost.ForwardClearKeys();
+    }
+
     private void OnLinuxKeyDown(object? sender, global::Avalonia.Input.KeyEventArgs e)
     {
         if (FocusManager?.GetFocusedElement() is TextBox)
@@ -364,11 +388,14 @@ public partial class MainWindow : Window
         if (FocusManager?.GetFocusedElement() is Button)
             FlashHost?.Focus();
 
+        _pressedKeys.Add(e.Key);
         ForwardLinuxKeyEvent(true, e);
     }
 
     private void OnLinuxKeyUp(object? sender, global::Avalonia.Input.KeyEventArgs e)
     {
+        _pressedKeys.Remove(e.Key);
+
         if (FocusManager?.GetFocusedElement() is TextBox)
             return;
 
@@ -846,6 +873,16 @@ public partial class MainWindow : Window
                     catch { }
                 });
             }
+            return IntPtr.Zero;
+        }
+        else if (uMsg == HotKeys.WM_SKUA_FOCUS)
+        {
+            bool focused = wParam != IntPtr.Zero;
+            Dispatcher.UIThread.Post(() =>
+            {
+                ReleaseAllPressedKeys();
+                Skua.App.Avalonia.Controls.WinFormsFlashHost.ForwardFocus(focused);
+            });
             return IntPtr.Zero;
         }
         else if (uMsg == HotKeys.WM_SKUA_RELOAD_HOTKEYS)

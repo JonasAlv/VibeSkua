@@ -30,6 +30,8 @@ public class WinFormsFlashHost : NativeControlHost
     public static event Action<int, int>? HostResized;
     public static event Action<bool, string, string, bool, bool, bool>? KeyForwarded;
     public static event Action<string>? TextForwarded;
+    public static event Action<bool>? FocusForwarded;
+    public static event Action? ClearKeysForwarded;
     public static event Action? GameClicked;
     private static WinFormsFlashHost? _activeInstance;
 
@@ -41,6 +43,16 @@ public class WinFormsFlashHost : NativeControlHost
     public static void ForwardText(string text)
     {
         TextForwarded?.Invoke(text);
+    }
+
+    public static void ForwardFocus(bool focused)
+    {
+        FocusForwarded?.Invoke(focused);
+    }
+
+    public static void ForwardClearKeys()
+    {
+        ClearKeysForwarded?.Invoke();
     }
 
     public static void NotifyGameClicked()
