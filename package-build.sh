@@ -5,16 +5,17 @@
 #
 # Default: Packages standalone x86_64 AppImages (Client & Manager)
 # Options:
-#   --appimage, -i : Build AppImage standalone packages (default)
-#   --portable, -p : Build portable directory and archives
-#   --all,      -a : Build both AppImage and Portable packages
+#   (none)          : Build standalone AppImages (default)
+#   --binary,   -b  : Build direct binary portable distribution
+#   --appimage, -i  : Build standalone AppImages (explicit)
+#   --all,      -a  : Build both AppImage and direct binary distributions
 # ==============================================================================
 set -Eeuo pipefail
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
 BUILD_DIR="$SCRIPT_DIR/Build"
-PORTABLE_DIR="$BUILD_DIR/VibeSkua-linux-Portable"
-CURRENT_DIR="$PORTABLE_DIR/current"
+BINARY_DIR="$BUILD_DIR/VibeSkua-linux-Binary"
+CURRENT_DIR="$BUILD_DIR/payload/current"
 OUTPUT_DIR="$BUILD_DIR"
 
 MODE="appimage"
@@ -25,8 +26,8 @@ while [[ $# -gt 0 ]]; do
             MODE="appimage"
             shift
             ;;
-        --portable|-p)
-            MODE="portable"
+        --binary|-b|--bin|--portable|-p)
+            MODE="binary"
             shift
             ;;
         --all|-a)
@@ -34,10 +35,11 @@ while [[ $# -gt 0 ]]; do
             shift
             ;;
         --help|-h)
-            echo "Usage: $0 [--appimage | --portable | --all]"
-            echo "  --appimage, -i  Build standalone AppImages (default)"
-            echo "  --portable, -p  Build portable directory release"
-            echo "  --all,      -a  Build both AppImage and Portable releases"
+            echo "Usage: $0 [--binary | --appimage | --all]"
+            echo "  (default)       Build standalone AppImages"
+            echo "  --binary,   -b  Build direct binary portable distribution"
+            echo "  --appimage, -i  Build standalone AppImages"
+            echo "  --all,      -a  Build both AppImage and direct binary distributions"
             exit 0
             ;;
         *)
@@ -120,11 +122,14 @@ fi
 chmod +x "$CURRENT_DIR/VibeSkua" "$CURRENT_DIR/VibeSkua.Manager" 2>/dev/null || true
 
 # ==============================================================================
-# 3. Build Portable Directory & Archives (if requested)
+# 3. Build Direct Binary Distribution (if requested)
 # ==============================================================================
-build_portable() {
-    echo "--- Building Portable Release ---"
-    touch "$PORTABLE_DIR/.portable"
+build_binary() {
+    echo "--- Building Direct Binary Distribution ---"
+    rm -rf "$BINARY_DIR"
+    mkdir -p "$BINARY_DIR"
+    cp -a "$CURRENT_DIR/." "$BINARY_DIR/current/"
+    touch "$BINARY_DIR/.portable"
 
     # Compile native root C launchers
     cat << 'EOF' > "$BUILD_DIR/launcher.c"
@@ -183,12 +188,12 @@ int main(int argc, char *argv[]) {
 }
 EOF
 
-    gcc -O2 -DTARGET_BIN=\"VibeSkua\" "$BUILD_DIR/launcher.c" -o "$PORTABLE_DIR/VibeSkua"
-    gcc -O2 -DTARGET_BIN=\"VibeSkua.Manager\" "$BUILD_DIR/launcher.c" -o "$PORTABLE_DIR/VibeSkua.Manager"
+    gcc -O2 -DTARGET_BIN=\"VibeSkua\" "$BUILD_DIR/launcher.c" -o "$BINARY_DIR/VibeSkua"
+    gcc -O2 -DTARGET_BIN=\"VibeSkua.Manager\" "$BUILD_DIR/launcher.c" -o "$BINARY_DIR/VibeSkua.Manager"
     rm -f "$BUILD_DIR/launcher.c"
 
     # Shell script fallbacks
-    cat << 'EOF' > "$PORTABLE_DIR/VibeSkua.sh"
+    cat << 'EOF' > "$BINARY_DIR/VibeSkua.sh"
 #!/usr/bin/env bash
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CURRENT_DIR="$SCRIPT_DIR/current"
@@ -197,9 +202,9 @@ export LD_LIBRARY_PATH="$CURRENT_DIR:$CURRENT_DIR/runtimes/linux-x64/native:${LD
 export PATH="$CURRENT_DIR:$PATH"
 exec "$CURRENT_DIR/VibeSkua" "$@"
 EOF
-    chmod +x "$PORTABLE_DIR/VibeSkua.sh"
+    chmod +x "$BINARY_DIR/VibeSkua.sh"
 
-    cat << 'EOF' > "$PORTABLE_DIR/VibeSkua.Manager.sh"
+    cat << 'EOF' > "$BINARY_DIR/VibeSkua.Manager.sh"
 #!/usr/bin/env bash
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CURRENT_DIR="$SCRIPT_DIR/current"
@@ -208,18 +213,23 @@ export LD_LIBRARY_PATH="$CURRENT_DIR:$CURRENT_DIR/runtimes/linux-x64/native:${LD
 export PATH="$CURRENT_DIR:$PATH"
 exec "$CURRENT_DIR/VibeSkua.Manager" "$@"
 EOF
-    chmod +x "$PORTABLE_DIR/VibeSkua.Manager.sh"
+    chmod +x "$BINARY_DIR/VibeSkua.Manager.sh"
 
     # Create root desktop files and icons
-    cp -f "$SCRIPT_DIR/Skua.Shared.Avalonia/Assets/SkuaImage.png" "$PORTABLE_DIR/vibeskua.png"
-    cp -f "$SCRIPT_DIR/Skua.Shared.Avalonia/Assets/SkuaImage.png" "$PORTABLE_DIR/vibeskua-manager.png"
+    cp -f "$SCRIPT_DIR/Skua.Shared.Avalonia/Assets/SkuaImage.png" "$BINARY_DIR/vibeskua.png"
+    cp -f "$SCRIPT_DIR/Skua.Shared.Avalonia/Assets/SkuaImage.png" "$BINARY_DIR/vibeskua-manager.png"
 
-    echo "Compressing portable release archives..."
+    # Provide VibeSkua-linux-Portable symlink for backwards compatibility
+    ln -sfn "VibeSkua-linux-Binary" "$BUILD_DIR/VibeSkua-linux-Portable"
+
+    echo "Compressing binary release archives..."
     (
         cd "$BUILD_DIR"
-        rm -f "VibeSkua-linux-Portable.zip" "VibeSkua-linux-Portable.tar.gz"
-        zip -q -r "VibeSkua-linux-Portable.zip" "VibeSkua-linux-Portable"
-        tar -czf "VibeSkua-linux-Portable.tar.gz" "VibeSkua-linux-Portable"
+        rm -f "VibeSkua-linux-Binary.zip" "VibeSkua-linux-Binary.tar.gz" "VibeSkua-linux-Portable.zip" "VibeSkua-linux-Portable.tar.gz"
+        zip -q -r "VibeSkua-linux-Binary.zip" "VibeSkua-linux-Binary"
+        tar -czf "VibeSkua-linux-Binary.tar.gz" "VibeSkua-linux-Binary"
+        ln -sf "VibeSkua-linux-Binary.zip" "VibeSkua-linux-Portable.zip"
+        ln -sf "VibeSkua-linux-Binary.tar.gz" "VibeSkua-linux-Portable.tar.gz"
     )
 }
 
@@ -352,11 +362,11 @@ case "$MODE" in
     appimage)
         build_appimage
         ;;
-    portable)
-        build_portable
+    binary)
+        build_binary
         ;;
     all)
-        build_portable
+        build_binary
         build_appimage
         ;;
 esac
@@ -368,7 +378,8 @@ if [ "$MODE" = "appimage" ] || [ "$MODE" = "all" ]; then
     echo "AppImage ZIP:     $BUILD_DIR/VibeSkua-linux-AppImage.zip ($(du -h "$BUILD_DIR/VibeSkua-linux-AppImage.zip" | cut -f1))"
     echo "AppImage Tarball: $BUILD_DIR/VibeSkua-linux-AppImage.tar.gz ($(du -h "$BUILD_DIR/VibeSkua-linux-AppImage.tar.gz" | cut -f1))"
 fi
-if [ "$MODE" = "portable" ] || [ "$MODE" = "all" ]; then
-    echo "Portable ZIP:     $BUILD_DIR/VibeSkua-linux-Portable.zip ($(du -h "$BUILD_DIR/VibeSkua-linux-Portable.zip" | cut -f1))"
-    echo "Portable Tarball: $BUILD_DIR/VibeSkua-linux-Portable.tar.gz ($(du -h "$BUILD_DIR/VibeSkua-linux-Portable.tar.gz" | cut -f1))"
+if [ "$MODE" = "binary" ] || [ "$MODE" = "all" ]; then
+    echo "Binary Folder:    $BINARY_DIR"
+    echo "Binary ZIP:       $BUILD_DIR/VibeSkua-linux-Binary.zip ($(du -h "$BUILD_DIR/VibeSkua-linux-Binary.zip" | cut -f1))"
+    echo "Binary Tarball:   $BUILD_DIR/VibeSkua-linux-Binary.tar.gz ($(du -h "$BUILD_DIR/VibeSkua-linux-Binary.tar.gz" | cut -f1))"
 fi
