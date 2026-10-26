@@ -16,6 +16,7 @@ APP_BIN="$SCRIPT_DIR/Skua.App.Avalonia/bin/Release/net10.0"
 cp -f "$APP_BIN"/VibeSkua* "$BUILD_DIR/" 2>/dev/null || true
 cp -f "$APP_BIN"/*.dll "$BUILD_DIR/" 2>/dev/null || true
 cp -f "$APP_BIN"/*.json "$BUILD_DIR/" 2>/dev/null || true
+cp -rf "$APP_BIN/runtimes" "$BUILD_DIR/" 2>/dev/null || true
 
 # 2. Copy Manager output
 MGR_BIN="$SCRIPT_DIR/Skua.Manager.Avalonia/bin/Release/net10.0"

@@ -33,101 +33,6 @@ namespace Skua.App.Avalonia.Views;
 
 public partial class TabbedHostWindow : Window
 {
-    #region Linux X11 API
-    [StructLayout(LayoutKind.Sequential)]
-    public struct XSetWindowAttributes
-    {
-        public IntPtr background_pixmap;
-        public UIntPtr background_pixel;
-        public IntPtr border_pixmap;
-        public UIntPtr border_pixel;
-        public int bit_gravity;
-        public int win_gravity;
-        public int backing_store;
-        public UIntPtr backing_planes;
-        public UIntPtr backing_pixel;
-        public int save_under;
-        public IntPtr event_mask;
-        public IntPtr do_not_propagate_mask;
-        public int override_redirect;
-        public IntPtr colormap;
-        public IntPtr cursor;
-    }
-
-    [DllImport("libX11.so.6")]
-    private static extern IntPtr XOpenDisplay(IntPtr display);
-
-    [DllImport("libX11.so.6")]
-    private static extern int XMapWindow(IntPtr display, IntPtr w);
-
-    [DllImport("libX11.so.6")]
-    private static extern int XUnmapWindow(IntPtr display, IntPtr w);
-
-    [DllImport("libX11.so.6")]
-    private static extern int XReparentWindow(IntPtr display, IntPtr w, IntPtr parent, int x, int y);
-
-    [DllImport("libX11.so.6")]
-    private static extern int XMoveResizeWindow(IntPtr display, IntPtr w, int x, int y, uint width, uint height);
-
-    [DllImport("libX11.so.6")]
-    private static extern int XMoveWindow(IntPtr display, IntPtr w, int x, int y);
-
-    [DllImport("libX11.so.6")]
-    private static extern int XRaiseWindow(IntPtr display, IntPtr w);
-
-    [DllImport("libX11.so.6")]
-    private static extern int XSetTransientForHint(IntPtr display, IntPtr w, IntPtr prop_window);
-
-    [DllImport("libX11.so.6")]
-    private static extern int XSetInputFocus(IntPtr display, IntPtr w, int revert_to, IntPtr time);
-
-    [DllImport("libX11.so.6")]
-    private static extern int XChangeWindowAttributes(IntPtr display, IntPtr w, UIntPtr valuemask, ref XSetWindowAttributes attributes);
-
-    [DllImport("libX11.so.6")]
-    private static extern IntPtr XDefaultRootWindow(IntPtr display);
-
-    [DllImport("libX11.so.6")]
-    private static extern int XTranslateCoordinates(IntPtr display, IntPtr src_w, IntPtr dest_w, int src_x, int src_y, out int dest_x, out int dest_y, out IntPtr child);
-
-    [DllImport("libX11.so.6")]
-    private static extern int XCloseDisplay(IntPtr display);
-
-    [DllImport("libX11.so.6")]
-    private static extern int XSync(IntPtr display, int discard);
-
-    [DllImport("libX11.so.6")]
-    private static extern int XFlush(IntPtr display);
-
-    private static IntPtr _xDisplay;
-    private static readonly object _xLock = new();
-
-    private static IntPtr GetDisplay()
-    {
-        lock (_xLock)
-        {
-            if (_xDisplay == IntPtr.Zero)
-            {
-                try
-                {
-                    _xDisplay = XOpenDisplay(IntPtr.Zero);
-                }
-                catch { }
-            }
-            return _xDisplay;
-        }
-    }
-    #endregion
-
-    private void PostChildMessage(IntPtr hWnd, uint msg, IntPtr wParam, IntPtr lParam)
-    {
-        var tab = _tabs.Values.FirstOrDefault(t => t.ChildHwnd == hWnd);
-        if (tab?.Process != null && !tab.Process.HasExited)
-        {
-            TabIpc.SendMessage(tab.Process.Id, msg, wParam, lParam);
-        }
-    }
-
     private IntPtr SendChildMessage(TabInfo info, uint msg, IntPtr wParam, IntPtr lParam)
     {
         if (msg == (uint)WM_SKUA_CHECK_LOGIN)
@@ -431,19 +336,7 @@ public partial class TabbedHostWindow : Window
         if (HotKeys.ActiveChildHwnd == IntPtr.Zero)
             HotKeys.ActiveChildHwnd = childHwnd;
 
-        IntPtr display = GetDisplay();
-        if (display != IntPtr.Zero && _hostHwnd != IntPtr.Zero)
-        {
-            lock (_xLock)
-            {
-                XUnmapWindow(display, childHwnd);
-                XSync(display, 0);
-                XReparentWindow(display, childHwnd, _hostHwnd, 0, 36);
-                XSync(display, 0);
-                XMapWindow(display, childHwnd);
-                XSync(display, 0);
-            }
-        }
+        PlatformReparentChild(childHwnd);
 
         if (_isGridViewEnabled)
         {
@@ -473,15 +366,7 @@ public partial class TabbedHostWindow : Window
             {
                 if (info.ChildHwnd != IntPtr.Zero)
                 {
-                        IntPtr display = GetDisplay();
-                        if (display != IntPtr.Zero)
-                        {
-                            lock (_xLock)
-                            {
-                                XUnmapWindow(display, info.ChildHwnd);
-                                XFlush(display);
-                            }
-                        }
+                    PlatformUnmapChild(info.ChildHwnd);
                 }
                 if (!info.Process.HasExited)
                 {
@@ -1229,21 +1114,10 @@ public partial class TabbedHostWindow : Window
 
             if (WindowState == WindowState.Minimized || !IsVisible)
             {
-                IntPtr disp = GetDisplay();
-                if (disp != IntPtr.Zero)
+                foreach (var info in _tabs.Values)
                 {
-                    lock (_xLock)
-                    {
-                        foreach (var info in _tabs.Values)
-                        {
-                            if (info.ChildHwnd != IntPtr.Zero)
-                            {
-                                XMoveResizeWindow(disp, info.ChildHwnd, -32000, -32000, 1, 1);
-                                XUnmapWindow(disp, info.ChildHwnd);
-                            }
-                        }
-                        XFlush(disp);
-                    }
+                    if (info.ChildHwnd != IntPtr.Zero)
+                        PlatformHideChild(info.ChildHwnd);
                 }
                 return;
             }
@@ -1253,7 +1127,6 @@ public partial class TabbedHostWindow : Window
             int y = 36;
             int w = (int)Math.Max(HostContainer.Bounds.Width, 1);
             int h = (int)Math.Max(HostContainer.Bounds.Height, 1);
-            IntPtr display = GetDisplay();
 
             if (w <= 1 || h <= 1)
             {
@@ -1309,18 +1182,10 @@ public partial class TabbedHostWindow : Window
                         Width = cellW,
                         Height = cellH
                     });
-                    if (display != IntPtr.Zero)
-                    {
-                        lock (_xLock)
-                        {
-                            int tileX = c * cellW;
-                            int tileY = 36 + (r * cellH);
-                            XMoveResizeWindow(display, activeWindows[i].ChildHwnd, tileX, tileY, (uint)cellW, (uint)cellH);
-                            XMapWindow(display, activeWindows[i].ChildHwnd);
-                            XRaiseWindow(display, activeWindows[i].ChildHwnd);
-                            XFlush(display);
-                        }
-                    }
+                    int tileX = c * cellW;
+                    int tileY = 36 + (r * cellH);
+                    PlatformMoveResizeChild(activeWindows[i].ChildHwnd, tileX, tileY, cellW, cellH);
+
                     if (activeWindows[i].IsThrottled)
                     {
                         activeWindows[i].IsThrottled = false;
@@ -1360,17 +1225,7 @@ public partial class TabbedHostWindow : Window
 
                 if (activeChildHwnd != IntPtr.Zero)
                 {
-                    if (display != IntPtr.Zero)
-                    {
-                        lock (_xLock)
-                        {
-                            XMoveResizeWindow(display, activeChildHwnd, x, y, (uint)w, (uint)h);
-                            XMapWindow(display, activeChildHwnd);
-                            XRaiseWindow(display, activeChildHwnd);
-                            XSetInputFocus(display, activeChildHwnd, 1, IntPtr.Zero);
-                            XFlush(display);
-                        }
-                    }
+                    PlatformMoveResizeChild(activeChildHwnd, x, y, w, h, focus: true);
 
                     if (activeInfo != null && activeInfo.IsThrottled)
                     {
@@ -1394,14 +1249,7 @@ public partial class TabbedHostWindow : Window
                     }
                     PostChildMessage(info.ChildHwnd, (uint)HotKeys.WM_SKUA_FOCUS, IntPtr.Zero, IntPtr.Zero);
 
-                    if (display != IntPtr.Zero)
-                    {
-                        lock (_xLock)
-                        {
-                            XMoveResizeWindow(display, info.ChildHwnd, -32000, -32000, (uint)w, (uint)h);
-                            XFlush(display);
-                        }
-                    }
+                    PlatformHideChild(info.ChildHwnd);
                 }
             }
         }
@@ -1432,15 +1280,7 @@ public partial class TabbedHostWindow : Window
                 {
                     if (info.ChildHwnd != IntPtr.Zero)
                     {
-                        IntPtr display = GetDisplay();
-                        if (display != IntPtr.Zero)
-                        {
-                            lock (_xLock)
-                            {
-                                XUnmapWindow(display, info.ChildHwnd);
-                                XFlush(display);
-                            }
-                        }
+                        PlatformUnmapChild(info.ChildHwnd);
                     }
                     if (info.Process != null && !info.Process.HasExited)
                         info.Process.Kill();
