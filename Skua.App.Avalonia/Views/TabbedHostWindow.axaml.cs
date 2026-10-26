@@ -698,7 +698,9 @@ public partial class TabbedHostWindow : Window
 
         if (_isGridViewEnabled)
         {
+            info.IsThrottled = false;
             PostChildMessage(childHwnd, WM_SKUA_GRIDVIEW, new IntPtr(1), IntPtr.Zero);
+            PostChildMessage(childHwnd, WM_SKUA_THROTTLE, IntPtr.Zero, IntPtr.Zero);
         }
 
         DoReposition();
@@ -975,7 +977,9 @@ public partial class TabbedHostWindow : Window
             {
                 if (info.ChildHwnd != IntPtr.Zero)
                 {
+                    info.IsThrottled = false;
                     PostChildMessage(info.ChildHwnd, WM_SKUA_GRIDVIEW, new IntPtr(1), IntPtr.Zero);
+                    PostChildMessage(info.ChildHwnd, WM_SKUA_THROTTLE, IntPtr.Zero, IntPtr.Zero);
                 }
             }
 
@@ -985,6 +989,8 @@ public partial class TabbedHostWindow : Window
 
             _ignoreSelectionChange = true;
             InstancesTabControl.SelectedItem = null;
+            foreach (var item in InstancesTabControl.Items.OfType<TabItem>())
+                item.IsSelected = false;
             _ignoreSelectionChange = false;
 
             DoReposition();

@@ -21,15 +21,23 @@ public static class TabIpc
 
         Task.Run(async () =>
         {
-            try
+            for (int attempt = 0; attempt < 5; attempt++)
             {
-                using var client = new NamedPipeClientStream(".", $"VibeSkuaChildPipe_{childPid}", PipeDirection.Out);
-                await client.ConnectAsync(400);
-                using var writer = new StreamWriter(client);
-                await writer.WriteLineAsync($"{msg}:{wParam.ToInt64()}:{lParam.ToInt64()}");
-                await writer.FlushAsync();
+                try
+                {
+                    using var client = new NamedPipeClientStream(".", $"VibeSkuaChildPipe_{childPid}", PipeDirection.Out);
+                    await client.ConnectAsync(500);
+                    using var writer = new StreamWriter(client);
+                    await writer.WriteLineAsync($"{msg}:{wParam.ToInt64()}:{lParam.ToInt64()}");
+                    await writer.FlushAsync();
+                    return;
+                }
+                catch
+                {
+                    if (attempt < 4)
+                        await Task.Delay(50);
+                }
             }
-            catch { }
         });
     }
 

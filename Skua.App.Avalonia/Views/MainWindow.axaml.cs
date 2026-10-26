@@ -90,6 +90,7 @@ public partial class MainWindow : Window
     private bool _isTitleBarPermanentlyHidden = false;
     private int _preThrottleFPS = -1;
     private string? _preThrottleQuality = null;
+    private bool _isInGridView = false;
     private readonly CancellationTokenSource _ipcCancelCts = new();
 
     public void HideTitleBar()
@@ -552,10 +553,11 @@ public partial class MainWindow : Window
     {
         if (uMsg == WM_SKUA_GRIDVIEW)
         {
+            bool isGrid = wParam.ToInt32() == 1;
+            _isInGridView = isGrid;
+
             Dispatcher.UIThread.Post(() =>
             {
-                bool isGrid = wParam.ToInt32() == 1;
-                
                 var topNav = this.FindControl<global::Avalonia.Controls.Control>("TopNavBorder");
                 if (topNav != null)
                     topNav.IsVisible = !isGrid;
@@ -575,6 +577,32 @@ public partial class MainWindow : Window
                     _flash.Call("setGameObject", "stage.scaleMode", "showAll");
                 }
                 catch { }
+
+                if (isGrid)
+                {
+                    // In Grid View, all windows are foreground visible windows. Restore full FPS and quality.
+                    try
+                    {
+                        var options = Ioc.Default.GetRequiredService<IScriptOption>();
+                        if (!options.HeadlessMode)
+                        {
+                            var bot = Ioc.Default.GetRequiredService<IScriptInterface>();
+                            int currentFPS = bot.Flash?.GetGameObject<int>("stage.frameRate") ?? -1;
+                            int targetFPS = _preThrottleFPS > 2 ? _preThrottleFPS : (currentFPS > 2 ? currentFPS : options.SetFPS);
+                            if (targetFPS <= 2)
+                                targetFPS = options.SetFPS > 0 ? options.SetFPS : 30;
+
+                            string? targetQuality = _preThrottleQuality;
+                            _preThrottleFPS = -1;
+                            _preThrottleQuality = null;
+
+                            bot.Flash?.SetGameObject("stage.frameRate", targetFPS);
+                            if (!string.IsNullOrEmpty(targetQuality))
+                                bot.Flash?.SetGameObject("stage.quality", targetQuality);
+                        }
+                    }
+                    catch { }
+                }
             });
             return IntPtr.Zero;
         }
@@ -795,6 +823,12 @@ public partial class MainWindow : Window
         else if (uMsg == 0x0400 + 452) // WM_SKUA_THROTTLE
         {
             bool throttle = wParam.ToInt32() == 1;
+            if (_isInGridView && throttle)
+            {
+                // In Grid View, all windows are treated as foreground windows - never throttle!
+                return IntPtr.Zero;
+            }
+
             var options = Ioc.Default.GetRequiredService<IScriptOption>();
             if (!options.HeadlessMode)
             {
@@ -821,6 +855,9 @@ public partial class MainWindow : Window
                     {
                         int currentFPS = bot.Flash?.GetGameObject<int>("stage.frameRate") ?? -1;
                         int targetFPS = _preThrottleFPS > 2 ? _preThrottleFPS : (currentFPS > 2 ? currentFPS : options.SetFPS);
+                        if (targetFPS <= 2)
+                            targetFPS = options.SetFPS > 0 ? options.SetFPS : 30;
+
                         string? targetQuality = _preThrottleQuality;
                         
                         _preThrottleFPS = -1;
