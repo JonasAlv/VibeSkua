@@ -130,7 +130,7 @@ public partial class ScriptOption : ObservableRecipient, IScriptOption, IOptionD
     private bool _lagKiller;
 
     [ObjectBinding("stage.frameRate", Get = false, HasSetter = true)]
-    private int _setFPS = 30;
+    private int _setFPS = 24;
 
     [ObjectBinding("ui.mcFPS.visible", HasSetter = true)]
     private bool _showFPS = false;
