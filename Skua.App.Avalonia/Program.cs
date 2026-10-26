@@ -24,17 +24,76 @@ internal static class Program
 
     private static void InitializeAssemblyResolvers()
     {
+        string assembliesDir = Path.Combine(AppContext.BaseDirectory, "Assemblies");
+        HashSet<string>? assembliesSet = null;
+        if (Directory.Exists(assembliesDir))
+        {
+            try
+            {
+                assembliesSet = new HashSet<string>(
+                    Directory.EnumerateFiles(assembliesDir, "*.dll").Select(Path.GetFileName)!,
+                    StringComparer.OrdinalIgnoreCase);
+            }
+            catch
+            {
+            }
+        }
+
+        string arch = OperatingSystem.IsWindows()
+            ? (Environment.Is64BitProcess ? "win-x64" : "win-x86")
+            : (RuntimeInformation.ProcessArchitecture == Architecture.Arm64 ? "linux-arm64" : "linux-x64");
+
+        string runtimeNativeDir = Path.Combine(AppContext.BaseDirectory, "Assemblies", "runtimes", arch, "native");
+        HashSet<string>? runtimeNativeSet = null;
+        if (Directory.Exists(runtimeNativeDir))
+        {
+            try
+            {
+                runtimeNativeSet = new HashSet<string>(
+                    Directory.EnumerateFiles(runtimeNativeDir).Select(Path.GetFileName)!,
+                    StringComparer.OrdinalIgnoreCase);
+            }
+            catch
+            {
+            }
+        }
+
         AssemblyLoadContext.Default.Resolving += (context, assemblyName) =>
         {
             if (assemblyName.Name == null || assemblyName.Name.EndsWith(".resources", StringComparison.OrdinalIgnoreCase))
                 return null;
 
             string fileName = $"{assemblyName.Name}.dll";
+            if (assembliesSet != null && assembliesSet.Contains(fileName))
+            {
+                return context.LoadFromAssemblyPath(Path.Combine(assembliesDir, fileName));
+            }
+
             string rootPath = Path.Combine(AppContext.BaseDirectory, fileName);
             if (File.Exists(rootPath))
                 return context.LoadFromAssemblyPath(rootPath);
 
             return null;
+        };
+
+        AssemblyLoadContext.Default.ResolvingUnmanagedDll += (assembly, unmanagedDllName) =>
+        {
+            string ext = OperatingSystem.IsWindows() ? ".dll" : ".so";
+            string fileName = unmanagedDllName.EndsWith(ext, StringComparison.OrdinalIgnoreCase)
+                ? unmanagedDllName
+                : $"{unmanagedDllName}{ext}";
+
+            if (assembliesSet != null && assembliesSet.Contains(fileName))
+                return NativeLibrary.Load(Path.Combine(assembliesDir, fileName));
+
+            if (runtimeNativeSet != null && runtimeNativeSet.Contains(fileName))
+                return NativeLibrary.Load(Path.Combine(runtimeNativeDir, fileName));
+
+            string rootNative = Path.Combine(AppContext.BaseDirectory, "runtimes", arch, "native", fileName);
+            if (File.Exists(rootNative))
+                return NativeLibrary.Load(rootNative);
+
+            return IntPtr.Zero;
         };
 
         AppDomain.CurrentDomain.AssemblyResolve += (sender, args) =>
@@ -47,6 +106,11 @@ internal static class Program
                 return existing;
 
             string assemblyName = new AssemblyName(args.Name).Name + ".dll";
+            if (assembliesSet != null && assembliesSet.Contains(assemblyName))
+            {
+                return Assembly.LoadFrom(Path.Combine(assembliesDir, assemblyName));
+            }
+
             string rootPath = Path.Combine(AppContext.BaseDirectory, assemblyName);
             if (File.Exists(rootPath))
                 return Assembly.LoadFrom(rootPath);
