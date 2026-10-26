@@ -271,7 +271,8 @@ build_appimage() {
     local skua_icon="$SCRIPT_DIR/Skua.Shared.Avalonia/Assets/SkuaImage.png"
     local mgr_icon="$SCRIPT_DIR/Skua.Shared.Avalonia/Assets/SkuaImage.png"
 
-    python3 - <<EOF
+    if python3 -c "from PIL import Image" 2>/dev/null; then
+        python3 - <<EOF
 from PIL import Image
 import os
 
@@ -289,6 +290,17 @@ def gen(src, appdir, name):
 gen("$skua_icon", "$skua_appdir", "vibeskua")
 gen("$mgr_icon", "$mgr_appdir", "vibeskua-manager")
 EOF
+    else
+        echo "Note: python3 PIL not found, copying raw icon assets..."
+        for target in "$skua_appdir:vibeskua" "$mgr_appdir:vibeskua-manager"; do
+            appdir="${target%%:*}"
+            name="${target##*:}"
+            cp -f "$skua_icon" "$appdir/${name}.png"
+            cp -f "$skua_icon" "$appdir/.DirIcon"
+            mkdir -p "$appdir/usr/share/icons/hicolor/256x256/apps"
+            cp -f "$skua_icon" "$appdir/usr/share/icons/hicolor/256x256/apps/${name}.png"
+        done
+    fi
 
     # Desktop entries
     cat << 'EOF' > "$skua_appdir/vibeskua.desktop"

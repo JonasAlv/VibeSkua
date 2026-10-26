@@ -32,7 +32,7 @@ jobs:
       - name: Install System Dependencies & appimagetool
         run: |
           sudo apt-get update
-          sudo apt-get install -y libfuse2 file curl tar gzip
+          sudo apt-get install -y libfuse2 file curl tar gzip python3-pil
           sudo curl -sSL https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-x86_64.AppImage -o /usr/local/bin/appimagetool
           sudo chmod +x /usr/local/bin/appimagetool
 
