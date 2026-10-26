@@ -351,6 +351,36 @@ public partial class TabbedHostWindow : Window
         ProcessNextSpawn();
     }
 
+    private static void KillProcessTree(Process? process)
+    {
+        if (process == null) return;
+        try
+        {
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+            {
+                try
+                {
+                    using var pkill = Process.Start(new ProcessStartInfo
+                    {
+                        FileName = "pkill",
+                        Arguments = $"-9 -P {process.Id}",
+                        CreateNoWindow = true,
+                        UseShellExecute = false
+                    });
+                    pkill?.WaitForExit(200);
+                }
+                catch { }
+            }
+
+            if (!process.HasExited)
+            {
+                process.Kill(entireProcessTree: true);
+                process.WaitForExit(500);
+            }
+        }
+        catch { }
+    }
+
     private void OnWindowClosing(object? sender, WindowClosingEventArgs e)
     {
         _isClosing = true;
@@ -364,17 +394,17 @@ public partial class TabbedHostWindow : Window
         {
             try
             {
+                KillProcessTree(info.Process);
                 if (info.ChildHwnd != IntPtr.Zero)
                 {
                     PlatformUnmapChild(info.ChildHwnd);
                 }
-                if (!info.Process.HasExited)
+                if (info.Process != null)
                 {
-                    info.Process.Kill();
-                    info.Process.WaitForExit(500);
+                    TabIpc.CleanUp(info.Process.Id);
+                    try { File.Delete(Path.Combine(Path.GetTempPath(), "VibeSkuaTabs", $"{info.Process.Id}.txt")); } catch { }
+                    try { File.Delete(Path.Combine(Path.GetTempPath(), "VibeSkuaTabs", $"ready_{info.Process.Id}.txt")); } catch { }
                 }
-                try { File.Delete(Path.Combine(Path.GetTempPath(), "VibeSkuaTabs", $"{info.Process.Id}.txt")); } catch { }
-                try { File.Delete(Path.Combine(Path.GetTempPath(), "VibeSkuaTabs", $"ready_{info.Process.Id}.txt")); } catch { }
             }
             catch { }
         }
@@ -1227,7 +1257,7 @@ public partial class TabbedHostWindow : Window
                 {
                     PlatformMoveResizeChild(activeChildHwnd, x, y, w, h, focus: true);
 
-                    if (activeInfo != null && activeInfo.IsThrottled)
+                    if (activeInfo != null)
                     {
                         activeInfo.IsThrottled = false;
                         PostChildMessage(activeChildHwnd, WM_SKUA_THROTTLE, new IntPtr(0), IntPtr.Zero);
@@ -1278,14 +1308,14 @@ public partial class TabbedHostWindow : Window
             {
                 try
                 {
+                    KillProcessTree(info.Process);
                     if (info.ChildHwnd != IntPtr.Zero)
                     {
                         PlatformUnmapChild(info.ChildHwnd);
                     }
-                    if (info.Process != null && !info.Process.HasExited)
-                        info.Process.Kill();
                     if (info.Process != null)
                     {
+                        TabIpc.CleanUp(info.Process.Id);
                         try { File.Delete(Path.Combine(Path.GetTempPath(), "VibeSkuaTabs", $"{info.Process.Id}.txt")); } catch { }
                         try { File.Delete(Path.Combine(Path.GetTempPath(), "VibeSkuaTabs", $"ready_{info.Process.Id}.txt")); } catch { }
                     }

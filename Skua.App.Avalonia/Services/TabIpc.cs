@@ -1,7 +1,9 @@
 using System;
+using System.Collections.Concurrent;
 using System.IO;
 using System.IO.Pipes;
 using System.Threading;
+using System.Threading.Channels;
 using System.Threading.Tasks;
 using Avalonia.Threading;
 using Skua.App.Avalonia.Views;
@@ -10,35 +12,92 @@ namespace Skua.App.Avalonia.Services;
 
 /// <summary>
 /// Cross-platform lightweight IPC between TabbedHostWindow (host) and MainWindow (child instances)
-/// using asynchronous named pipes.
+/// using asynchronous named pipes and serialized message delivery.
 /// </summary>
 public static class TabIpc
 {
+    private static readonly ConcurrentDictionary<int, Channel<string>> _queues = new();
+
     public static void SendMessage(int childPid, uint msg, IntPtr wParam, IntPtr lParam)
     {
         if (childPid <= 0)
             return;
 
-        Task.Run(async () =>
+        string payload = $"{msg}:{wParam.ToInt64()}:{lParam.ToInt64()}";
+        var channel = _queues.GetOrAdd(childPid, pid =>
         {
-            for (int attempt = 0; attempt < 5; attempt++)
+            var ch = Channel.CreateUnbounded<string>(new UnboundedChannelOptions
             {
+                SingleReader = true,
+                SingleWriter = false
+            });
+            Task.Run(() => ProcessQueueAsync(pid, ch.Reader));
+            return ch;
+        });
+
+        channel.Writer.TryWrite(payload);
+    }
+
+    public static void CleanUp(int childPid)
+    {
+        if (_queues.TryRemove(childPid, out var channel))
+        {
+            channel.Writer.TryComplete();
+        }
+    }
+
+    private static async Task ProcessQueueAsync(int childPid, ChannelReader<string> reader)
+    {
+        try
+        {
+            while (await reader.WaitToReadAsync())
+            {
+                NamedPipeClientStream? client = null;
+                StreamWriter? writer = null;
                 try
                 {
-                    using var client = new NamedPipeClientStream(".", $"VibeSkuaChildPipe_{childPid}", PipeDirection.Out);
-                    await client.ConnectAsync(500);
-                    using var writer = new StreamWriter(client);
-                    await writer.WriteLineAsync($"{msg}:{wParam.ToInt64()}:{lParam.ToInt64()}");
-                    await writer.FlushAsync();
-                    return;
+                    // Attempt connection with retries
+                    for (int attempt = 0; attempt < 10; attempt++)
+                    {
+                        try
+                        {
+                            client = new NamedPipeClientStream(".", $"VibeSkuaChildPipe_{childPid}", PipeDirection.Out);
+                            await client.ConnectAsync(300);
+                            writer = new StreamWriter(client) { AutoFlush = true };
+                            break;
+                        }
+                        catch
+                        {
+                            try { client?.Dispose(); } catch { }
+                            client = null;
+                            await Task.Delay(50);
+                        }
+                    }
+
+                    if (client != null && client.IsConnected && writer != null)
+                    {
+                        while (reader.TryRead(out string? message))
+                        {
+                            await writer.WriteLineAsync(message);
+                            await writer.FlushAsync();
+                        }
+                    }
                 }
                 catch
                 {
-                    if (attempt < 4)
-                        await Task.Delay(50);
+                    // Stream failure, will attempt reconnect on next message
+                }
+                finally
+                {
+                    try { writer?.Dispose(); } catch { }
+                    try { client?.Dispose(); } catch { }
                 }
             }
-        });
+        }
+        catch
+        {
+            // Reader completed or faulted
+        }
     }
 
     public static void StartListener(MainWindow window, int pid, CancellationToken ct)
@@ -65,9 +124,12 @@ public static class TabIpc
                     using (server)
                     using (var reader = new StreamReader(server))
                     {
-                        string? line = await reader.ReadLineAsync();
-                        if (!string.IsNullOrEmpty(line))
+                        while (!ct.IsCancellationRequested)
                         {
+                            string? line = await reader.ReadLineAsync();
+                            if (line == null) break;
+                            if (string.IsNullOrWhiteSpace(line)) continue;
+
                             var parts = line.Split(':');
                             if (parts.Length >= 3 &&
                                 uint.TryParse(parts[0], out uint msg) &&

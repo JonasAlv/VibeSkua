@@ -56,6 +56,7 @@ public partial class MainWindow : Window
 
         AddHandler(PointerPressedEvent, (s, e) =>
         {
+            RestoreFps();
             IntPtr handle = this.TryGetPlatformHandle()?.Handle ?? IntPtr.Zero;
             if (handle != IntPtr.Zero)
             {
@@ -86,6 +87,34 @@ public partial class MainWindow : Window
             FlashHost.Focus();
         else
             Focus();
+
+        RestoreFps();
+    }
+
+    private void RestoreFps()
+    {
+        try
+        {
+            var options = Ioc.Default.GetRequiredService<IScriptOption>();
+            if (options.HeadlessMode) return;
+
+            var bot = Ioc.Default.GetRequiredService<IScriptInterface>();
+            int currentFPS = bot.Flash?.GetGameObject<int>("stage.frameRate") ?? -1;
+            int targetFPS = _preThrottleFPS > 2 ? _preThrottleFPS : (currentFPS > 2 ? currentFPS : options.SetFPS);
+            if (targetFPS <= 2)
+                targetFPS = options.SetFPS > 0 ? options.SetFPS : 30;
+
+            string? targetQuality = _preThrottleQuality;
+            
+            _preThrottleFPS = -1;
+            _preThrottleQuality = null;
+
+            if (targetFPS > 0)
+                bot.Flash?.SetGameObject("stage.frameRate", targetFPS);
+            if (!string.IsNullOrEmpty(targetQuality))
+                bot.Flash?.SetGameObject("stage.quality", targetQuality);
+        }
+        catch { }
     }
 
     private void ReleaseAllPressedKeys()
@@ -544,20 +573,7 @@ public partial class MainWindow : Window
                     }
                     else
                     {
-                        int currentFPS = bot.Flash?.GetGameObject<int>("stage.frameRate") ?? -1;
-                        int targetFPS = _preThrottleFPS > 2 ? _preThrottleFPS : (currentFPS > 2 ? currentFPS : options.SetFPS);
-                        if (targetFPS <= 2)
-                            targetFPS = options.SetFPS > 0 ? options.SetFPS : 30;
-
-                        string? targetQuality = _preThrottleQuality;
-                        
-                        _preThrottleFPS = -1;
-                        _preThrottleQuality = null;
-
-                        if (targetFPS > 0)
-                            bot.Flash?.SetGameObject("stage.frameRate", targetFPS);
-                        if (!string.IsNullOrEmpty(targetQuality))
-                            bot.Flash?.SetGameObject("stage.quality", targetQuality);
+                        RestoreFps();
                     }
                 }
                 catch { }
@@ -603,6 +619,10 @@ public partial class MainWindow : Window
             {
                 ReleaseAllPressedKeys();
                 Skua.App.Avalonia.Controls.WinFormsFlashHost.ForwardFocus(focused);
+                if (focused)
+                {
+                    RestoreFps();
+                }
             });
             return IntPtr.Zero;
         }
