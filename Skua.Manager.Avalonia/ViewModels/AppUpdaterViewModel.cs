@@ -273,8 +273,42 @@ public partial class AppUpdaterViewModel : ObservableObject
                 }
 #endif
 
-                // Overwrite old AppImage
-                File.Move(extracted, destination, overwrite: true);
+                // On Linux, directly overwriting or truncating a currently running binary/AppImage
+                // throws ETXTBSY (Text file busy). To cleanly replace it, rename or unlink the existing
+                // binary first so the running inode remains valid while the path points to the new binary.
+                string backupOld = destination + ".old";
+                if (File.Exists(destination))
+                {
+                    try
+                    {
+                        if (File.Exists(backupOld))
+                            File.Delete(backupOld);
+                        File.Move(destination, backupOld);
+                    }
+                    catch
+                    {
+                        try { File.Delete(destination); } catch { }
+                    }
+                }
+
+                try
+                {
+                    File.Move(extracted, destination);
+                }
+                catch
+                {
+                    // Fallback for cross-filesystem move
+                    File.Copy(extracted, destination, overwrite: true);
+                    try { File.Delete(extracted); } catch { }
+                }
+
+                // Clean up backup if unlinked successfully
+                try
+                {
+                    if (File.Exists(backupOld))
+                        File.Delete(backupOld);
+                }
+                catch { }
             }
 
             // Cleanup temp files
