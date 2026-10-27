@@ -123,30 +123,6 @@
                 <TextBlock Text="{Binding SelectedLoadout.ClassEnhancement}" />
               </Border>
             </Grid>
-            <Border Classes="slot-divider" IsVisible="{Binding SelectedLoadout.Class, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
-            <!-- Class enhance profile (CoreBots Options) -->
-            <Grid Classes="slot" ColumnDefinitions="24,64,*,Auto" IsVisible="{Binding SelectedLoadout.Class, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
-              <materialIcons:MaterialIcon Kind="AutoFix" />
-              <TextBlock Grid.Column="1" Classes="slot-name" Text="Profile" />
-              <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
-                <CheckBox Content="Use class profile"
-                          IsChecked="{Binding UseClassEnhanceProfile}"
-                          ToolTip.Tip="On Equip, enhance with this class's CoreBots Options profile instead of the enhancements saved with the loadout" />
-                <TextBlock Text="{Binding ClassEnhanceProfile}"
-                           Foreground="{DynamicResource SkuaMutedTextBrush}"
-                           FontSize="11"
-                           TextTrimming="CharacterEllipsis"
-                           VerticalAlignment="Center" />
-              </StackPanel>
-              <Button Grid.Column="3"
-                      Classes="skua-button"
-                      Command="{Binding EditClassEnhanceProfileCommand}"
-                      ToolTip.Tip="Edit this class's profile in CoreBots Options"
-                      Width="28" Height="28"
-                      Padding="0">
-                <materialIcons:MaterialIcon Kind="PencilOutline" Width="14" Height="14" />
-              </Button>
-            </Grid>
             <Border Classes="slot-divider" />
             <Grid Classes="slot" ColumnDefinitions="24,64,*,Auto">
               <materialIcons:MaterialIcon Kind="TshirtCrewOutline" />

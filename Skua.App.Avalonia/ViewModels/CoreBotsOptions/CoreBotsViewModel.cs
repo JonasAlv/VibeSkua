@@ -21,11 +21,7 @@ public partial class CoreBotsViewModel : BotControlViewModelBase
         _selectedTab = CoreBotsTabs[0];
         _player = player;
         _dialogService = dialogService;
-        if (ClassEnhance is CBOClassEnhanceViewModel classEnhance)
-            classEnhance.SaveTarget = () => SaveInternal(showDialog: false);
     }
-
-    private CBOClassEnhanceViewModel? ClassEnhance => CoreBotsTabs.Select(t => t.Content).OfType<CBOClassEnhanceViewModel>().FirstOrDefault();
 
     protected override void OnActivated()
     {
@@ -100,23 +96,6 @@ public partial class CoreBotsViewModel : BotControlViewModelBase
         }
     }
 
-    /// <summary>
-    /// Opens the Class Enhance tab on <paramref name="className"/> of <paramref name="profile"/> (Loadouts Manager).
-    /// </summary>
-    public void EditClassEnhance(string profile, string className)
-    {
-        if (!profile.Equals(ProfileName, StringComparison.OrdinalIgnoreCase))
-        {
-            if (!string.IsNullOrEmpty(ProfileName))
-                SaveInternal(showDialog: false);
-            SetProfileSilently(profile);
-            LoadProfile(profile, resetIfMissing: true);
-        }
-
-        SelectedTab = CoreBotsTabs.First(t => t.Content is CBOClassEnhanceViewModel);
-        ((CBOClassEnhanceViewModel)SelectedTab.Content).SelectClass(className);
-    }
-
     [RelayCommand]
     private void Save()
     {
@@ -174,8 +153,6 @@ public partial class CoreBotsViewModel : BotControlViewModelBase
     private void LoadProfile(string profile, bool resetIfMissing)
     {
         CurrentPlayer = profile;
-        if (ClassEnhance is CBOClassEnhanceViewModel classEnhance)
-            classEnhance.TargetAccount = profile;
 
         Dictionary<string, string>? values = ReadProfile(profile);
         // Don't show the previous account's values under a profile that has no file yet

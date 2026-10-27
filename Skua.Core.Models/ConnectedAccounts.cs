@@ -59,42 +59,6 @@ public static class ConnectedAccounts
         return null;
     }
 
-    /// <summary>
-    /// Asks the tab logged in to <paramref name="account"/> to enhance its equipped class (picked up by <see cref="TakeEnhanceRequest"/>).
-    /// </summary>
-    /// <returns><see langword="false"/> if no open tab is logged in to it.</returns>
-    public static bool RequestEnhance(string account)
-    {
-        if (FindTab(account) is not int pid)
-            return false;
-        try
-        {
-            File.WriteAllText(Path.Combine(Path.GetTempPath(), "VibeSkuaTabs", $"{pid}.enhance"), account);
-            return true;
-        }
-        catch
-        {
-            return false;
-        }
-    }
-
-    /// <returns><see langword="true"/> once per enhance request sent to this tab.</returns>
-    public static bool TakeEnhanceRequest()
-    {
-        string file = Path.Combine(Path.GetTempPath(), "VibeSkuaTabs", $"{Environment.ProcessId}.enhance");
-        if (!File.Exists(file))
-            return false;
-        try
-        {
-            File.Delete(file);
-            return true;
-        }
-        catch
-        {
-            return false;
-        }
-    }
-
     private static bool IsProcessAlive(int pid)
     {
         try

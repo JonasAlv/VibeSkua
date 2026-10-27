@@ -17,7 +17,6 @@ public partial class LoadoutsViewModel : BotControlViewModelBase
     private readonly IDialogService _dialogService;
     private readonly IDispatcherService _dispatcherService;
     private readonly IScriptPlayer _player;
-    private readonly IClassEnhanceProfiles _classEnhanceProfiles;
     private bool _switchingProfile;
 
     [ObservableProperty]
@@ -34,14 +33,13 @@ public partial class LoadoutsViewModel : BotControlViewModelBase
     [ObservableProperty]
     private string? _selectedProfile;
 
-    public LoadoutsViewModel(ILoadoutService loadoutService, IDialogService dialogService, IDispatcherService dispatcherService, IScriptPlayer player, IClassEnhanceProfiles classEnhanceProfiles)
+    public LoadoutsViewModel(ILoadoutService loadoutService, IDialogService dialogService, IDispatcherService dispatcherService, IScriptPlayer player)
         : base("Loadouts Manager", 600, 500)
     {
         _loadoutService = loadoutService;
         _dialogService = dialogService;
         _dispatcherService = dispatcherService;
         _player = player;
-        _classEnhanceProfiles = classEnhanceProfiles;
 
         _loadoutService.LoadoutsChanged += () =>
         {
@@ -123,10 +121,7 @@ public partial class LoadoutsViewModel : BotControlViewModelBase
         if (SelectedLoadout == null)
             return;
 
-        string? enhanceProfile = SelectedLoadout.UseClassEnhanceProfile && !string.IsNullOrWhiteSpace(SelectedLoadout.Class)
-            ? _classEnhanceProfiles.Resolve(Account, SelectedLoadout.Class)
-            : null;
-        var missingItems = await _loadoutService.EquipLoadoutAsync(SelectedLoadout, enhanceProfile);
+        var missingItems = await _loadoutService.EquipLoadoutAsync(SelectedLoadout);
 
         if (missingItems != null && missingItems.Count > 0)
         {
@@ -200,8 +195,6 @@ public partial class LoadoutsViewModel : BotControlViewModelBase
     partial void OnSelectedLoadoutChanged(LoadoutProfile? value)
     {
         OnPropertyChanged(nameof(SelectedLoadoutName));
-        OnPropertyChanged(nameof(UseClassEnhanceProfile));
-        OnPropertyChanged(nameof(ClassEnhanceProfile));
     }
 
     public string SelectedLoadoutName
@@ -228,47 +221,6 @@ public partial class LoadoutsViewModel : BotControlViewModelBase
                 OnPropertyChanged();
             }
         }
-    }
-
-    public bool UseClassEnhanceProfile
-    {
-        get => SelectedLoadout?.UseClassEnhanceProfile ?? false;
-        set
-        {
-            LoadoutProfile? loadout = SelectedLoadout;
-            if (loadout == null || loadout.UseClassEnhanceProfile == value)
-                return;
-
-            loadout.UseClassEnhanceProfile = value;
-            // Saving rebuilds the list, which clears the selection
-            if (loadout.Name != "Currently Equipped" && _loadoutService.SaveLoadout(loadout))
-                ReloadAndSelect(loadout.Name);
-            OnPropertyChanged();
-        }
-    }
-
-    /// <summary>
-    /// The CoreBots class profile the selected loadout would be enhanced with.
-    /// </summary>
-    public string ClassEnhanceProfile
-    {
-        get
-        {
-            if (string.IsNullOrWhiteSpace(SelectedLoadout?.Class) || string.IsNullOrEmpty(Account))
-                return string.Empty;
-
-            string[] p = _classEnhanceProfiles.Resolve(Account, SelectedLoadout.Class).Split('|');
-            return $"{p[0]} · Weapon {p[1]} / {p[2]} · Cape {p[3]} · Helm {p[4]}";
-        }
-    }
-
-    [RelayCommand]
-    private void EditClassEnhanceProfile()
-    {
-        if (string.IsNullOrWhiteSpace(SelectedLoadout?.Class) || string.IsNullOrEmpty(Account))
-            return;
-
-        _classEnhanceProfiles.Edit(Account, SelectedLoadout.Class);
     }
 
     [RelayCommand]

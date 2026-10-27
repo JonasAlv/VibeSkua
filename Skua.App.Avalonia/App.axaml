@@ -132,9 +132,6 @@
     <DataTemplate DataType="coreBotsOptions:CBOClassEquipmentViewModel">
       <views:CBOClassEquipmentView />
     </DataTemplate>
-    <DataTemplate DataType="coreBotsOptions:CBOClassEnhanceViewModel">
-      <views:CBOClassEnhanceView />
-    </DataTemplate>
     <DataTemplate DataType="coreBotsOptions:CBOptionsViewModel">
       <views:CBOptionsView />
     </DataTemplate>

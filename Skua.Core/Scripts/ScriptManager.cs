@@ -148,9 +148,6 @@ public partial class ScriptManager : ObservableObject, IScriptManager, IDisposab
 
             UnloadPreviousScript();
 
-            // Script updates bring back an unpatched CoreAdvanced.cs; re-apply the class enhance profile patch.
-            await Task.Run(CoreAdvancedPatcher.EnsurePatched);
-
             string scriptContent = File.ReadAllText(LoadedScript);
             object? script = await Task.Run(() => Compile(scriptContent));
 

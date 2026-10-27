@@ -190,11 +190,9 @@ public static class Services
         services.AddTransient<HotKeysViewModel>();
         // Hotkey command map is registered in App startup for this app host.
 
-        // Singleton so the Loadouts Manager can open it on a class (ClassEnhanceProfiles)
-        services.AddSingleton(CoreBots.CreateViewModel);
+        services.AddTransient(CoreBots.CreateViewModel);
         services.AddTransient(CoreBots.CreateOptions);
         services.AddTransient<CBOClassEquipmentViewModel>();
-        services.AddTransient<CBOClassEnhanceViewModel>();
         services.AddTransient<CBOClassSelectViewModel>();
         services.AddTransient<CBOLoadoutViewModel>();
 

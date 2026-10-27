@@ -119,7 +119,6 @@ public partial class App : Application
         services.AddSingleton<ISoundService, SoundService>();
         services.AddSingleton<IFlashUtil, FlashUtil>();
         services.AddSingleton<IScreenshotService, ScreenshotService>();
-        services.AddSingleton<IClassEnhanceProfiles, ClassEnhanceProfiles>();
         services.AddSingleton<SkuaStartupHandler>();
         Skua.App.Avalonia.AppStartup.Services.AddSkuaMainAppViewModels(services);
 

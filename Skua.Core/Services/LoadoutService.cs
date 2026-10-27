@@ -251,7 +251,7 @@ public class LoadoutService : ILoadoutService
         return profile;
     }
 
-    public async Task<List<string>> EquipLoadoutAsync(LoadoutProfile loadout, string? enhanceProfile = null)
+    public async Task<List<string>> EquipLoadoutAsync(LoadoutProfile loadout)
     {
         EnsureLoaded();
         _logger.ScriptLog($"[Loadouts] Equipping Loadout: {loadout.Name}");
@@ -285,53 +285,44 @@ public class LoadoutService : ILoadoutService
                 bool needsEnhancement = false;
                 var scriptBody = new System.Text.StringBuilder();
 
-                // The CoreBots class profile replaces the enhancements saved with the loadout
-                if (enhanceProfile != null)
+                int cPattern = loadout.ClassPatternID > 0 ? loadout.ClassPatternID : ParsePatternID(loadout.ClassEnhancement);
+                int cProc = loadout.ClassPatternID > 0 ? loadout.ClassProcID : ParseProcID(loadout.ClassEnhancement);
+                int wPattern = loadout.WeaponPatternID > 0 ? loadout.WeaponPatternID : ParsePatternID(loadout.WeaponEnhancement);
+                int wProc = loadout.WeaponPatternID > 0 ? loadout.WeaponProcID : ParseProcID(loadout.WeaponEnhancement);
+                int hPattern = loadout.HelmPatternID > 0 ? loadout.HelmPatternID : ParsePatternID(loadout.HelmEnhancement);
+                int hProc = loadout.HelmPatternID > 0 ? loadout.HelmProcID : ParseProcID(loadout.HelmEnhancement);
+                int capePattern = loadout.CapePatternID > 0 ? loadout.CapePatternID : ParsePatternID(loadout.CapeEnhancement);
+                int capeProc = loadout.CapePatternID > 0 ? loadout.CapeProcID : ParseProcID(loadout.CapeEnhancement);
+
+                var classItem = _bot.Inventory.Items.FirstOrDefault(i => i.Equipped && i.Name.Replace("&amp;", "&").Equals(loadout.Class, StringComparison.OrdinalIgnoreCase));
+                if (classItem != null && (classItem.EnhancementPatternID != cPattern || classItem.ProcID != cProc))
                 {
-                    scriptBody.AppendLine($@"        adv.EnhanceEquippedWithProfile(""{enhanceProfile}"");");
+                    scriptBody.AppendLine($@"        adv.EnhanceItem(""{loadout.Class}"", (EnhancementType){cPattern}, CapeSpecial.None, HelmSpecial.None, WeaponSpecial.None);");
                     needsEnhancement = true;
                 }
-                else
+
+                var weaponItem = _bot.Inventory.Items.FirstOrDefault(i => i.Equipped && i.Name.Replace("&amp;", "&").Equals(loadout.Weapon, StringComparison.OrdinalIgnoreCase));
+                if (weaponItem != null && (weaponItem.EnhancementPatternID != wPattern || weaponItem.ProcID != wProc))
                 {
-                    int cPattern = loadout.ClassPatternID > 0 ? loadout.ClassPatternID : ParsePatternID(loadout.ClassEnhancement);
-                    int cProc = loadout.ClassPatternID > 0 ? loadout.ClassProcID : ParseProcID(loadout.ClassEnhancement);
-                    int wPattern = loadout.WeaponPatternID > 0 ? loadout.WeaponPatternID : ParsePatternID(loadout.WeaponEnhancement);
-                    int wProc = loadout.WeaponPatternID > 0 ? loadout.WeaponProcID : ParseProcID(loadout.WeaponEnhancement);
-                    int hPattern = loadout.HelmPatternID > 0 ? loadout.HelmPatternID : ParsePatternID(loadout.HelmEnhancement);
-                    int hProc = loadout.HelmPatternID > 0 ? loadout.HelmProcID : ParseProcID(loadout.HelmEnhancement);
-                    int capePattern = loadout.CapePatternID > 0 ? loadout.CapePatternID : ParsePatternID(loadout.CapeEnhancement);
-                    int capeProc = loadout.CapePatternID > 0 ? loadout.CapeProcID : ParseProcID(loadout.CapeEnhancement);
+                    int wBaseEnh = wPattern > 9 ? 9 : wPattern;
+                    scriptBody.AppendLine($@"        adv.EnhanceItem(""{loadout.Weapon}"", (EnhancementType){wBaseEnh}, CapeSpecial.None, HelmSpecial.None, {MapWeaponSpecial(wPattern, wProc)});");
+                    needsEnhancement = true;
+                }
 
-                    var classItem = _bot.Inventory.Items.FirstOrDefault(i => i.Equipped && i.Name.Replace("&amp;", "&").Equals(loadout.Class, StringComparison.OrdinalIgnoreCase));
-                    if (classItem != null && (classItem.EnhancementPatternID != cPattern || classItem.ProcID != cProc))
-                    {
-                        scriptBody.AppendLine($@"        adv.EnhanceItem(""{loadout.Class}"", (EnhancementType){cPattern}, CapeSpecial.None, HelmSpecial.None, WeaponSpecial.None);");
-                        needsEnhancement = true;
-                    }
+                var helmItem = _bot.Inventory.Items.FirstOrDefault(i => i.Equipped && i.Name.Replace("&amp;", "&").Equals(loadout.Helm, StringComparison.OrdinalIgnoreCase));
+                if (helmItem != null && (helmItem.EnhancementPatternID != hPattern || helmItem.ProcID != hProc))
+                {
+                    int hBaseEnh = hPattern > 9 ? 9 : hPattern;
+                    scriptBody.AppendLine($@"        adv.EnhanceItem(""{loadout.Helm}"", (EnhancementType){hBaseEnh}, CapeSpecial.None, {MapHelmSpecial(hPattern)}, WeaponSpecial.None);");
+                    needsEnhancement = true;
+                }
 
-                    var weaponItem = _bot.Inventory.Items.FirstOrDefault(i => i.Equipped && i.Name.Replace("&amp;", "&").Equals(loadout.Weapon, StringComparison.OrdinalIgnoreCase));
-                    if (weaponItem != null && (weaponItem.EnhancementPatternID != wPattern || weaponItem.ProcID != wProc))
-                    {
-                        int wBaseEnh = wPattern > 9 ? 9 : wPattern;
-                        scriptBody.AppendLine($@"        adv.EnhanceItem(""{loadout.Weapon}"", (EnhancementType){wBaseEnh}, CapeSpecial.None, HelmSpecial.None, {MapWeaponSpecial(wPattern, wProc)});");
-                        needsEnhancement = true;
-                    }
-
-                    var helmItem = _bot.Inventory.Items.FirstOrDefault(i => i.Equipped && i.Name.Replace("&amp;", "&").Equals(loadout.Helm, StringComparison.OrdinalIgnoreCase));
-                    if (helmItem != null && (helmItem.EnhancementPatternID != hPattern || helmItem.ProcID != hProc))
-                    {
-                        int hBaseEnh = hPattern > 9 ? 9 : hPattern;
-                        scriptBody.AppendLine($@"        adv.EnhanceItem(""{loadout.Helm}"", (EnhancementType){hBaseEnh}, CapeSpecial.None, {MapHelmSpecial(hPattern)}, WeaponSpecial.None);");
-                        needsEnhancement = true;
-                    }
-
-                    var capeItem = _bot.Inventory.Items.FirstOrDefault(i => i.Equipped && i.Name.Replace("&amp;", "&").Equals(loadout.Cape, StringComparison.OrdinalIgnoreCase));
-                    if (capeItem != null && (capeItem.EnhancementPatternID != capePattern || capeItem.ProcID != capeProc))
-                    {
-                        int capeBaseEnh = capePattern > 9 ? 9 : capePattern;
-                        scriptBody.AppendLine($@"        adv.EnhanceItem(""{loadout.Cape}"", (EnhancementType){capeBaseEnh}, {MapCapeSpecial(capePattern)}, HelmSpecial.None, WeaponSpecial.None);");
-                        needsEnhancement = true;
-                    }
+                var capeItem = _bot.Inventory.Items.FirstOrDefault(i => i.Equipped && i.Name.Replace("&amp;", "&").Equals(loadout.Cape, StringComparison.OrdinalIgnoreCase));
+                if (capeItem != null && (capeItem.EnhancementPatternID != capePattern || capeItem.ProcID != capeProc))
+                {
+                    int capeBaseEnh = capePattern > 9 ? 9 : capePattern;
+                    scriptBody.AppendLine($@"        adv.EnhanceItem(""{loadout.Cape}"", (EnhancementType){capeBaseEnh}, {MapCapeSpecial(capePattern)}, HelmSpecial.None, WeaponSpecial.None);");
+                    needsEnhancement = true;
                 }
 
                 if (!needsEnhancement)

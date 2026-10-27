@@ -40,7 +40,6 @@ public partial class ScriptRepoViewModel : BotControlViewModelBase
     // Temporary scripts the client writes into the Scripts folder; never list them as local scripts.
     private static readonly HashSet<string> _generatedScriptNames = new(StringComparer.OrdinalIgnoreCase)
     {
-        "ClassEnhanceTemp.cs",
         "LoadoutEnhancerTemp.cs"
     };
 

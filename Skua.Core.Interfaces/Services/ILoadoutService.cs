@@ -21,7 +21,6 @@ public interface ILoadoutService
     /// <param name="loadout">The loadout profile to delete.</param>
     void DeleteLoadout(LoadoutProfile loadout);
     void Refresh();
-    /// <param name="enhanceProfile">"Base|WeaponForge|WeaponAwe|Cape|Helm" class profile applied instead of the loadout's saved enhancements, or null.</param>
-    Task<List<string>> EquipLoadoutAsync(LoadoutProfile loadout, string? enhanceProfile = null);
+    Task<List<string>> EquipLoadoutAsync(LoadoutProfile loadout);
     LoadoutProfile CreateFromCurrentEquipped(string name);
 }
