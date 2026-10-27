@@ -133,6 +133,11 @@ public class FlashUtil : IFlashUtil, IRestartableGamePlayer
             UseShellExecute = false,
             CreateNoWindow = true
         };
+        psi.ArgumentList.Add("--no-gui");
+        psi.ArgumentList.Add("--tcp-connections");
+        psi.ArgumentList.Add("allow");
+        psi.ArgumentList.Add("--open-url-mode");
+        psi.ArgumentList.Add("allow");
         psi.ArgumentList.Add(swfPath);
         psi.Environment["MUGETSU_SKUA_SOCKET"] = _socketPath;
         psi.Environment.Remove("WAYLAND_DISPLAY");

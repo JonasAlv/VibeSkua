@@ -133,8 +133,9 @@
             Background="{DynamicResource SkuaPageBrush}">
         <controls:WinFormsFlashHost x:Name="FlashHost" IsVisible="False" />
         <ProgressBar x:Name="LoadingBar"
-                     Width="150"
+                     Width="180"
                      Height="8"
+                     CornerRadius="4"
                      IsIndeterminate="True"
                      HorizontalAlignment="Center"
                      VerticalAlignment="Center"/>

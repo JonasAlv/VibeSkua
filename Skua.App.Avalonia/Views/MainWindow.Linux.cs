@@ -254,6 +254,14 @@ public partial class MainWindow : Window
         if (function == "loaded" && !_isFlashLoaded)
         {
             _isFlashLoaded = true;
+            try
+            {
+                string dir = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "VibeSkuaTabs");
+                System.IO.Directory.CreateDirectory(dir);
+                System.IO.File.WriteAllText(System.IO.Path.Combine(dir, $"loaded_{Environment.ProcessId}.txt"), "1");
+            }
+            catch { }
+
             Dispatcher.UIThread.Post(() =>
             {
                 LoadingBar.IsVisible = false;

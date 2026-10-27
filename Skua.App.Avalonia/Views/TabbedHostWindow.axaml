@@ -295,11 +295,15 @@
         
         <!-- Game Instance Host Container -->
         <Grid Grid.Row="2" Background="{DynamicResource SkuaPageBrush}">
-            <StackPanel x:Name="LoadingIndicator" HorizontalAlignment="Center" VerticalAlignment="Center" Opacity="0.7">
-                <TextBlock Text="Loading Game Instance..." Foreground="{DynamicResource SkuaTextBrush}" FontSize="20" FontWeight="Bold" HorizontalAlignment="Center" Margin="0,0,0,6" />
-                <TextBlock Text="Please wait while the game client initializes" Foreground="{DynamicResource SkuaMutedTextBrush}" FontSize="12" HorizontalAlignment="Center" />
-            </StackPanel>
             <Border x:Name="HostContainer" Background="Transparent" />
+            <StackPanel x:Name="LoadingIndicator" ZIndex="10" HorizontalAlignment="Center" VerticalAlignment="Center">
+                <ProgressBar Width="180"
+                             Height="8"
+                             CornerRadius="4"
+                             IsIndeterminate="True"
+                             HorizontalAlignment="Center"
+                             VerticalAlignment="Center"/>
+            </StackPanel>
         </Grid>
     </Grid>
 </Window>
