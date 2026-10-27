@@ -1280,7 +1280,8 @@ public partial class ScriptManager : ObservableObject, IScriptManager, IDisposab
 
     private static string SanitizeScriptSourceForLinux(string source)
     {
-        if (OperatingSystem.IsWindows() || string.IsNullOrEmpty(source))
+#if IS_LINUX
+        if (string.IsNullOrEmpty(source))
             return source;
 
         return source
@@ -1293,6 +1294,9 @@ public partial class ScriptManager : ObservableObject, IScriptManager, IDisposab
             .Replace("\"Skua\",\n                \"Options\"", "\"VibeSkua\",\n                \"options\"", StringComparison.Ordinal)
             .Replace("\"Skua\",\r\n                \"Options\"", "\"VibeSkua\",\r\n                \"options\"", StringComparison.Ordinal)
             .Replace("\"Skua\", \"Scripts\"", "\"VibeSkua\", \"Scripts\"", StringComparison.Ordinal);
+#else
+        return source;
+#endif
     }
 
     public static bool IsWindowsVersionAtLeastCompat(int major, int minor = 0, int build = 0, int revision = 0) => true;

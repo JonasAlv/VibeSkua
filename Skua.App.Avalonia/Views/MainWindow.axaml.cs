@@ -99,51 +99,66 @@ public partial class MainWindow : Window
 
         if (isTopLevel)
         {
-            menuItem.Classes.Add("top-level");
-            menuItem.Padding = new Avalonia.Thickness(12, 0);
-            menuItem.Height = 36;
+            menuItem.Classes.Add("top-nav-item");
+            MaterialIconKind? iconKind = viewModel.Header switch
+            {
+                "Scripts" => MaterialIconKind.ScriptTextOutline,
+                "Options" => MaterialIconKind.CogOutline,
+                "Tools & Helpers" => MaterialIconKind.WrenchOutline,
+                "Combat" => MaterialIconKind.SwordCross,
+                "Bank" => MaterialIconKind.BankOutline,
+                "Diagnostics" => MaterialIconKind.BugOutline,
+                "Plugins" => MaterialIconKind.PuzzleOutline,
+                _ => null
+            };
+
+            if (iconKind.HasValue)
+            {
+                var icon = new MaterialIcon
+                {
+                    Kind = iconKind.Value,
+                    Width = 14,
+                    Height = 14,
+                    VerticalAlignment = VerticalAlignment.Center
+                };
+                icon[!MaterialIcon.ForegroundProperty] = new global::Avalonia.Markup.Xaml.MarkupExtensions.DynamicResourceExtension("SkuaTextBrush");
+
+                var text = new TextBlock
+                {
+                    Text = viewModel.Header,
+                    VerticalAlignment = VerticalAlignment.Center,
+                    FontWeight = FontWeight.SemiBold,
+                    FontSize = 12
+                };
+                menuItem.Header = new StackPanel
+                {
+                    Orientation = Orientation.Horizontal,
+                    Spacing = 6,
+                    Children = { icon, text }
+                };
+            }
+            else
+            {
+                menuItem.Header = viewModel.Header;
+            }
         }
         else
         {
-            menuItem.Padding = new Avalonia.Thickness(12, 6);
+            menuItem.Header = viewModel.Header;
         }
 
-        if (viewModel is MainMenuItemViewModel item)
+        if (viewModel.Header == "Plugins")
+            _pluginsMenuItem = menuItem;
+
+        if (viewModel is MainMenuItemViewModel item && item.SubItems != null && item.SubItems.Any())
         {
-            var headerContent = new StackPanel
-            {
-                Orientation = Orientation.Horizontal,
-                Spacing = 8,
-                VerticalAlignment = VerticalAlignment.Center
-            };
-
-            if (item.Icon != MaterialIconKind.None)
-            {
-                headerContent.Children.Add(new MaterialIcon
-                {
-                    Kind = item.Icon,
-                    Width = 16,
-                    Height = 16,
-                    VerticalAlignment = VerticalAlignment.Center,
-                    Foreground = isTopLevel ? Brushes.White : new SolidColorBrush(Color.Parse("#38BDF8"))
-                });
-            }
-
-            headerContent.Children.Add(new TextBlock
-            {
-                Text = item.Header,
-                VerticalAlignment = VerticalAlignment.Center,
-                FontWeight = isTopLevel ? FontWeight.SemiBold : FontWeight.Normal,
-                FontSize = isTopLevel ? 12 : 13
-            });
-
-            menuItem.Header = headerContent;
-
-            if (item.Header == "Plugins")
-                _pluginsMenuItem = menuItem;
-
-            foreach (var subItem in item.Items)
-                menuItem.Items.Add(CreateMainMenuItem(subItem));
+            foreach (IMainMenuItemViewModel subItem in item.SubItems)
+                menuItem.Items.Add(CreateMainMenuItem(subItem, isTopLevel: false));
+        }
+        else if (viewModel.SubItems != null && viewModel.SubItems.Any())
+        {
+            foreach (IMainMenuItemViewModel subItem in viewModel.SubItems)
+                menuItem.Items.Add(CreateMainMenuItem(subItem, isTopLevel: false));
         }
 
         return menuItem;
@@ -257,6 +272,7 @@ public partial class MainWindow : Window
         WeakReferenceMessenger.Default.UnregisterAll(this);
     }
 
+#if !IS_LINUX
     private void OnFlashCall(string function, params object[] args)
     {
         if (function == "loaded" && !_isFlashLoaded)
@@ -276,4 +292,5 @@ public partial class MainWindow : Window
             });
         }
     }
+#endif
 }

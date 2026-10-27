@@ -7,18 +7,20 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Net.Sockets;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Runtime.Loader;
+using System.Text;
 using System.Threading;
+using System.Threading.Tasks;
 using Velopack;
 
 namespace Skua.Manager.Avalonia;
 
 internal static class Program
 {
-    private static EventWaitHandle? _singleInstanceWaitHandle;
     private static Mutex? _singleInstanceMutex;
 
     static Program()
@@ -33,61 +35,74 @@ internal static class Program
 
         VelopackApp.Build().Run();
 
-        if (OperatingSystem.IsWindows())
+#if IS_LINUX
+        string socketPath = Path.Combine(Path.GetTempPath(), $"vibeskua-manager-{Environment.UserName}.sock");
+
+        // Attempt to signal existing primary instance
+        try
         {
-            const string eventName = @"Global\VibeSkua.Manager.SingleInstance.WakeEvent";
-            bool createdNew;
-            try
-            {
-                _singleInstanceWaitHandle = new EventWaitHandle(false, EventResetMode.AutoReset, eventName, out createdNew);
-            }
-            catch
-            {
-                _singleInstanceWaitHandle = new EventWaitHandle(false, EventResetMode.AutoReset, "VibeSkua.Manager.SingleInstance.WakeEvent", out createdNew);
-            }
+            using Socket client = new(AddressFamily.Unix, SocketType.Stream, ProtocolType.Unspecified);
+            client.Connect(new UnixDomainSocketEndPoint(socketPath));
+            client.Send(Encoding.UTF8.GetBytes("SHOW\n"));
+            client.Close();
+            // Existing instance alerted, exit cleanly
+            return;
+        }
+        catch
+        {
+            // Socket doesn't exist or is stale
+            try { if (File.Exists(socketPath)) File.Delete(socketPath); } catch { }
+        }
 
-            if (!createdNew)
-            {
-                // Another manager is already running! Wake it up and terminate this second instance immediately.
-                try
-                {
-                    _singleInstanceWaitHandle.Set();
-                }
-                catch
-                {
-                }
-                return;
-            }
+        try
+        {
+            Socket listenerSocket = new(AddressFamily.Unix, SocketType.Stream, ProtocolType.Unspecified);
+            listenerSocket.Bind(new UnixDomainSocketEndPoint(socketPath));
+            listenerSocket.Listen(5);
 
-            // We are the single running instance. Listen for signals from subsequent launch attempts.
-            ThreadPool.RegisterWaitForSingleObject(_singleInstanceWaitHandle, (state, timedOut) =>
+            Task.Run(async () =>
             {
-                if (!timedOut)
+                byte[] buffer = new byte[64];
+                while (true)
                 {
-                    Dispatcher.UIThread.Post(() =>
+                    try
                     {
-                        StrongReferenceMessenger.Default.Send(new ShowMainWindowMessage());
-                    });
+                        using Socket handler = await listenerSocket.AcceptAsync();
+                        int read = await handler.ReceiveAsync(buffer, SocketFlags.None);
+                        if (read > 0)
+                        {
+                            Dispatcher.UIThread.Post(() =>
+                            {
+                                StrongReferenceMessenger.Default.Send(new ShowMainWindowMessage());
+                            });
+                        }
+                    }
+                    catch
+                    {
+                        break;
+                    }
                 }
-            }, null, Timeout.Infinite, false);
+            });
+
+            AppDomain.CurrentDomain.ProcessExit += (s, e) =>
+            {
+                try { listenerSocket.Dispose(); } catch { }
+                try { if (File.Exists(socketPath)) File.Delete(socketPath); } catch { }
+            };
         }
-        else
+        catch
         {
             bool createdNew;
-            try
-            {
-                _singleInstanceMutex = new Mutex(true, "VibeSkuaManagerSingleInstanceMutex", out createdNew);
-            }
-            catch
-            {
-                createdNew = true;
-            }
-
+            _singleInstanceMutex = new Mutex(true, "VibeSkuaManagerSingleInstanceMutex", out createdNew);
             if (!createdNew)
-            {
                 return;
-            }
         }
+#else
+        bool createdNewFallback;
+        _singleInstanceMutex = new Mutex(true, "VibeSkuaManagerSingleInstanceMutex", out createdNewFallback);
+        if (!createdNewFallback)
+            return;
+#endif
 
         RunApp(args);
     }
@@ -109,9 +124,7 @@ internal static class Program
             }
         }
 
-        string arch = OperatingSystem.IsWindows()
-            ? (Environment.Is64BitProcess ? "win-x64" : "win-x86")
-            : (RuntimeInformation.ProcessArchitecture == Architecture.Arm64 ? "linux-arm64" : "linux-x64");
+        string arch = RuntimeInformation.ProcessArchitecture == Architecture.Arm64 ? "linux-arm64" : "linux-x64";
 
         string runtimeNativeDir = Path.Combine(AppContext.BaseDirectory, "Assemblies", "runtimes", arch, "native");
         HashSet<string>? runtimeNativeSet = null;
@@ -148,7 +161,7 @@ internal static class Program
 
         AssemblyLoadContext.Default.ResolvingUnmanagedDll += (assembly, unmanagedDllName) =>
         {
-            string ext = OperatingSystem.IsWindows() ? ".dll" : ".so";
+            string ext = ".so";
             string fileName = unmanagedDllName.EndsWith(ext, StringComparison.OrdinalIgnoreCase)
                 ? unmanagedDllName
                 : $"{unmanagedDllName}{ext}";
@@ -212,14 +225,6 @@ internal static class Program
         AppBuilder builder = AppBuilder.Configure<App>()
             .UsePlatformDetect();
 
-        if (OperatingSystem.IsWindows())
-        {
-            builder = builder.With(new Win32PlatformOptions
-            {
-                RenderingMode = new[] { Win32RenderingMode.AngleEgl, Win32RenderingMode.Software },
-                CompositionMode = new[] { Win32CompositionMode.WinUIComposition, Win32CompositionMode.RedirectionSurface }
-            });
-        }
 #if DEBUG
         builder = builder.WithDeveloperTools();
 #endif

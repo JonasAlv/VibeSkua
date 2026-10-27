@@ -4,7 +4,7 @@ using System.Xml.Linq;
 
 namespace Skua.App.Avalonia.Flash;
 
-#if IS_LINUX || !IS_WINDOWS
+#if IS_LINUX
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;

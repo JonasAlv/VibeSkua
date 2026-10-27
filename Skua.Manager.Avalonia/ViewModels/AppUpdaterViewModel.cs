@@ -259,8 +259,8 @@ public partial class AppUpdaterViewModel : ObservableObject
                 string destination = Path.Combine(targetDir, fileName);
 
                 // Set executable permissions (0755: rwxr-xr-x)
-#if IS_LINUX || !IS_WINDOWS
-                if (OperatingSystem.IsLinux() || !OperatingSystem.IsWindows())
+#if IS_LINUX
+                if (OperatingSystem.IsLinux())
                 {
                     try
                     {

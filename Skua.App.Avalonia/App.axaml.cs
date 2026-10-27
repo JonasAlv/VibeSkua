@@ -18,6 +18,7 @@ using Skua.Core.AppStartup;
 using Skua.Core.Interfaces;
 using Skua.Core.Utils;
 using System;
+using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
@@ -36,7 +37,7 @@ public partial class App : Application
         AvaloniaXamlLoader.Load(this);
     }
 
-#if IS_LINUX || !IS_WINDOWS
+#if IS_LINUX
     [System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential)]
     public struct XSetWindowAttributes
     {

@@ -39,9 +39,13 @@ internal static class Program
             }
         }
 
+#if IS_LINUX
+        string arch = RuntimeInformation.ProcessArchitecture == Architecture.Arm64 ? "linux-arm64" : "linux-x64";
+#else
         string arch = OperatingSystem.IsWindows()
             ? (Environment.Is64BitProcess ? "win-x64" : "win-x86")
             : (RuntimeInformation.ProcessArchitecture == Architecture.Arm64 ? "linux-arm64" : "linux-x64");
+#endif
 
         string runtimeNativeDir = Path.Combine(AppContext.BaseDirectory, "Assemblies", "runtimes", arch, "native");
         HashSet<string>? runtimeNativeSet = null;
@@ -78,7 +82,11 @@ internal static class Program
 
         AssemblyLoadContext.Default.ResolvingUnmanagedDll += (assembly, unmanagedDllName) =>
         {
+#if IS_LINUX
+            string ext = ".so";
+#else
             string ext = OperatingSystem.IsWindows() ? ".dll" : ".so";
+#endif
             string fileName = unmanagedDllName.EndsWith(ext, StringComparison.OrdinalIgnoreCase)
                 ? unmanagedDllName
                 : $"{unmanagedDllName}{ext}";
@@ -145,6 +153,7 @@ internal static class Program
         AppBuilder builder = AppBuilder.Configure<App>()
             .UsePlatformDetect();
 
+#if !IS_LINUX
         if (OperatingSystem.IsWindows())
         {
             builder = builder.With(new Win32PlatformOptions
@@ -153,6 +162,7 @@ internal static class Program
                 CompositionMode = new[] { Win32CompositionMode.WinUIComposition, Win32CompositionMode.RedirectionSurface }
             });
         }
+#endif
 #if DEBUG
         builder = builder.WithDeveloperTools();
 #endif

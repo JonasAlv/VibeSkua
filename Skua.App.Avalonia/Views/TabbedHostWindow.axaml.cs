@@ -421,21 +421,20 @@ public partial class TabbedHostWindow : Window
         if (process == null) return;
         try
         {
-            if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+#if IS_LINUX
+            try
             {
-                try
+                using var pkill = Process.Start(new ProcessStartInfo
                 {
-                    using var pkill = Process.Start(new ProcessStartInfo
-                    {
-                        FileName = "pkill",
-                        Arguments = $"-9 -P {process.Id}",
-                        CreateNoWindow = true,
-                        UseShellExecute = false
-                    });
-                    pkill?.WaitForExit(200);
-                }
-                catch { }
+                    FileName = "pkill",
+                    Arguments = $"-9 -P {process.Id}",
+                    CreateNoWindow = true,
+                    UseShellExecute = false
+                });
+                pkill?.WaitForExit(200);
             }
+            catch { }
+#endif
 
             if (!process.HasExited)
             {
@@ -516,7 +515,7 @@ public partial class TabbedHostWindow : Window
                 try
                 {
                     pipeServer = new NamedPipeServerStream(
-                        "VibeSkuaTabHostPipe",
+                        App.HostPipeName,
                         PipeDirection.In,
                         NamedPipeServerStream.MaxAllowedServerInstances,
                         PipeTransmissionMode.Byte,

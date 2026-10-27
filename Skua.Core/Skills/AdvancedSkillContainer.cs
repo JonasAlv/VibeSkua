@@ -53,7 +53,16 @@ public class AdvancedSkillContainer : ObservableRecipient, IAdvancedSkillContain
             await File.WriteAllTextAsync(temporaryPath, contents);
 
             if (File.Exists(fullPath))
-                File.Replace(temporaryPath, fullPath, null);
+            {
+                try
+                {
+                    File.Replace(temporaryPath, fullPath, null);
+                }
+                catch
+                {
+                    File.Move(temporaryPath, fullPath, overwrite: true);
+                }
+            }
             else
                 File.Move(temporaryPath, fullPath);
         }

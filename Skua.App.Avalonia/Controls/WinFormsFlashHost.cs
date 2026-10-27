@@ -1,3 +1,4 @@
+#if IS_LINUX
 using Avalonia.Controls;
 using Avalonia.Platform;
 using System;
@@ -289,3 +290,4 @@ namespace System.Windows.Forms
         public static DialogResult Show(string? text, string? caption = null) => DialogResult.OK;
     }
 }
+#endif

@@ -1,3 +1,4 @@
+#if IS_LINUX
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
@@ -36,6 +37,7 @@ public partial class MainWindow : Window
     private const int WM_SKUA_ARMY_SCHEDULER_STOP = 0x0400 + 455;
     private const int WM_SKUA_CHECK_LOGIN = 0x0400 + 456;
     private const int WM_SKUA_JUMP_PLAYER = 0x0400 + 457;
+    private const int WM_SKUA_JUMP_HOUSE = 0x0400 + 464;
     private const int WM_SKUA_LOGIN = 0x0400 + 447;
     private const int WM_SKUA_GRIDVIEW = 0x0400 + 444;
     private const int WM_SKUA_AUTO_ATTACK = 0x0400 + 459;
@@ -395,6 +397,20 @@ public partial class MainWindow : Window
             });
             return IntPtr.Zero;
         }
+        else if (uMsg == WM_SKUA_JUMP_HOUSE)
+        {
+            Task.Run(() =>
+            {
+                try
+                {
+                    var player = Ioc.Default.GetRequiredService<IScriptPlayer>();
+                    if (player.LoggedIn && !string.IsNullOrWhiteSpace(player.Username))
+                        Ioc.Default.GetRequiredService<IScriptSend>().Packet($"%xt%zm%house%1%{player.Username}%");
+                }
+                catch { }
+            });
+            return IntPtr.Zero;
+        }
         else if (uMsg == WM_SKUA_LOAD_SCRIPT)
         {
             Task.Run(() => 
@@ -435,6 +451,7 @@ public partial class MainWindow : Window
                 case 7: options.SkipCutscenes = value; break;
                 case 8: options.UseFunctionBasedSkills = value; break;
                 case 9: options.StreamerMode = value; break;
+                case 10: options.AggroMonsters = value; break;
                 case 99:
                     var sm = Ioc.Default.GetRequiredService<Skua.App.Avalonia.ViewModels.ScriptLoaderViewModel>();
                     var scheduler = Ioc.Default.GetRequiredService<Skua.Shared.Avalonia.ViewModels.ScriptSchedulerViewModel>();
@@ -648,3 +665,4 @@ public partial class MainWindow : Window
     }
 
 }
+#endif

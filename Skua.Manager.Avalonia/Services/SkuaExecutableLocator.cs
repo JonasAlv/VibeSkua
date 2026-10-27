@@ -29,9 +29,13 @@ internal static class SkuaExecutableLocator
             }
         }
 
+#if IS_LINUX
+        string[] directCandidates = [ "VibeSkua", "Skua", "VibeSkua-x86_64.AppImage", "VibeSkua.AppImage" ];
+#else
         string[] directCandidates = OperatingSystem.IsWindows()
             ? [ "VibeSkua.exe", "Skua.exe" ]
             : [ "VibeSkua", "Skua", "VibeSkua-x86_64.AppImage", "VibeSkua.AppImage", "VibeSkua.exe", "Skua.exe" ];
+#endif
 
         foreach (string name in directCandidates)
         {
@@ -61,7 +65,11 @@ internal static class SkuaExecutableLocator
                 return candidate;
         }
 
+#if IS_LINUX
+        string fallbackName = "VibeSkua";
+#else
         string fallbackName = OperatingSystem.IsWindows() ? "VibeSkua.exe" : "VibeSkua";
+#endif
         return Path.Combine(AppContext.BaseDirectory, fallbackName);
     }
 }

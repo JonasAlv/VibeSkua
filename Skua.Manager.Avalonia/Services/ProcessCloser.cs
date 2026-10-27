@@ -14,70 +14,27 @@ internal static class ProcessCloser
 {
     public static readonly TimeSpan DefaultTimeout = TimeSpan.FromSeconds(5);
 
-    private const uint WM_CLOSE = 0x0010;
-    private const uint GW_OWNER = 4;
-
-    private delegate bool EnumWindowsProc(IntPtr hWnd, IntPtr lParam);
-
-    [DllImport("user32.dll")]
-    private static extern bool EnumWindows(EnumWindowsProc lpEnumFunc, IntPtr lParam);
-
-    [DllImport("user32.dll")]
-    private static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint lpdwProcessId);
-
-    [DllImport("user32.dll")]
-    private static extern bool IsWindowVisible(IntPtr hWnd);
-
-    [DllImport("user32.dll")]
-    private static extern IntPtr GetWindow(IntPtr hWnd, uint uCmd);
-
-    [DllImport("user32.dll")]
-    private static extern int GetWindowTextLength(IntPtr hWnd);
-
-    [DllImport("user32.dll")]
-    private static extern bool PostMessage(IntPtr hWnd, uint msg, IntPtr wParam, IntPtr lParam);
-
+#if IS_LINUX
     [DllImport("libc", SetLastError = true)]
     private static extern int kill(int pid, int sig);
     private const int SIGTERM = 15;
+#endif
 
     /// <summary>
-    /// Posts WM_CLOSE to the process's visible, unowned, titled top-level windows (the tab host's
-    /// main window). Returns false when the process has no such window.
+    /// Posts graceful termination to the process.
     /// </summary>
     public static bool RequestClose(Process process)
     {
-        if (OperatingSystem.IsWindows())
+#if IS_LINUX
+        try
         {
-            uint pid = (uint)process.Id;
-            bool posted = false;
-            EnumWindows((hWnd, _) =>
-            {
-                GetWindowThreadProcessId(hWnd, out uint windowPid);
-                if (windowPid == pid
-                    && IsWindowVisible(hWnd)
-                    && GetWindow(hWnd, GW_OWNER) == IntPtr.Zero
-                    && GetWindowTextLength(hWnd) > 0)
-                {
-                    posted |= PostMessage(hWnd, WM_CLOSE, IntPtr.Zero, IntPtr.Zero);
-                }
-                return true;
-            }, IntPtr.Zero);
-            return posted;
+            return kill(process.Id, SIGTERM) == 0;
         }
-
-        if (OperatingSystem.IsLinux())
+        catch
         {
-            try
-            {
-                return kill(process.Id, SIGTERM) == 0;
-            }
-            catch
-            {
-                return false;
-            }
+            return false;
         }
-
+#else
         try
         {
             return process.CloseMainWindow();
@@ -86,6 +43,7 @@ internal static class ProcessCloser
         {
             return false;
         }
+#endif
     }
 
     /// <summary>
