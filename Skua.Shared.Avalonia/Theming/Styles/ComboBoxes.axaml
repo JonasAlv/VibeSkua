@@ -71,7 +71,6 @@
                            PlacementTarget="{Binding ElementName=PART_RootBorder}"
                            Placement="Bottom"
                            IsLightDismissEnabled="True"
-                           ShouldUseOverlayLayer="True"
                            MinWidth="{Binding Bounds.Width, ElementName=PART_RootBorder}"
                            MaxHeight="260">
                         <Border Background="{DynamicResource SkuaSurfaceBrush}"
