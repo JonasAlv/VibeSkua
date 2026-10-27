@@ -60,16 +60,23 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAG: ${{ steps.get_version.outputs.tag }}
         run: |
-          ASSET="Build/VibeSkua-linux-AppImage.tar.gz"
-          if [ ! -f "$ASSET" ]; then
-            echo "Error: Release asset $ASSET not found!" >&2
-            exit 1
-          fi
+          ASSETS=(
+            "Build/VibeSkua-x86_64.AppImage"
+            "Build/VibeSkua-Manager-x86_64.AppImage"
+            "Build/VibeSkua-linux-AppImage.tar.gz"
+            "Build/VibeSkua-linux-AppImage.zip"
+          )
+          for asset in "${ASSETS[@]}"; do
+            if [ ! -f "$asset" ]; then
+              echo "Error: Release asset $asset not found!" >&2
+              exit 1
+            fi
+          done
 
-          echo "Publishing release $TAG with asset $ASSET..."
+          echo "Publishing release $TAG with assets: ${ASSETS[*]}..."
           if gh release view "$TAG" >/dev/null 2>&1; then
-            gh release upload "$TAG" "$ASSET" --clobber
+            gh release upload "$TAG" "${ASSETS[@]}" --clobber
           else
-            gh release create "$TAG" "$ASSET" --title "$TAG" --notes ""
+            gh release create "$TAG" "${ASSETS[@]}" --title "$TAG" --notes "Automated release $TAG bundled with official retr0gr4d3/skua-mugetsu."
           fi
           echo "Release $TAG published successfully!"
