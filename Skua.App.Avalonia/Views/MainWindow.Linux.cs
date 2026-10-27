@@ -56,6 +56,13 @@ public partial class MainWindow : Window
         Skua.App.Avalonia.Controls.WinFormsFlashHost.GameClicked -= OnLinuxGameClicked;
         Skua.App.Avalonia.Controls.WinFormsFlashHost.GameClicked += OnLinuxGameClicked;
 
+        Skua.Shared.Avalonia.Services.X11WindowPositionTracker.Track(this);
+        if (MainMenuControl != null)
+        {
+            MainMenuControl.AddHandler(InputElement.PointerEnteredEvent, (s, e) => Skua.Shared.Avalonia.Services.X11WindowPositionTracker.SyncPosition(this), RoutingStrategies.Tunnel);
+            MainMenuControl.AddHandler(InputElement.PointerPressedEvent, (s, e) => Skua.Shared.Avalonia.Services.X11WindowPositionTracker.SyncPosition(this), RoutingStrategies.Tunnel);
+        }
+
         AddHandler(PointerPressedEvent, (s, e) =>
         {
             RestoreFps();

@@ -207,6 +207,8 @@ public class WindowService : IWindowService
         popupStyle.Setters.Add(new Setter(Popup.ShouldUseOverlayLayerProperty, true));
         window.Styles.Add(popupStyle);
 
+        Skua.Shared.Avalonia.Services.X11WindowPositionTracker.Track(window);
+
         return window;
     }
 
