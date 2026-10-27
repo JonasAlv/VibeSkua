@@ -30,7 +30,7 @@ internal static class SkuaExecutableLocator
         }
 
 #if IS_LINUX
-        string[] directCandidates = [ "VibeSkua", "Skua", "VibeSkua-x86_64.AppImage", "VibeSkua.AppImage" ];
+        string[] directCandidates = [ "VibeSkua-x86_64.AppImage", "VibeSkua.AppImage", "VibeSkua", "Skua" ];
 #else
         string[] directCandidates = OperatingSystem.IsWindows()
             ? [ "VibeSkua.exe", "Skua.exe" ]
@@ -44,20 +44,43 @@ internal static class SkuaExecutableLocator
                 return p;
         }
 
+#if IS_LINUX
+        // Check standard Linux user installation paths
+        string userHome = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+        string[] installedCandidates =
+        [
+            Path.Combine(userHome, "Games", "VibeSkua-linux-AppImage", "VibeSkua-x86_64.AppImage"),
+            Path.Combine(userHome, ".local", "bin", "VibeSkua"),
+            Path.Combine(userHome, ".local", "share", "VibeSkua", "VibeSkua-x86_64.AppImage"),
+            Path.Combine(userHome, ".local", "share", "VibeSkua", "VibeSkua")
+        ];
+
+        foreach (string candidate in installedCandidates)
+        {
+            if (File.Exists(candidate))
+                return candidate;
+        }
+
         string repositoryRoot = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", ".."));
         string[] candidates =
         [
+            Path.Combine(repositoryRoot, "Build", "VibeSkua-x86_64.AppImage"),
             Path.Combine(repositoryRoot, "Build", "VibeSkua"),
-            Path.Combine(repositoryRoot, "Build", "VibeSkua.exe"),
             Path.Combine(repositoryRoot, "Build", "Skua"),
-            Path.Combine(repositoryRoot, "Build", "Skua.exe"),
             Path.Combine(repositoryRoot, "Skua.App.Avalonia", "bin", "Release", "net10.0", "VibeSkua"),
-            Path.Combine(repositoryRoot, "Skua.App.Avalonia", "bin", "Release", "net10.0", "VibeSkua.dll"),
+            Path.Combine(repositoryRoot, "Skua.App.Avalonia", "bin", "Debug", "net10.0", "VibeSkua")
+        ];
+#else
+        string repositoryRoot = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", ".."));
+        string[] candidates =
+        [
+            Path.Combine(repositoryRoot, "Build", "VibeSkua.exe"),
+            Path.Combine(repositoryRoot, "Build", "Skua.exe"),
             Path.Combine(repositoryRoot, "Skua.App.Avalonia", "bin", "Release", "net10.0-windows", "VibeSkua.exe"),
             Path.Combine(repositoryRoot, "Skua.App.Avalonia", "bin", "Release", "net10.0-windows", "Skua.exe"),
-            Path.Combine(repositoryRoot, "Skua.App.Avalonia", "bin", "Debug", "net10.0", "VibeSkua"),
             Path.Combine(repositoryRoot, "Skua.App.Avalonia", "bin", "Debug", "net10.0-windows", "VibeSkua.exe")
         ];
+#endif
 
         foreach (string candidate in candidates)
         {
