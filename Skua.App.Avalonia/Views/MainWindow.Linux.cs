@@ -53,8 +53,8 @@ public partial class MainWindow : Window
     {
         AddHandler(InputElement.KeyDownEvent, OnLinuxKeyDown, RoutingStrategies.Tunnel);
         AddHandler(InputElement.KeyUpEvent, OnLinuxKeyUp, RoutingStrategies.Tunnel);
-        Skua.App.Avalonia.Controls.WinFormsFlashHost.GameClicked -= OnLinuxGameClicked;
-        Skua.App.Avalonia.Controls.WinFormsFlashHost.GameClicked += OnLinuxGameClicked;
+        Skua.App.Avalonia.Controls.GameHost.GameClicked -= OnLinuxGameClicked;
+        Skua.App.Avalonia.Controls.GameHost.GameClicked += OnLinuxGameClicked;
 
         Skua.Shared.Avalonia.Services.X11WindowPositionTracker.Track(this);
         if (MainMenuControl != null)
@@ -133,10 +133,10 @@ public partial class MainWindow : Window
             string keyStr = key.ToString();
             string? symbol = TryMapSpecialKeyToSymbol(key);
             string logical = !string.IsNullOrEmpty(symbol) ? symbol : (keyStr.Length == 1 && char.IsLetter(keyStr[0]) ? keyStr.ToLowerInvariant() : keyStr);
-            Skua.App.Avalonia.Controls.WinFormsFlashHost.ForwardKey(false, keyStr, logical, false, false, false);
+            Skua.App.Avalonia.Controls.GameHost.ForwardKey(false, keyStr, logical, false, false, false);
         }
         _pressedKeys.Clear();
-        Skua.App.Avalonia.Controls.WinFormsFlashHost.ForwardClearKeys();
+        Skua.App.Avalonia.Controls.GameHost.ForwardClearKeys();
     }
 
     private void OnLinuxKeyDown(object? sender, global::Avalonia.Input.KeyEventArgs e)
@@ -189,7 +189,7 @@ public partial class MainWindow : Window
                 : keyStr;
         }
 
-        Skua.App.Avalonia.Controls.WinFormsFlashHost.ForwardKey(down, physical, logical, ctrl, shift, alt);
+        Skua.App.Avalonia.Controls.GameHost.ForwardKey(down, physical, logical, ctrl, shift, alt);
     }
 
     private static string? TryMapSpecialKeyToSymbol(global::Avalonia.Input.Key key) => key switch
@@ -655,7 +655,7 @@ public partial class MainWindow : Window
             Dispatcher.UIThread.Post(() =>
             {
                 ReleaseAllPressedKeys();
-                Skua.App.Avalonia.Controls.WinFormsFlashHost.ForwardFocus(focused);
+                Skua.App.Avalonia.Controls.GameHost.ForwardFocus(focused);
                 if (focused)
                 {
                     RestoreFps();

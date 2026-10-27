@@ -1,10 +1,13 @@
+using Avalonia.Threading;
+using CommunityToolkit.Mvvm.Messaging;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
+using Skua.Core.Flash;
 using Skua.Core.Interfaces;
+using Skua.Core.Messaging;
+using Skua.Core.Models;
+using Skua.Core.Utils;
 using System;
-using System.Xml.Linq;
-
-namespace Skua.App.Avalonia.Flash;
-
-#if IS_LINUX
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -12,22 +15,49 @@ using System.Dynamic;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Net;
 using System.Net.Sockets;
 using System.Text;
-using System.Text.Json;
 using System.Threading;
-using System.Threading.Channels;
 using System.Threading.Tasks;
-using CommunityToolkit.Mvvm.Messaging;
-using global::Avalonia.Threading;
-using Skua.App.Avalonia.Controls;
-using Skua.Core.Flash;
-using Skua.Core.Messaging;
-using Skua.Core.Models;
-using Skua.Core.Utils;
+using System.Xml.Linq;
 
+namespace Skua.App.Avalonia.Flash;
+
+/// <summary>
+/// Runs skua.swf in the Skua build of Mugetsu (see github.com/retr0gr4d3/skua-mugetsu) and
+/// bridges ExternalInterface to it. The player connects back over a loopback TCP socket and both sides send one JSON
+/// object per line: <c>{id,name,args}</c> calls a callback of the SWF and is answered with <c>{id,r}</c>, and
+/// <c>{ev,args}</c> is an <c>ExternalInterface.call</c> from the SWF.
+/// </summary>
 public class FlashUtil : IFlashUtil, IRestartableGamePlayer
 {
+    private static readonly TimeSpan CallTimeout = TimeSpan.FromSeconds(10);
+
+    private readonly IMessenger _messenger;
+    private readonly Lazy<IScriptManager> _lazyManager;
+    private readonly ConcurrentDictionary<int, TaskCompletionSource<JObject>> _pending = new();
+    private readonly object _sendLock = new();
+    private TcpListener? _listener;
+    private Process? _player;
+    private StreamWriter? _bridge;
+    private int _nextId;
+
+    public FlashUtil(IMessenger messenger, Lazy<IScriptManager> manager)
+    {
+        _messenger = messenger;
+        _lazyManager = manager;
+    }
+
+    public event FlashCallHandler? FlashCall;
+
+    /// <summary>Native X11 window the player draws in as a child window; 0 gives it a window of its own.</summary>
+    public nint ParentWindow { get; set; }
+
+    public static void PreloadSwf()
+    {
+    }
+
     public void RestartGamePlayer()
     {
         InitializeFlash();
@@ -37,333 +67,176 @@ public class FlashUtil : IFlashUtil, IRestartableGamePlayer
 
     public void RestartClient(bool runScript)
     {
-        RestartGamePlayer();
     }
-    private readonly IMessenger _messenger;
-    private readonly Lazy<IScriptManager> _lazyManager;
-    private readonly ConcurrentDictionary<ulong, TaskCompletionSource<JsonElement>> _pendingCalls = new();
-    private readonly object _writeLock = new();
-    private readonly Channel<(string Name, object[] Args)> _eventChannel;
 
-    private Socket? _listenSocket;
-    private Socket? _clientSocket;
-    private StreamWriter? _writer;
-    private Process? _mugetsuProcess;
-    private string? _socketPath;
-    private CancellationTokenSource? _cts;
-    private ulong _nextCallId;
-    private bool _resizeSubscribed;
-
-    public FlashUtil(IMessenger messenger, Lazy<IScriptManager> lazyManager)
+    private static string SwfPath
     {
-        _messenger = messenger;
-        _lazyManager = lazyManager;
-        _eventChannel = Channel.CreateUnbounded<(string Name, object[] Args)>(new UnboundedChannelOptions
+        get
         {
-            SingleReader = true,
-            SingleWriter = false
-        });
-        _ = Task.Run(ProcessFlashEventsAsync);
+            string localSwf = Path.Combine(AppContext.BaseDirectory, "skua.swf");
+            if (File.Exists(localSwf))
+                return localSwf;
+            return Path.Combine(ClientFileSources.SkuaDIR, "skua.swf");
+        }
     }
 
-    public static void PreloadSwf()
+    private static string PlayerPath
     {
-    }
-
-    public event FlashCallHandler? FlashCall;
-
-    private async Task ProcessFlashEventsAsync()
-    {
-        await foreach (var (name, args) in _eventChannel.Reader.ReadAllAsync())
+        get
         {
-            try
+            string? envBin = Environment.GetEnvironmentVariable("MUGETSU_BIN");
+            if (!string.IsNullOrWhiteSpace(envBin) && File.Exists(envBin))
+                return envBin;
+
+            const string playerExe = "Mugetsu";
+
+            // Check player subdirectory
+            string playerSubdir = Path.Combine(AppContext.BaseDirectory, "player", playerExe);
+            if (File.Exists(playerSubdir))
+                return playerSubdir;
+
+            // Check local app directory
+            string localBin = Path.Combine(AppContext.BaseDirectory, playerExe);
+            if (File.Exists(localBin))
+                return localBin;
+
+            // Check workspace development cache path
+            DirectoryInfo? dir = new(AppContext.BaseDirectory);
+            while (dir is not null)
             {
-                FlashCall?.Invoke(name, args);
+                string devPath = Path.Combine(dir.FullName, "player", "1.5.1-skua.2-linux", "Mugetsu", "Mugetsu");
+                if (File.Exists(devPath))
+                    return devPath;
+                dir = dir.Parent;
             }
-            catch (Exception ex)
-            {
-                Trace.WriteLine($"Flash CallHandler exception: {ex.Message}");
-            }
+
+            return playerSubdir;
         }
     }
 
     public void InitializeFlash()
     {
-        CleanupMugetsu();
+        if (!File.Exists(SwfPath))
+            throw new FileNotFoundException($"Missing skua.swf ({SwfPath}). Build the AS3 client first so the game content can load.");
+        if (!File.Exists(PlayerPath))
+            throw new FileNotFoundException($"Missing the game player ({PlayerPath}). Rebuild VibeSkua so it downloads the player.");
 
-        if (!_resizeSubscribed)
+        if (_listener is null)
         {
-            _resizeSubscribed = true;
-            WinFormsFlashHost.HostResized += OnHostResized;
-            WinFormsFlashHost.KeyForwarded += OnKeyForwarded;
-            WinFormsFlashHost.TextForwarded += OnTextForwarded;
-            WinFormsFlashHost.FocusForwarded += OnFocusForwarded;
-            WinFormsFlashHost.ClearKeysForwarded += OnClearKeysForwarded;
+            _listener = new TcpListener(IPAddress.Loopback, 0);
+            _listener.Start();
+            _ = Task.Run(AcceptLoopAsync);
         }
 
-        _cts = new CancellationTokenSource();
-        _socketPath = Path.Combine(Path.GetTempPath(), $"vibeskua-flash-{Environment.ProcessId}-{Guid.NewGuid():N}.sock");
-        if (File.Exists(_socketPath))
+        StopPlayer();
+        ProcessStartInfo start = new(PlayerPath)
         {
-            try { File.Delete(_socketPath); } catch { }
-        }
-
-        _listenSocket = new Socket(AddressFamily.Unix, SocketType.Stream, ProtocolType.Unspecified);
-        _listenSocket.Bind(new UnixDomainSocketEndPoint(_socketPath));
-        _listenSocket.Listen(1);
-
-        CancellationToken token = _cts.Token;
-        _ = Task.Run(() => AcceptAndReadLoopAsync(_listenSocket, token), token);
-
-        string? mugetsuBin = ResolveMugetsuBinary();
-        if (string.IsNullOrEmpty(mugetsuBin))
-        {
-            Trace.WriteLine("Mugetsu binary not found! Set MUGETSU_BIN environment variable or place Mugetsu next to the executable.");
-            return;
-        }
-
-        string swfPath = Path.Combine(AppContext.BaseDirectory, "skua.swf");
-        if (!File.Exists(swfPath))
-            swfPath = Path.Combine(ClientFileSources.SkuaDIR, "skua.swf");
-
-        ProcessStartInfo psi = new()
-        {
-            FileName = mugetsuBin,
             WorkingDirectory = AppContext.BaseDirectory,
             UseShellExecute = false,
             CreateNoWindow = true
         };
-        psi.ArgumentList.Add("--no-gui");
-        psi.ArgumentList.Add("--tcp-connections");
-        psi.ArgumentList.Add("allow");
-        psi.ArgumentList.Add("--open-url-mode");
-        psi.ArgumentList.Add("allow");
-        psi.ArgumentList.Add(swfPath);
-        psi.Environment["MUGETSU_SKUA_SOCKET"] = _socketPath;
-        psi.Environment.Remove("WAYLAND_DISPLAY");
-        psi.Environment.Remove("WAYLAND_SOCKET");
-
-        if (WinFormsFlashHost.HostXid != 0)
-            psi.Environment["MUGETSU_PARENT_XID"] = WinFormsFlashHost.HostXid.ToString(CultureInfo.InvariantCulture);
-
-        try
+        start.ArgumentList.Add("--skua-bridge");
+        start.ArgumentList.Add($"127.0.0.1:{((IPEndPoint)_listener.LocalEndpoint).Port}");
+        if (ParentWindow != 0)
         {
-            _mugetsuProcess = Process.Start(psi);
+            start.ArgumentList.Add("--skua-parent");
+            start.ArgumentList.Add(ParentWindow.ToString(CultureInfo.InvariantCulture));
+            // On Linux the parent is an X11 window; the player would otherwise prefer Wayland, where it can't be embedded.
+            start.Environment.Remove("WAYLAND_DISPLAY");
+            start.Environment.Remove("WAYLAND_SOCKET");
         }
-        catch (Exception ex)
-        {
-            Trace.WriteLine($"Failed to start Mugetsu ({mugetsuBin}): {ex.Message}");
-        }
+        start.ArgumentList.Add(SwfPath);
+        _player = Process.Start(start);
     }
 
-    private static string? ResolveMugetsuBinary()
-    {
-        string? envBin = Environment.GetEnvironmentVariable("MUGETSU_BIN");
-        if (!string.IsNullOrWhiteSpace(envBin) && File.Exists(envBin))
-            return envBin;
-
-        string localBin = Path.Combine(AppContext.BaseDirectory, "Mugetsu");
-        if (File.Exists(localBin))
-            return localBin;
-
-        DirectoryInfo? dir = new(AppContext.BaseDirectory);
-        while (dir is not null)
-        {
-            string candidate = Path.Combine(dir.FullName, "mugetsu", "source", "build", "out", "Mugetsu");
-            if (File.Exists(candidate))
-                return candidate;
-            dir = dir.Parent;
-        }
-
-        string fallback = "/home/me/aqw-projects/mugetsu/source/build/out/Mugetsu";
-        if (File.Exists(fallback))
-            return fallback;
-
-        return null;
-    }
-
-    private async Task AcceptAndReadLoopAsync(Socket listenSocket, CancellationToken token)
+    private void StopPlayer()
     {
         try
         {
-            Socket client = await listenSocket.AcceptAsync(token);
-            _clientSocket = client;
-
-            using NetworkStream netStream = new(client, ownsSocket: false);
-            _writer = new StreamWriter(netStream, new UTF8Encoding(false)) { AutoFlush = true };
-            using StreamReader reader = new(netStream, Encoding.UTF8);
-
-            while (!token.IsCancellationRequested)
-            {
-                string? line = await reader.ReadLineAsync(token);
-                if (line is null)
-                    break;
-                if (string.IsNullOrWhiteSpace(line))
-                    continue;
-
-                try
-                {
-                    using JsonDocument doc = JsonDocument.Parse(line);
-                    JsonElement root = doc.RootElement;
-                    string? msgType = root.TryGetProperty("type", out JsonElement typeEl) ? typeEl.GetString() : null;
-
-                    switch (msgType)
-                    {
-                        case "ready":
-                            if (root.TryGetProperty("xid", out JsonElement xidEl) && xidEl.TryGetUInt64(out ulong xid))
-                            {
-                                Dispatcher.UIThread.Post(() =>
-                                {
-                                    WinFormsFlashHost.NotifyChildXidReady(xid);
-                                });
-                            }
-                            break;
-
-                        case "mouse_down":
-                            Dispatcher.UIThread.Post(WinFormsFlashHost.NotifyGameClicked);
-                            break;
-
-                        case "reply":
-                            if (root.TryGetProperty("id", out JsonElement idEl) && idEl.TryGetUInt64(out ulong id))
-                            {
-                                JsonElement valClone = root.TryGetProperty("value", out JsonElement valEl)
-                                    ? valEl.Clone()
-                                    : default;
-                                if (_pendingCalls.TryRemove(id, out var tcs))
-                                    tcs.TrySetResult(valClone);
-                            }
-                            break;
-
-                        case "event":
-                            string? funcName = root.TryGetProperty("name", out JsonElement nameEl) ? nameEl.GetString() : null;
-                            if (!string.IsNullOrEmpty(funcName))
-                            {
-                                object[] parsedArgs = Array.Empty<object>();
-                                if (root.TryGetProperty("args", out JsonElement argsEl) && argsEl.ValueKind == JsonValueKind.Array)
-                                {
-                                    parsedArgs = argsEl.EnumerateArray().Select(FromJsonElement).ToArray();
-                                }
-                                _eventChannel.Writer.TryWrite((funcName, parsedArgs));
-                            }
-                            break;
-                    }
-                }
-                catch (Exception ex)
-                {
-                    Trace.WriteLine($"Error parsing Skua IPC message: {ex.Message}");
-                }
-            }
+            if (_player is { HasExited: false })
+                _player.Kill(entireProcessTree: true);
         }
-        catch (OperationCanceledException)
-        {
-        }
-        catch (Exception ex)
-        {
-            Trace.WriteLine($"Skua IPC loop ended: {ex.Message}");
-        }
-        finally
-        {
-            foreach (var kvp in _pendingCalls)
-            {
-                if (_pendingCalls.TryRemove(kvp.Key, out var tcs))
-                    tcs.TrySetCanceled();
-            }
-        }
+        catch { /* already gone */ }
+        _player?.Dispose();
+        _player = null;
     }
 
-    private static object FromJsonElement(JsonElement el)
+    private async Task AcceptLoopAsync()
     {
-        return el.ValueKind switch
+        while (_listener is { } listener)
         {
-            JsonValueKind.String => el.GetString() ?? string.Empty,
-            JsonValueKind.Number => el.TryGetInt32(out int i) ? i : el.TryGetSingle(out float f) ? f : el.GetDouble(),
-            JsonValueKind.True => true,
-            JsonValueKind.False => false,
-            JsonValueKind.Null or JsonValueKind.Undefined => null!,
-            JsonValueKind.Array => el.EnumerateArray().Select(FromJsonElement).ToArray(),
-            JsonValueKind.Object => ToExpando(el),
-            _ => el.GetRawText()
-        };
-    }
-
-    private static object ToExpando(JsonElement el)
-    {
-        IDictionary<string, object?> expando = new ExpandoObject();
-        foreach (JsonProperty prop in el.EnumerateObject())
-            expando[prop.Name] = FromJsonElement(prop.Value);
-        return expando;
-    }
-
-    private void OnHostResized(int width, int height)
-    {
-        SendJsonLine(new
-        {
-            cmd = "resize",
-            width,
-            height
-        });
-    }
-
-    private void OnKeyForwarded(bool down, string physical, string logical, bool ctrl, bool shift, bool alt)
-    {
-        SendJsonLine(new
-        {
-            cmd = "key",
-            down,
-            physical,
-            logical,
-            ctrl,
-            shift,
-            alt
-        });
-    }
-
-    private void OnTextForwarded(string text)
-    {
-        if (!string.IsNullOrEmpty(text))
-        {
-            SendJsonLine(new
-            {
-                cmd = "text",
-                text
-            });
-        }
-    }
-
-    private void OnFocusForwarded(bool focused)
-    {
-        SendJsonLine(new
-        {
-            cmd = "focus",
-            focused
-        });
-    }
-
-    private void OnClearKeysForwarded()
-    {
-        SendJsonLine(new
-        {
-            cmd = "clear_keys"
-        });
-    }
-
-    private bool SendJsonLine(object payload)
-    {
-        lock (_writeLock)
-        {
-            if (_writer is null)
-                return false;
+            TcpClient client;
             try
             {
-                string json = JsonSerializer.Serialize(payload);
-                _writer.WriteLine(json);
-                return true;
+                client = await listener.AcceptTcpClientAsync();
             }
             catch
             {
-                return false;
+                return;
+            }
+            _ = Task.Run(() => RunBridgeAsync(client));
+        }
+    }
+
+    private async Task RunBridgeAsync(TcpClient client)
+    {
+        using (client)
+        {
+            client.NoDelay = true;
+            NetworkStream stream = client.GetStream();
+            StreamWriter writer = new(stream, new UTF8Encoding(false)) { AutoFlush = true, NewLine = "\n" };
+            // A restarted player connects anew; whatever the old one still owed will never come.
+            Interlocked.Exchange(ref _bridge, writer)?.Dispose();
+            FailPending();
+
+            try
+            {
+                using StreamReader reader = new(stream, Encoding.UTF8);
+                while (await reader.ReadLineAsync() is { } line)
+                    Receive(JObject.Parse(line));
+            }
+            catch (Exception ex) when (ex is IOException or ObjectDisposedException or JsonException)
+            {
+                Trace.WriteLine($"Game player bridge closed: {ex.Message}");
+            }
+            finally
+            {
+                if (Interlocked.CompareExchange(ref _bridge, null, writer) == writer)
+                    FailPending();
             }
         }
+    }
+
+    private void Receive(JObject msg)
+    {
+        if (msg["id"] is { } id)
+        {
+            if (_pending.TryRemove((int)id, out TaskCompletionSource<JObject>? tcs))
+                tcs.TrySetResult(msg);
+            return;
+        }
+
+        string function = (string)msg["ev"]!;
+        object[] args = msg["args"] is JArray arr ? arr.Select(FromJson).ToArray() : [];
+        // Handlers expect calls on the UI thread.
+        Dispatcher.UIThread.Post(() =>
+        {
+            try
+            {
+                FlashCall?.Invoke(function, args);
+            }
+            catch (Exception ex)
+            {
+                Trace.WriteLine($"Flash call handler for '{function}' failed: {ex}");
+            }
+        });
+    }
+
+    private void FailPending()
+    {
+        foreach (int id in _pending.Keys)
+            if (_pending.TryRemove(id, out TaskCompletionSource<JObject>? tcs))
+                tcs.TrySetResult(new JObject());
     }
 
     public string Call(string function, params object[] args)
@@ -392,57 +265,39 @@ public class FlashUtil : IFlashUtil, IRestartableGamePlayer
 
     public object Call(string function, Type type, params object[] args)
     {
-        if (function == "headless")
-        {
-            bool on = args.Length > 0 && Convert.ToBoolean(args[0]);
-            SendJsonLine(new { cmd = "headless", on });
-            return default!;
-        }
-
         if (_lazyManager.Value.ShouldExit && Thread.CurrentThread.Name == "Script Thread")
             _lazyManager.Value.ScriptCts?.Token.ThrowIfCancellationRequested();
 
         try
         {
-            ulong id = Interlocked.Increment(ref _nextCallId);
-            TaskCompletionSource<JsonElement> tcs = new(TaskCreationOptions.RunContinuationsAsynchronously);
-            _pendingCalls[id] = tcs;
-
-            if (!SendJsonLine(new { id, cmd = "call", name = function, args }))
-            {
-                _pendingCalls.TryRemove(id, out _);
+            if (_bridge is not { } writer)
                 return default!;
+
+            int id = Interlocked.Increment(ref _nextId);
+            TaskCompletionSource<JObject> tcs = new(TaskCreationOptions.RunContinuationsAsynchronously);
+            _pending[id] = tcs;
+            try
+            {
+                string request = JsonConvert.SerializeObject(new { id, name = function, args = args.Select(ToJs) });
+                lock (_sendLock)
+                    writer.WriteLine(request);
+
+                if (!tcs.Task.Wait(CallTimeout))
+                    throw new TimeoutException($"No answer from the game player within {CallTimeout.TotalSeconds}s.");
+            }
+            finally
+            {
+                _pending.TryRemove(id, out _);
             }
 
-            if (!tcs.Task.Wait(TimeSpan.FromSeconds(10)))
+            string? result = tcs.Task.Result["r"] switch
             {
-                _pendingCalls.TryRemove(id, out _);
-                return default!;
-            }
-
-            JsonElement el = tcs.Task.GetAwaiter().GetResult();
-            if (el.ValueKind is JsonValueKind.Null or JsonValueKind.Undefined)
-                return default!;
-
-            string strVal = el.ValueKind switch
-            {
-                JsonValueKind.String => string.IsNullOrEmpty(el.GetString()) ? string.Empty : new XText(el.GetString()!).ToString(),
-                JsonValueKind.True => "true",
-                JsonValueKind.False => "false",
-                _ => el.GetRawText()
+                null or { Type: JTokenType.Null } => null,
+                JValue { Value: bool b } => b ? "true" : "false",
+                JValue v => Convert.ToString(v.Value, CultureInfo.InvariantCulture),
+                JToken t => t.ToString(Formatting.None)
             };
-
-            if (string.IsNullOrWhiteSpace(strVal))
-                return default!;
-
-            if (type == typeof(string))
-                return strVal;
-
-            if (strVal == "null" || strVal == "undefined")
-                return default!;
-
-            object? value = Convert.ChangeType(strVal, type, CultureInfo.InvariantCulture);
-            return value ?? default!;
+            return result is null ? default! : Convert.ChangeType(result, type, CultureInfo.InvariantCulture);
         }
         catch (Exception e)
         {
@@ -452,24 +307,70 @@ public class FlashUtil : IFlashUtil, IRestartableGamePlayer
         }
     }
 
+    private static object? ToJs(object? o)
+    {
+        return o switch
+        {
+            null or bool or double or float or long or int or string => o,
+            ExpandoObject e => e.ToDictionary(kvp => kvp.Key, kvp => ToJs(kvp.Value)),
+            Array a => a.Cast<object?>().Select(ToJs).ToArray(),
+            _ => o.ToString()
+        };
+    }
+
+    private static object FromJson(JToken t)
+    {
+        switch (t.Type)
+        {
+            case JTokenType.Integer:
+            case JTokenType.Float:
+                return int.TryParse(t.ToString(), NumberStyles.Integer, CultureInfo.InvariantCulture, out int i) ? i : (float)t;
+
+            case JTokenType.Boolean:
+                return (bool)t;
+
+            case JTokenType.Null:
+            case JTokenType.Undefined:
+                return null!;
+
+            case JTokenType.Array:
+                return t.Select(FromJson).ToArray();
+
+            case JTokenType.Object:
+                IDictionary<string, object> d = new ExpandoObject();
+                foreach (JProperty p in ((JObject)t).Properties())
+                    d[p.Name] = FromJson(p.Value);
+                return d;
+
+            default:
+                return (string)t!;
+        }
+    }
+
     public object FromFlashXml(XElement el)
     {
         switch (el.Name.ToString())
         {
             case "number":
                 return int.TryParse(el.Value, out int i) ? i : float.TryParse(el.Value, out float f) ? f : 0;
+
             case "true":
                 return true;
+
             case "false":
                 return false;
+
             case "null":
                 return null!;
+
             case "array":
-                return el.Elements().Select(FromFlashXml).ToArray();
+                return el.Elements().Select(e => FromFlashXml(e)).ToArray();
+
             case "object":
                 dynamic d = new ExpandoObject();
                 el.Elements().ForEach(e => d[e.Attribute("id")!.Value] = FromFlashXml(e.Elements().First()));
                 return d;
+
             default:
                 return el.Value;
         }
@@ -480,51 +381,12 @@ public class FlashUtil : IFlashUtil, IRestartableGamePlayer
         return new FlashObject<T>(Call<int>("lnkCreate", path), this);
     }
 
-    private void CleanupMugetsu()
-    {
-        try { _cts?.Cancel(); } catch { }
-        _cts?.Dispose();
-        _cts = null;
-
-        lock (_writeLock)
-        {
-            try { _writer?.Dispose(); } catch { }
-            _writer = null;
-        }
-
-        try { _clientSocket?.Dispose(); } catch { }
-        _clientSocket = null;
-
-        try { _listenSocket?.Dispose(); } catch { }
-        _listenSocket = null;
-
-        if (!string.IsNullOrEmpty(_socketPath) && File.Exists(_socketPath))
-        {
-            try { File.Delete(_socketPath); } catch { }
-        }
-        _socketPath = null;
-
-        if (_mugetsuProcess is not null)
-        {
-            try
-            {
-                if (!_mugetsuProcess.HasExited)
-                    _mugetsuProcess.Kill(entireProcessTree: true);
-            }
-            catch { }
-            try { _mugetsuProcess.Dispose(); } catch { }
-            _mugetsuProcess = null;
-        }
-    }
-
     public void Dispose()
     {
-        WinFormsFlashHost.HostResized -= OnHostResized;
-        WinFormsFlashHost.KeyForwarded -= OnKeyForwarded;
-        WinFormsFlashHost.TextForwarded -= OnTextForwarded;
-        WinFormsFlashHost.FocusForwarded -= OnFocusForwarded;
-        WinFormsFlashHost.ClearKeysForwarded -= OnClearKeysForwarded;
-        CleanupMugetsu();
+        StopPlayer();
+        _listener?.Stop();
+        _listener = null;
+        _bridge?.Dispose();
+        FailPending();
     }
 }
-#endif

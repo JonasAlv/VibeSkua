@@ -60,4 +60,31 @@
         </None>
     </ItemGroup>
 
+    <!--
+      The game player: official Skua build of Mugetsu (see https://github.com/retr0gr4d3/skua-mugetsu).
+      Downloaded once into player/<version>-linux/ and copied to output player/ folder.
+    -->
+    <PropertyGroup>
+        <SkuaPlayerVersion>1.5.1-skua.2</SkuaPlayerVersion>
+        <SkuaPlayerOs>linux</SkuaPlayerOs>
+        <SkuaPlayerArchive>Mugetsu-$(SkuaPlayerVersion)-linux.tar.gz</SkuaPlayerArchive>
+        <SkuaPlayerExe>Mugetsu</SkuaPlayerExe>
+        <SkuaPlayerUrl>https://github.com/retr0gr4d3/skua-mugetsu/releases/download/v$(SkuaPlayerVersion)/$(SkuaPlayerArchive)</SkuaPlayerUrl>
+        <SkuaPlayerCache>$(MSBuildThisFileDirectory)..\player\$(SkuaPlayerVersion)-$(SkuaPlayerOs)</SkuaPlayerCache>
+        <SkuaPlayerDir Condition="'$(SkuaPlayerLocal)' != ''">$(SkuaPlayerLocal)</SkuaPlayerDir>
+        <SkuaPlayerDir Condition="'$(SkuaPlayerLocal)' == ''">$(SkuaPlayerCache)\Mugetsu</SkuaPlayerDir>
+    </PropertyGroup>
+
+    <Target Name="DownloadSkuaPlayer" Condition="'$(SkuaPlayerLocal)' == '' And !Exists('$(SkuaPlayerDir)\$(SkuaPlayerExe)')">
+        <DownloadFile SourceUrl="$(SkuaPlayerUrl)" DestinationFolder="$(SkuaPlayerCache)" />
+        <Exec Command="tar -xzf &quot;$(SkuaPlayerArchive)&quot;" WorkingDirectory="$(SkuaPlayerCache)" />
+    </Target>
+
+    <Target Name="AddSkuaPlayer" BeforeTargets="AssignTargetPaths" DependsOnTargets="DownloadSkuaPlayer">
+        <ItemGroup>
+            <_SkuaPlayerFile Include="$(SkuaPlayerDir)\**" />
+            <None Include="@(_SkuaPlayerFile)" Link="player\%(_SkuaPlayerFile.RecursiveDir)%(_SkuaPlayerFile.Filename)%(_SkuaPlayerFile.Extension)" CopyToOutputDirectory="PreserveNewest" />
+        </ItemGroup>
+    </Target>
+
 </Project>

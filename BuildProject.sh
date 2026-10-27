@@ -32,27 +32,30 @@ if [ -f "$SCRIPT_DIR/Skua.AS3/skua/bin/skua.swf" ]; then
     cp -f "$SCRIPT_DIR/Skua.AS3/skua/bin/skua.swf" "$BUILD_DIR/skua.swf"
 fi
 
-# 5. Copy or download Mugetsu binary
-MUGETSU_SRC="$SCRIPT_DIR/../mugetsu/source/build/out/Mugetsu"
-if [ -f "$MUGETSU_SRC" ]; then
-    echo "Using local Mugetsu binary from $MUGETSU_SRC..."
-    cp -f "$MUGETSU_SRC" "$BUILD_DIR/Mugetsu"
-    chmod +x "$BUILD_DIR/Mugetsu"
+# 5. Copy official skua-mugetsu Flash runner (https://github.com/retr0gr4d3/skua-mugetsu)
+mkdir -p "$BUILD_DIR/player"
+if [ -d "$APP_BIN/player" ] && [ -f "$APP_BIN/player/Mugetsu" ]; then
+    echo "Using bundled skua-mugetsu from $APP_BIN/player..."
+    cp -rf "$APP_BIN/player"/* "$BUILD_DIR/player/"
+    cp -f "$BUILD_DIR/player/Mugetsu" "$BUILD_DIR/Mugetsu"
+    chmod +x "$BUILD_DIR/player/Mugetsu" "$BUILD_DIR/Mugetsu"
+elif [ -f "$SCRIPT_DIR/player/1.5.1-skua.2-linux/Mugetsu/Mugetsu" ]; then
+    echo "Using cached skua-mugetsu from player/..."
+    cp -f "$SCRIPT_DIR/player/1.5.1-skua.2-linux/Mugetsu/Mugetsu" "$BUILD_DIR/player/Mugetsu"
+    cp -f "$BUILD_DIR/player/Mugetsu" "$BUILD_DIR/Mugetsu"
+    chmod +x "$BUILD_DIR/player/Mugetsu" "$BUILD_DIR/Mugetsu"
 else
-    echo "Fetching latest Mugetsu binary from https://github.com/JonasAlv/mugetsu/releases/latest/download/Mugetsu..."
-    TMP_MUGETSU="$BUILD_DIR/Mugetsu.tmp.$$"
-    if curl -sSL --fail "https://github.com/JonasAlv/mugetsu/releases/latest/download/Mugetsu" -o "$TMP_MUGETSU" && [ -s "$TMP_MUGETSU" ]; then
-        mv -f "$TMP_MUGETSU" "$BUILD_DIR/Mugetsu"
-        chmod +x "$BUILD_DIR/Mugetsu"
-        echo "Successfully updated Mugetsu to latest release."
+    echo "Fetching skua-mugetsu v1.5.1-skua.2 from GitHub Releases..."
+    TMP_ARCHIVE="$BUILD_DIR/skua-mugetsu.tar.gz"
+    if curl -sSL --fail "https://github.com/retr0gr4d3/skua-mugetsu/releases/download/v1.5.1-skua.2/Mugetsu-1.5.1-skua.2-linux.tar.gz" -o "$TMP_ARCHIVE" && [ -s "$TMP_ARCHIVE" ]; then
+        tar -xzf "$TMP_ARCHIVE" -C "$BUILD_DIR/player/" --strip-components=1
+        rm -f "$TMP_ARCHIVE"
+        cp -f "$BUILD_DIR/player/Mugetsu" "$BUILD_DIR/Mugetsu"
+        chmod +x "$BUILD_DIR/player/Mugetsu" "$BUILD_DIR/Mugetsu"
     else
-        rm -f "$TMP_MUGETSU"
-        if [ -f "$BUILD_DIR/Mugetsu" ]; then
-            echo "Warning: Could not fetch latest Mugetsu release; reusing existing $BUILD_DIR/Mugetsu."
-        else
-            echo "Error: Failed to download Mugetsu from GitHub Releases!" >&2
-            exit 1
-        fi
+        rm -f "$TMP_ARCHIVE"
+        echo "Error: Failed to download official skua-mugetsu from GitHub Releases!" >&2
+        exit 1
     fi
 fi
 

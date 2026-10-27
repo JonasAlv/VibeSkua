@@ -109,24 +109,32 @@ elif [ -f "$BUILD_DIR/skua.swf" ]; then
     cp -f "$BUILD_DIR/skua.swf" "$CURRENT_DIR/skua.swf"
 fi
 
-# Copy or download Mugetsu Flash runner
-MUGETSU_SRC="$SCRIPT_DIR/../mugetsu/source/build/out/Mugetsu"
-if [ -f "$MUGETSU_SRC" ]; then
-    cp -f "$MUGETSU_SRC" "$CURRENT_DIR/Mugetsu"
-    chmod +x "$CURRENT_DIR/Mugetsu"
+# Copy or download official Skua Mugetsu Flash runner (https://github.com/retr0gr4d3/skua-mugetsu)
+mkdir -p "$CURRENT_DIR/player"
+if [ -d "$APP_BIN/player" ] && [ -f "$APP_BIN/player/Mugetsu" ]; then
+    cp -rf "$APP_BIN/player"/* "$CURRENT_DIR/player/"
+    cp -f "$CURRENT_DIR/player/Mugetsu" "$CURRENT_DIR/Mugetsu"
+    chmod +x "$CURRENT_DIR/player/Mugetsu" "$CURRENT_DIR/Mugetsu"
+elif [ -f "$SCRIPT_DIR/player/1.5.1-skua.2-linux/Mugetsu/Mugetsu" ]; then
+    cp -f "$SCRIPT_DIR/player/1.5.1-skua.2-linux/Mugetsu/Mugetsu" "$CURRENT_DIR/player/Mugetsu"
+    cp -f "$CURRENT_DIR/player/Mugetsu" "$CURRENT_DIR/Mugetsu"
+    chmod +x "$CURRENT_DIR/player/Mugetsu" "$CURRENT_DIR/Mugetsu"
 elif [ -f "$BUILD_DIR/Mugetsu" ]; then
+    cp -f "$BUILD_DIR/Mugetsu" "$CURRENT_DIR/player/Mugetsu"
     cp -f "$BUILD_DIR/Mugetsu" "$CURRENT_DIR/Mugetsu"
-    chmod +x "$CURRENT_DIR/Mugetsu"
+    chmod +x "$CURRENT_DIR/player/Mugetsu" "$CURRENT_DIR/Mugetsu"
 else
-    echo "Mugetsu binary not found in $BUILD_DIR. Fetching from https://github.com/JonasAlv/mugetsu/releases/latest/download/Mugetsu..."
-    TMP_MUGETSU="$CURRENT_DIR/Mugetsu.tmp.$$"
-    if curl -sSL --fail "https://github.com/JonasAlv/mugetsu/releases/latest/download/Mugetsu" -o "$TMP_MUGETSU" && [ -s "$TMP_MUGETSU" ]; then
-        mv -f "$TMP_MUGETSU" "$CURRENT_DIR/Mugetsu"
-        chmod +x "$CURRENT_DIR/Mugetsu"
-        cp -f "$CURRENT_DIR/Mugetsu" "$BUILD_DIR/Mugetsu" 2>/dev/null || true
+    echo "Mugetsu binary not found locally. Fetching official skua-mugetsu v1.5.1-skua.2 from GitHub Releases..."
+    TMP_ARCHIVE="$CURRENT_DIR/skua-mugetsu.tar.gz"
+    if curl -sSL --fail "https://github.com/retr0gr4d3/skua-mugetsu/releases/download/v1.5.1-skua.2/Mugetsu-1.5.1-skua.2-linux.tar.gz" -o "$TMP_ARCHIVE" && [ -s "$TMP_ARCHIVE" ]; then
+        tar -xzf "$TMP_ARCHIVE" -C "$CURRENT_DIR/player/" --strip-components=1
+        rm -f "$TMP_ARCHIVE"
+        cp -f "$CURRENT_DIR/player/Mugetsu" "$CURRENT_DIR/Mugetsu"
+        chmod +x "$CURRENT_DIR/player/Mugetsu" "$CURRENT_DIR/Mugetsu"
+        cp -f "$CURRENT_DIR/player/Mugetsu" "$BUILD_DIR/Mugetsu" 2>/dev/null || true
     else
-        rm -f "$TMP_MUGETSU"
-        echo "Error: Failed to download Mugetsu from GitHub Releases!" >&2
+        rm -f "$TMP_ARCHIVE"
+        echo "Error: Failed to download official skua-mugetsu from GitHub Releases!" >&2
         exit 1
     fi
 fi

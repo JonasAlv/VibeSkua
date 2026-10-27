@@ -174,12 +174,12 @@ public partial class MainWindow : Window
         Deactivated += (s, e) =>
         {
             ReleaseAllPressedKeys();
-            Skua.App.Avalonia.Controls.WinFormsFlashHost.ForwardFocus(false);
+            Skua.App.Avalonia.Controls.GameHost.ForwardFocus(false);
         };
         Activated += (s, e) =>
         {
             ReleaseAllPressedKeys();
-            Skua.App.Avalonia.Controls.WinFormsFlashHost.ForwardFocus(true);
+            Skua.App.Avalonia.Controls.GameHost.ForwardFocus(true);
         };
 #endif
 
@@ -223,6 +223,8 @@ public partial class MainWindow : Window
             Dispatcher.UIThread.RunJobs();
             FlashHost.Focus();
         }
+        if (_flash is Flash.FlashUtil player)
+            player.ParentWindow = FlashHost?.WindowHandle ?? 0;
         _flash.InitializeFlash();
         TabIpc.StartListener(this, Environment.ProcessId, _ipcCancelCts.Token);
 #endif

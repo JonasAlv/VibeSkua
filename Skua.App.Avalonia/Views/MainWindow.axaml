@@ -131,7 +131,7 @@
 
       <Grid Grid.Row="1"
             Background="{DynamicResource SkuaPageBrush}">
-        <controls:WinFormsFlashHost x:Name="FlashHost" IsVisible="False" />
+        <controls:GameHost x:Name="FlashHost" IsVisible="False" />
         <ProgressBar x:Name="LoadingBar"
                      Width="180"
                      Height="8"

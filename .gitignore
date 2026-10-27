@@ -367,6 +367,7 @@ FodyWeavers.xsd
 /Build
 /Assets
 /ignore
+/player/
 desktop.ini
 WARP.md
 .aider*
