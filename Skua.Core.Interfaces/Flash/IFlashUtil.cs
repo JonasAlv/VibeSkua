@@ -162,9 +162,10 @@ public interface IFlashUtil : IDisposable
         try
         {
             string? raw = GetGameObject(path);
-            if (string.IsNullOrWhiteSpace(raw) || raw == "null" || raw == "undefined")
+            string? trimmed = raw?.Trim();
+            if (string.IsNullOrWhiteSpace(trimmed) || trimmed == "null" || trimmed == "undefined" || trimmed == "\"\"")
                 return def;
-            var result = JsonConvert.DeserializeObject<T>(raw, SafeJsonSettings);
+            var result = JsonConvert.DeserializeObject<T>(trimmed, SafeJsonSettings);
             return result is null ? def : result;
         }
         catch (Exception ex)

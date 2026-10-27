@@ -160,6 +160,46 @@ public partial class CoreBotsViewModel : BotControlViewModelBase
             SetValues(values ?? new());
     }
 
+    [RelayCommand]
+    private void LoadCharacter()
+    {
+        if (string.IsNullOrEmpty(_player.Username))
+        {
+            _dialogService.ShowMessageBox("Login first so that we can read your character's classes and equipment.", "Load Character");
+            return;
+        }
+
+        StringBuilder current = new();
+        foreach (TabItemViewModel tab in CoreBotsTabs)
+        {
+            if (tab.Content is IManageCBOptions cbo)
+                cbo.Save(current);
+        }
+        Dictionary<string, string> selections = ReadValues(current.ToString().Split(Environment.NewLine));
+
+        foreach (TabItemViewModel tab in CoreBotsTabs)
+        {
+            if (tab.Content is CBOClassSelectViewModel classSelect)
+                classSelect.ReloadClassesCommand.Execute(null);
+            else if (tab.Content is CBOClassEquipmentViewModel equipment)
+                equipment.RefreshInventoryCommand.Execute(null);
+        }
+
+        SetValues(selections);
+    }
+
+    private static Dictionary<string, string> ReadValues(IEnumerable<string> lines)
+    {
+        Dictionary<string, string> optionsDict = new();
+        foreach (string option in lines)
+        {
+            ReadOnlySpan<string> value = option.Split(_separator, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+            if (value.Length == 2)
+                optionsDict.TryAdd(value[0], value[1]);
+        }
+        return optionsDict;
+    }
+
     /// <returns>The saved options of <paramref name="profile"/>, or null if it has no CBO file.</returns>
     public static Dictionary<string, string>? ReadProfile(string profile)
     {
@@ -174,14 +214,7 @@ public partial class CoreBotsViewModel : BotControlViewModelBase
         if (!File.Exists(filePath))
             return null;
 
-        Dictionary<string, string> optionsDict = new();
-        foreach (string option in File.ReadAllLines(filePath))
-        {
-            ReadOnlySpan<string> value = option.Split(_separator, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-            if (value.Length == 2)
-                optionsDict.TryAdd(value[0], value[1]);
-        }
-        return optionsDict;
+        return ReadValues(File.ReadAllLines(filePath));
     }
 
     private void SetValues(Dictionary<string, string> options)
