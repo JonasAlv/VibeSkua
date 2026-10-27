@@ -1282,6 +1282,14 @@ public partial class ScriptManager : ObservableObject, IScriptManager, IDisposab
             return source;
 
         return source
+            .Replace("using System.Windows.Forms;\r\n", "", StringComparison.Ordinal)
+            .Replace("using System.Windows.Forms;\n", "", StringComparison.Ordinal)
+            .Replace("using System.Windows.Forms;", "", StringComparison.Ordinal)
+            .Replace("using Microsoft.Win32;\r\n", "", StringComparison.Ordinal)
+            .Replace("using Microsoft.Win32;\n", "", StringComparison.Ordinal)
+            .Replace("using Microsoft.Win32;", "", StringComparison.Ordinal)
+            .Replace("(System.Windows.Forms.MethodInvoker)", "(System.Action)", StringComparison.Ordinal)
+            .Replace("System.Windows.Forms.MethodInvoker", "System.Action", StringComparison.Ordinal)
             .Replace("OperatingSystem.IsWindowsVersionAtLeast(", "Skua.Core.Scripts.ScriptManager.IsWindowsVersionAtLeastCompat(", StringComparison.Ordinal)
             .Replace("OperatingSystem.IsWindows()", "true", StringComparison.Ordinal)
             .Replace("Process.Start(\"explorer\",", "Process.Start(\"xdg-open\",", StringComparison.Ordinal)
