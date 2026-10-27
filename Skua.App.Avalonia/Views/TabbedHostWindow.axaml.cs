@@ -1160,7 +1160,7 @@ public partial class TabbedHostWindow : Window
                 PostChildMessage(info.ChildHwnd, WM_SKUA_JUMP_HOUSE, IntPtr.Zero, IntPtr.Zero);
     }
 
-    private const int WM_SKUA_JUMP_HOUSE = 0x0400 + 464;
+    private const int WM_SKUA_JUMP_HOUSE = 0x0400 + 465;
     private const int WM_SKUA_ACCEPT_QUEST = 0x0400 + 458;
     private string _lastAcceptQuestId = "";
 

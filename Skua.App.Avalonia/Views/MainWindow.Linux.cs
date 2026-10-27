@@ -37,7 +37,7 @@ public partial class MainWindow : Window
     private const int WM_SKUA_ARMY_SCHEDULER_STOP = 0x0400 + 455;
     private const int WM_SKUA_CHECK_LOGIN = 0x0400 + 456;
     private const int WM_SKUA_JUMP_PLAYER = 0x0400 + 457;
-    private const int WM_SKUA_JUMP_HOUSE = 0x0400 + 464;
+    private const int WM_SKUA_JUMP_HOUSE = 0x0400 + 465;
     private const int WM_SKUA_LOGIN = 0x0400 + 447;
     private const int WM_SKUA_GRIDVIEW = 0x0400 + 444;
     private const int WM_SKUA_AUTO_ATTACK = 0x0400 + 459;
