@@ -13,6 +13,18 @@ public class Inventory {
         return (categories() != null).toString();
     }
 
+    // Only the equipped items: serializing the whole inventory takes most of a second in Ruffle.
+    public static function equippedItems():String {
+        var items:Array = Main.instance.game.world.myAvatar.items;
+        var equipped:Array = [];
+        for each (var item:* in items) {
+            if (item.bEquip) {
+                equipped.push(item);
+            }
+        }
+        return JSON.stringify(equipped);
+    }
+
     public static function inventoryBagUsedSlots():int {
         var cat:* = categories();
         var items:Array = Main.instance.game.world.myAvatar.items;

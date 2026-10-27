@@ -84,6 +84,7 @@ public class Externalizer {
 
         // Inventory
         this.addCallback("hasInventoryCategories", Inventory.hasInventoryCategories);
+        this.addCallback("equippedItems", Inventory.equippedItems);
         this.addCallback("inventoryBagUsedSlots", Inventory.inventoryBagUsedSlots);
         this.addCallback("inventoryMiscSlots", Inventory.inventoryMiscSlots);
         this.addCallback("inventoryMiscUsedSlots", Inventory.inventoryMiscUsedSlots);
@@ -148,8 +149,9 @@ public class Externalizer {
         ExternalInterface.addCallback(name, func);
     }
 
+    // Ruffle evaluates the function name as a JS expression, so names like "pre-load" go through one fixed entry point.
     public function call(name:String, ...rest):* {
-        return ExternalInterface.call(name, rest);
+        return ExternalInterface.call("skuaCall", name, rest);
     }
 
     public function debug(message:String):void {
