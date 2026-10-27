@@ -34,6 +34,9 @@ public partial class GrabberTaskViewModel : ObservableRecipient
 
     public string Content { get; }
 
+    // Shown in the soft red style (Sell, Sell All).
+    public bool IsDestructive { get; init; }
+
     [RelayCommand]
     private async Task GrabberTask(IList<object>? items, CancellationToken token)
     {

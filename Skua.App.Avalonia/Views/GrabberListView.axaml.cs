@@ -20,6 +20,12 @@ public partial class GrabberListView : UserControl
         return GrabbedItemsList.SelectedItems.Cast<object>().ToList();
     }
 
+    private void GrabbedItemsList_SelectionChanged(object? sender, SelectionChangedEventArgs e)
+    {
+        int count = GrabbedItemsList.SelectedItems?.Count ?? 0;
+        SelectedCountText.Text = count == 0 ? string.Empty : $"{count} selected";
+    }
+
     private void UnselectAll_Click(object? sender, global::Avalonia.Interactivity.RoutedEventArgs e)
     {
         GrabbedItemsList.SelectedItems?.Clear();

@@ -33,6 +33,7 @@ namespace Skua.App.Avalonia.Views;
 
 public partial class TabbedHostWindow : Window
 {
+#if IS_LINUX
     private IntPtr SendChildMessage(TabInfo info, uint msg, IntPtr wParam, IntPtr lParam)
     {
         if (msg == (uint)WM_SKUA_CHECK_LOGIN)
@@ -47,6 +48,7 @@ public partial class TabbedHostWindow : Window
         }
         return IntPtr.Zero;
     }
+#endif
 
     #region Tab State
     private class TabInfo
@@ -151,6 +153,9 @@ public partial class TabbedHostWindow : Window
         Opened += TabbedHostWindow_Opened;
         PositionChanged += (s, e) => OnWindowPositionChanged(e.Point);
         SizeChanged += (s, e) => { DoReposition(); UpdateTabScrollButtons(); };
+#if IS_LINUX
+        ScalingChanged += (s, e) => Dispatcher.UIThread.Post(RepositionWithFreshCache, DispatcherPriority.Loaded);
+#endif
         
         PropertyChanged += (s, e) => { if (e.Property == WindowStateProperty || e.Property == IsVisibleProperty) DoReposition(); };
         Activated += (s, e) =>
@@ -969,6 +974,7 @@ public partial class TabbedHostWindow : Window
             case "DisableFX": optionId = 4; val = options.DisableFX; break;
             case "InfiniteRange": optionId = 5; val = options.InfiniteRange; break;
             case "StreamerMode": optionId = 9; val = options.StreamerMode; break;
+            case "AggroMonsters": optionId = 10; val = options.AggroMonsters; break;
         }
         
         if (optionId != -1)
@@ -1147,6 +1153,15 @@ public partial class TabbedHostWindow : Window
         }
     }
 
+    // Each client joins its own house (no input needed).
+    private void MenuItem_JumpHouse_Click(object? sender, RoutedEventArgs e)
+    {
+        foreach (var info in _tabs.Values)
+            if (info.ChildHwnd != IntPtr.Zero)
+                PostChildMessage(info.ChildHwnd, WM_SKUA_JUMP_HOUSE, IntPtr.Zero, IntPtr.Zero);
+    }
+
+    private const int WM_SKUA_JUMP_HOUSE = 0x0400 + 464;
     private const int WM_SKUA_ACCEPT_QUEST = 0x0400 + 458;
     private string _lastAcceptQuestId = "";
 
@@ -1219,6 +1234,24 @@ public partial class TabbedHostWindow : Window
         _lastActiveHwnd = IntPtr.Zero;
         ScheduleReposition();
     }
+
+#if IS_LINUX
+    // Places the tabs now, even mid-drag.
+    private void RepositionWithFreshCache()
+    {
+        if (_isClosing) return;
+
+        bool dragging = _isDraggingWindow;
+        _isDraggingWindow = false;
+        _lastX = int.MinValue;
+        _lastY = int.MinValue;
+        _lastW = int.MinValue;
+        _lastH = int.MinValue;
+        _lastActiveHwnd = IntPtr.Zero;
+        DoReposition();
+        _isDraggingWindow = dragging;
+    }
+#endif
 
     private void OnWindowPositionChanged(PixelPoint newPos)
     {
@@ -1479,6 +1512,14 @@ public partial class TabbedHostWindow : Window
 
         if (_tabs.Count == 0 || !InstancesTabControl.Items.OfType<TabItem>().Any())
         {
+            // Army Queue passes this flag so its monitored host process exits after the
+            // final account finishes. Without it, keep the normal reusable tab host open.
+            if (_initialArgs.Contains("--exit-on-script-stop", StringComparer.OrdinalIgnoreCase))
+            {
+                Close();
+                return;
+            }
+
             // Keep the host window alive when the final account tab closes.
             // This allows the user to open another tab without restarting VibeSkua.
             _lastSelectedTab = null;

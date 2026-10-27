@@ -57,6 +57,41 @@ public sealed partial class JunkItemsViewModel : BotControlViewModelBase
 
     public int TotalJunk => Items.Count(i => i.IsJunk);
 
+    public int SelectedCount => Items.Count(i => i.IsSelected);
+
+    // Drives the select-all check box above the list: true when every shown item is selected, false when none
+    // is, null (indeterminate) in between. Checking it selects the shown items; unchecking clears the selection.
+    public bool? SelectionState
+    {
+        get
+        {
+            int selected = SelectedCount;
+            if (selected == 0)
+                return false;
+            return FilteredItems.Count > 0 && FilteredItems.All(i => i.IsSelected) ? true : null;
+        }
+        set
+        {
+            if (value == true)
+                SelectAll();
+            else
+                ClearSelection();
+        }
+    }
+
+    private void Entry_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(JunkItemEntry.IsSelected))
+        {
+            OnPropertyChanged(nameof(SelectedCount));
+            OnPropertyChanged(nameof(SelectionState));
+        }
+        else if (e.PropertyName == nameof(JunkItemEntry.IsJunk))
+        {
+            OnPropertyChanged(nameof(TotalJunk));
+        }
+    }
+
     protected override void OnActivated()
     {
         base.OnActivated();
@@ -103,9 +138,16 @@ public sealed partial class JunkItemsViewModel : BotControlViewModelBase
                 entry.IsSelected = isSelected;
         }
 
+        foreach (JunkItemEntry old in Items)
+            old.PropertyChanged -= Entry_PropertyChanged;
+        foreach (JunkItemEntry entry in entries)
+            entry.PropertyChanged += Entry_PropertyChanged;
+
         Items.ReplaceRange(entries);
         ApplySearch();
         OnPropertyChanged(nameof(TotalJunk));
+        OnPropertyChanged(nameof(SelectedCount));
+        OnPropertyChanged(nameof(SelectionState));
     }
 
     [RelayCommand]
@@ -285,6 +327,7 @@ public sealed partial class JunkItemsViewModel : BotControlViewModelBase
                 FilteredItems.Add(item);
             }
         }
+        OnPropertyChanged(nameof(SelectionState));
     }
 }
 

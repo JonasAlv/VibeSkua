@@ -1,194 +1,215 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
-             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:vms="clr-namespace:Skua.Shared.Avalonia.ViewModels;assembly=Skua.Shared.Avalonia"
              xmlns:materialIcons="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
              x:Class="Skua.Shared.Avalonia.Views.LoadoutsView"
              x:DataType="vms:LoadoutsViewModel"
-             mc:Ignorable="d" 
+             mc:Ignorable="d"
              d:DesignHeight="500" d:DesignWidth="600">
-  <Grid Margin="12" RowDefinitions="Auto,Auto,*" RowSpacing="10">
-    <!-- Header Status Card -->
-    <Border Grid.Row="0"
-            Background="{DynamicResource SkuaSurfaceBrush}"
-            BorderBrush="{DynamicResource SkuaBorderBrush}"
-            BorderThickness="1"
-            CornerRadius="8"
-            Padding="12,10">
-      <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8" VerticalAlignment="Center">
-        <StackPanel Grid.Column="0" Spacing="2">
-          <TextBlock Text="EQUIPMENT &amp; ENHANCEMENTS"
-                     FontSize="10"
-                     FontWeight="Bold"
-                     Foreground="{DynamicResource SkuaMutedTextBrush}" />
-          <TextBlock FontSize="16"
-                     FontWeight="Bold"
-                     Foreground="{DynamicResource SkuaTextBrush}"
-                     Text="Loadouts Manager" />
-        </StackPanel>
+  <UserControl.Styles>
+    <!-- One equipment slot: icon, slot name, item, enhancement chip -->
+    <Style Selector="Grid.slot">
+      <Setter Property="Height" Value="38" />
+      <Setter Property="Margin" Value="10,0" />
+    </Style>
+    <Style Selector="Grid.slot materialIcons|MaterialIcon">
+      <Setter Property="Width" Value="16" />
+      <Setter Property="Height" Value="16" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+      <Setter Property="Foreground" Value="{DynamicResource SkuaAccentBrush}" />
+    </Style>
+    <Style Selector="Grid.slot TextBlock.slot-name">
+      <Setter Property="VerticalAlignment" Value="Center" />
+      <Setter Property="Foreground" Value="{DynamicResource SkuaMutedTextBrush}" />
+    </Style>
+    <Style Selector="Grid.slot TextBlock.slot-item">
+      <Setter Property="VerticalAlignment" Value="Center" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+    </Style>
+    <Style Selector="Border.slot-divider">
+      <Setter Property="Height" Value="1" />
+      <Setter Property="Background" Value="{DynamicResource SkuaBorderBrush}" />
+    </Style>
+  </UserControl.Styles>
 
+  <Grid Margin="14" ColumnDefinitions="240,*" ColumnSpacing="14">
+    <!-- Saved loadouts -->
+    <Grid Grid.Column="0" RowDefinitions="Auto,*,Auto" RowSpacing="8">
+      <Grid Grid.Row="0" ColumnDefinitions="*,Auto,Auto,Auto" ColumnSpacing="6" MinHeight="26">
+        <TextBlock Grid.Column="0" Classes="section-label" Text="LOADOUTS" VerticalAlignment="Center" />
         <ComboBox Grid.Column="1"
                   ItemsSource="{Binding Profiles}"
                   SelectedItem="{Binding SelectedProfile}"
                   PlaceholderText="Not Logged In"
-                  MinWidth="160"
+                  MinWidth="110"
                   Height="26"
-                  FontSize="12"
+                  FontSize="11"
                   FontWeight="Bold"
                   VerticalAlignment="Center"
                   DropDownOpened="ProfileComboBox_DropDownOpened"
                   ToolTip.Tip="Edit the loadouts of an account logged in on any open tab" />
-
-        <Border Grid.Column="2"
-                Background="{DynamicResource SkuaSurfaceAltBrush}"
-                BorderBrush="{DynamicResource SkuaBorderBrush}"
-                BorderThickness="1"
-                CornerRadius="20"
-                Padding="10,4"
-                VerticalAlignment="Center">
-          <TextBlock Text="{Binding Loadouts.Count, StringFormat='Saved: {0}'}"
-                     FontSize="11"
-                     FontWeight="Bold"
-                     Foreground="{DynamicResource SkuaTextBrush}" />
+        <Border Grid.Column="2" Classes="count" VerticalAlignment="Center">
+          <TextBlock Text="{Binding Loadouts.Count}" />
         </Border>
-      </Grid>
-    </Border>
-
-    <!-- Top Action Card -->
-    <Border Grid.Row="1"
-            Background="{DynamicResource SkuaSurfaceBrush}"
-            BorderBrush="{DynamicResource SkuaBorderBrush}"
-            BorderThickness="1"
-            CornerRadius="8"
-            Padding="10">
-      <Grid ColumnDefinitions="Auto,Auto,Auto,*,Auto,Auto" ColumnSpacing="6">
-        <Button Grid.Column="0"
-                Classes="skua-button"
-                Content="Save"
-                Command="{Binding SaveCurrentCommand}"
-                IsEnabled="{Binding IsOwnProfile}" />
-        <Button Grid.Column="1"
-                Classes="skua-button"
-                Content="Show Current"
-                Command="{Binding ShowCurrentCommand}"
-                IsEnabled="{Binding IsOwnProfile}" />
-        <Button Grid.Column="2"
-                Classes="skua-button"
-                Command="{Binding RefreshCommand}"
-                ToolTip.Tip="Refresh Loadouts"
-                Width="32" Height="32"
-                Padding="0">
+        <Button Grid.Column="3" Classes="icon" Command="{Binding RefreshCommand}" ToolTip.Tip="Refresh loadouts">
           <materialIcons:MaterialIcon Kind="Refresh" Width="16" Height="16" />
         </Button>
-        <ComboBox Grid.Column="3"
-                  ItemsSource="{Binding Loadouts}"
-                  SelectedItem="{Binding SelectedLoadout, Mode=TwoWay}"
-                  PlaceholderText="Select Loadout..."
-                  HorizontalAlignment="Stretch">
-          <ComboBox.ItemTemplate>
-            <DataTemplate>
-              <TextBlock Text="{Binding Name}" />
-            </DataTemplate>
-          </ComboBox.ItemTemplate>
-        </ComboBox>
-        <Button Grid.Column="4"
-                Classes="skua-button skua-primary"
-                Content="Equip"
-                Command="{Binding EquipLoadoutCommand}"
-                IsEnabled="{Binding IsOwnProfile}" />
-        <Button Grid.Column="5"
-                Classes="skua-button outline"
-                Content="Delete"
-                Command="{Binding DeleteLoadoutCommand}"
-                Foreground="#EF4444" />
       </Grid>
-    </Border>
 
-    <!-- Details Card -->
-    <Border Grid.Row="2"
-            Background="{DynamicResource SkuaSurfaceBrush}"
-            BorderBrush="{DynamicResource SkuaBorderBrush}"
-            BorderThickness="1"
-            CornerRadius="8"
-            Padding="16">
-      <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
-        <Grid ColumnDefinitions="100,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto" RowSpacing="6">
-          <!-- Name -->
-          <TextBlock Grid.Row="0" Grid.Column="0" Text="Name" Foreground="{DynamicResource SkuaMutedTextBrush}" FontWeight="SemiBold" VerticalAlignment="Center" />
-          <TextBox Grid.Row="0" Grid.Column="1" Text="{Binding SelectedLoadoutName, Mode=TwoWay}" VerticalAlignment="Center" />
+      <ListBox Grid.Row="1"
+               Background="{DynamicResource SkuaSurfaceBrush}"
+               BorderBrush="{DynamicResource SkuaBorderBrush}"
+               BorderThickness="1"
+               CornerRadius="10"
+               Padding="4"
+               ItemsSource="{Binding Loadouts}"
+               SelectedItem="{Binding SelectedLoadout, Mode=TwoWay}">
+        <ListBox.ItemTemplate>
+          <DataTemplate>
+            <StackPanel Spacing="3" Margin="4,4">
+              <TextBlock Text="{Binding Name}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+              <TextBlock Text="{Binding Class}" FontSize="10" Foreground="{DynamicResource SkuaMutedTextBrush}" TextTrimming="CharacterEllipsis" />
+            </StackPanel>
+          </DataTemplate>
+        </ListBox.ItemTemplate>
+      </ListBox>
 
-          <!-- Class -->
-          <TextBlock Grid.Row="1" Grid.Column="0" Text="Class" Foreground="{DynamicResource SkuaMutedTextBrush}" FontWeight="SemiBold" VerticalAlignment="Center" />
-          <StackPanel Grid.Row="1" Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
-            <TextBlock Text="{Binding SelectedLoadout.Class}" FontWeight="SemiBold" Foreground="{DynamicResource SkuaTextBrush}" />
-            <TextBlock Text=" [" Opacity="0.5" Margin="4,0,0,0" />
-            <TextBlock Text="{Binding SelectedLoadout.ClassEnhancement}" Opacity="0.8" />
-            <TextBlock Text="]" Opacity="0.5" />
+      <Button Grid.Row="2"
+              Classes="skua-button"
+              HorizontalAlignment="Stretch"
+              Command="{Binding SaveCurrentCommand}"
+              IsEnabled="{Binding IsOwnProfile}"
+              ToolTip.Tip="Save what this character has equipped as a new loadout">
+        <StackPanel Orientation="Horizontal" Spacing="6">
+          <materialIcons:MaterialIcon Kind="Plus" Width="16" Height="16" />
+          <TextBlock Text="Save current gear" VerticalAlignment="Center" />
+        </StackPanel>
+      </Button>
+    </Grid>
+
+    <!-- Selected loadout -->
+    <Grid Grid.Column="1" RowDefinitions="Auto,Auto,*,Auto" RowSpacing="8">
+      <Grid Grid.Row="0" ColumnDefinitions="*,Auto" MinHeight="26">
+        <TextBlock Grid.Column="0" Classes="section-label" Text="LOADOUT DETAILS" />
+        <Button Grid.Column="1" Classes="skua-button small w140" Command="{Binding ShowCurrentCommand}" IsEnabled="{Binding IsOwnProfile}" ToolTip.Tip="Show what this character has equipped now">
+          <StackPanel Orientation="Horizontal" Spacing="6">
+            <materialIcons:MaterialIcon Kind="EyeOutline" Width="15" Height="15" />
+            <TextBlock Text="Show current gear" VerticalAlignment="Center" />
           </StackPanel>
+        </Button>
+      </Grid>
 
-          <!-- Class enhance profile (CoreBots Options) -->
-          <TextBlock Grid.Row="2" Grid.Column="0" Text="Enhance" Foreground="{DynamicResource SkuaMutedTextBrush}" FontWeight="SemiBold" VerticalAlignment="Center" />
-          <Grid Grid.Row="2" Grid.Column="1" ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8" IsVisible="{Binding SelectedLoadout.Class, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
-            <CheckBox Grid.Column="0"
-                      Content="Use class profile"
-                      IsChecked="{Binding UseClassEnhanceProfile}"
-                      ToolTip.Tip="On Equip, enhance with this class's CoreBots Options profile instead of the enhancements saved with the loadout" />
-            <TextBlock Grid.Column="1"
-                       Text="{Binding ClassEnhanceProfile}"                       Foreground="{DynamicResource SkuaMutedTextBrush}"
-                       FontSize="11"
-                       TextTrimming="CharacterEllipsis"
-                       VerticalAlignment="Center" />
-            <Button Grid.Column="2"
-                    Classes="skua-button"
-                    Command="{Binding EditClassEnhanceProfileCommand}"
-                    ToolTip.Tip="Edit this class's profile in CoreBots Options"
-                    Width="28" Height="28"
-                    Padding="0">
-              <materialIcons:MaterialIcon Kind="PencilOutline" Width="14" Height="14" />
-            </Button>
-          </Grid>
+      <!-- Renames on Enter or when the field loses focus, not on every keystroke -->
+      <TextBox Grid.Row="1"
+               Text="{Binding SelectedLoadoutName, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"
+               Watermark="Select a loadout to inspect"
+               IsEnabled="{Binding SelectedLoadout, Converter={x:Static ObjectConverters.IsNotNull}}" />
 
-          <!-- Armor -->
-          <TextBlock Grid.Row="3" Grid.Column="0" Text="Armor" Foreground="{DynamicResource SkuaMutedTextBrush}" FontWeight="SemiBold" VerticalAlignment="Center" />
-          <TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding SelectedLoadout.Armor}" FontWeight="SemiBold" Foreground="{DynamicResource SkuaTextBrush}" VerticalAlignment="Center" />
-
-          <!-- Weapon -->
-          <TextBlock Grid.Row="4" Grid.Column="0" Text="Weapon" Foreground="{DynamicResource SkuaMutedTextBrush}" FontWeight="SemiBold" VerticalAlignment="Center" />
-          <StackPanel Grid.Row="4" Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
-            <TextBlock Text="{Binding SelectedLoadout.Weapon}" FontWeight="SemiBold" Foreground="{DynamicResource SkuaTextBrush}" />
-            <TextBlock Text=" [" Opacity="0.5" Margin="4,0,0,0" />
-            <TextBlock Text="{Binding SelectedLoadout.WeaponEnhancement}" Opacity="0.8" />
-            <TextBlock Text="]" Opacity="0.5" />
+      <Border Grid.Row="2"
+              Background="{DynamicResource SkuaSurfaceBrush}"
+              BorderBrush="{DynamicResource SkuaBorderBrush}"
+              BorderThickness="1"
+              CornerRadius="10">
+        <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+          <StackPanel>
+            <Grid Classes="slot" ColumnDefinitions="24,64,*,Auto">
+              <materialIcons:MaterialIcon Kind="ShieldAccountOutline" />
+              <TextBlock Grid.Column="1" Classes="slot-name" Text="Class" />
+              <TextBlock Grid.Column="2" Classes="slot-item" Text="{Binding SelectedLoadout.Class}" />
+              <Border Grid.Column="3" Classes="chip accent" IsVisible="{Binding SelectedLoadout.ClassEnhancement, Converter={x:Static StringConverters.IsNotNullOrEmpty}, FallbackValue=False}">
+                <TextBlock Text="{Binding SelectedLoadout.ClassEnhancement}" />
+              </Border>
+            </Grid>
+            <Border Classes="slot-divider" IsVisible="{Binding SelectedLoadout.Class, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+            <!-- Class enhance profile (CoreBots Options) -->
+            <Grid Classes="slot" ColumnDefinitions="24,64,*,Auto" IsVisible="{Binding SelectedLoadout.Class, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+              <materialIcons:MaterialIcon Kind="AutoFix" />
+              <TextBlock Grid.Column="1" Classes="slot-name" Text="Profile" />
+              <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                <CheckBox Content="Use class profile"
+                          IsChecked="{Binding UseClassEnhanceProfile}"
+                          ToolTip.Tip="On Equip, enhance with this class's CoreBots Options profile instead of the enhancements saved with the loadout" />
+                <TextBlock Text="{Binding ClassEnhanceProfile}"
+                           Foreground="{DynamicResource SkuaMutedTextBrush}"
+                           FontSize="11"
+                           TextTrimming="CharacterEllipsis"
+                           VerticalAlignment="Center" />
+              </StackPanel>
+              <Button Grid.Column="3"
+                      Classes="skua-button"
+                      Command="{Binding EditClassEnhanceProfileCommand}"
+                      ToolTip.Tip="Edit this class's profile in CoreBots Options"
+                      Width="28" Height="28"
+                      Padding="0">
+                <materialIcons:MaterialIcon Kind="PencilOutline" Width="14" Height="14" />
+              </Button>
+            </Grid>
+            <Border Classes="slot-divider" />
+            <Grid Classes="slot" ColumnDefinitions="24,64,*,Auto">
+              <materialIcons:MaterialIcon Kind="TshirtCrewOutline" />
+              <TextBlock Grid.Column="1" Classes="slot-name" Text="Armor" />
+              <TextBlock Grid.Column="2" Classes="slot-item" Text="{Binding SelectedLoadout.Armor}" />
+            </Grid>
+            <Border Classes="slot-divider" />
+            <Grid Classes="slot" ColumnDefinitions="24,64,*,Auto">
+              <materialIcons:MaterialIcon Kind="Sword" />
+              <TextBlock Grid.Column="1" Classes="slot-name" Text="Weapon" />
+              <TextBlock Grid.Column="2" Classes="slot-item" Text="{Binding SelectedLoadout.Weapon}" />
+              <Border Grid.Column="3" Classes="chip accent" IsVisible="{Binding SelectedLoadout.WeaponEnhancement, Converter={x:Static StringConverters.IsNotNullOrEmpty}, FallbackValue=False}">
+                <TextBlock Text="{Binding SelectedLoadout.WeaponEnhancement}" />
+              </Border>
+            </Grid>
+            <Border Classes="slot-divider" />
+            <Grid Classes="slot" ColumnDefinitions="24,64,*,Auto">
+              <materialIcons:MaterialIcon Kind="HardHat" />
+              <TextBlock Grid.Column="1" Classes="slot-name" Text="Helm" />
+              <TextBlock Grid.Column="2" Classes="slot-item" Text="{Binding SelectedLoadout.Helm}" />
+              <Border Grid.Column="3" Classes="chip accent" IsVisible="{Binding SelectedLoadout.HelmEnhancement, Converter={x:Static StringConverters.IsNotNullOrEmpty}, FallbackValue=False}">
+                <TextBlock Text="{Binding SelectedLoadout.HelmEnhancement}" />
+              </Border>
+            </Grid>
+            <Border Classes="slot-divider" />
+            <Grid Classes="slot" ColumnDefinitions="24,64,*,Auto">
+              <materialIcons:MaterialIcon Kind="FlagVariant" />
+              <TextBlock Grid.Column="1" Classes="slot-name" Text="Cape" />
+              <TextBlock Grid.Column="2" Classes="slot-item" Text="{Binding SelectedLoadout.Cape}" />
+              <Border Grid.Column="3" Classes="chip accent" IsVisible="{Binding SelectedLoadout.CapeEnhancement, Converter={x:Static StringConverters.IsNotNullOrEmpty}, FallbackValue=False}">
+                <TextBlock Text="{Binding SelectedLoadout.CapeEnhancement}" />
+              </Border>
+            </Grid>
+            <Border Classes="slot-divider" />
+            <Grid Classes="slot" ColumnDefinitions="24,64,*,Auto">
+              <materialIcons:MaterialIcon Kind="Paw" />
+              <TextBlock Grid.Column="1" Classes="slot-name" Text="Pet" />
+              <TextBlock Grid.Column="2" Classes="slot-item" Text="{Binding SelectedLoadout.Pet}" />
+            </Grid>
+            <Border Classes="slot-divider" />
+            <Grid Classes="slot" ColumnDefinitions="24,64,*,Auto">
+              <materialIcons:MaterialIcon Kind="Necklace" />
+              <TextBlock Grid.Column="1" Classes="slot-name" Text="Amulet" />
+              <TextBlock Grid.Column="2" Classes="slot-item" Text="{Binding SelectedLoadout.Amulet}" />
+            </Grid>
           </StackPanel>
+        </ScrollViewer>
+      </Border>
 
-          <!-- Helm -->
-          <TextBlock Grid.Row="5" Grid.Column="0" Text="Helm" Foreground="{DynamicResource SkuaMutedTextBrush}" FontWeight="SemiBold" VerticalAlignment="Center" />
-          <StackPanel Grid.Row="5" Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
-            <TextBlock Text="{Binding SelectedLoadout.Helm}" FontWeight="SemiBold" Foreground="{DynamicResource SkuaTextBrush}" />
-            <TextBlock Text=" [" Opacity="0.5" Margin="4,0,0,0" />
-            <TextBlock Text="{Binding SelectedLoadout.HelmEnhancement}" Opacity="0.8" />
-            <TextBlock Text="]" Opacity="0.5" />
+      <Grid Grid.Row="3" ColumnDefinitions="Auto,*,Auto">
+        <Button Grid.Column="0" Classes="skua-button skua-danger-soft w84" Command="{Binding DeleteLoadoutCommand}">
+          <StackPanel Orientation="Horizontal" Spacing="6">
+            <materialIcons:MaterialIcon Kind="TrashCanOutline" Width="15" Height="15" />
+            <TextBlock Text="Delete" VerticalAlignment="Center" />
           </StackPanel>
-
-          <!-- Cape -->
-          <TextBlock Grid.Row="6" Grid.Column="0" Text="Cape" Foreground="{DynamicResource SkuaMutedTextBrush}" FontWeight="SemiBold" VerticalAlignment="Center" />
-          <StackPanel Grid.Row="6" Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
-            <TextBlock Text="{Binding SelectedLoadout.Cape}" FontWeight="SemiBold" Foreground="{DynamicResource SkuaTextBrush}" />
-            <TextBlock Text=" [" Opacity="0.5" Margin="4,0,0,0" />
-            <TextBlock Text="{Binding SelectedLoadout.CapeEnhancement}" Opacity="0.8" />
-            <TextBlock Text="]" Opacity="0.5" />
+        </Button>
+        <Button Grid.Column="2" Classes="skua-button skua-primary w112" Command="{Binding EquipLoadoutCommand}" IsEnabled="{Binding IsOwnProfile}">
+          <StackPanel Orientation="Horizontal" Spacing="6">
+            <materialIcons:MaterialIcon Kind="TshirtCrew" Width="15" Height="15" />
+            <TextBlock Text="Equip" VerticalAlignment="Center" />
           </StackPanel>
-
-          <!-- Pet -->
-          <TextBlock Grid.Row="7" Grid.Column="0" Text="Pet" Foreground="{DynamicResource SkuaMutedTextBrush}" FontWeight="SemiBold" VerticalAlignment="Center" />
-          <TextBlock Grid.Row="7" Grid.Column="1" Text="{Binding SelectedLoadout.Pet}" FontWeight="SemiBold" Foreground="{DynamicResource SkuaTextBrush}" VerticalAlignment="Center" />
-
-          <!-- Amulet -->
-          <TextBlock Grid.Row="8" Grid.Column="0" Text="Amulet" Foreground="{DynamicResource SkuaMutedTextBrush}" FontWeight="SemiBold" VerticalAlignment="Center" />
-          <TextBlock Grid.Row="8" Grid.Column="1" Text="{Binding SelectedLoadout.Amulet}" FontWeight="SemiBold" Foreground="{DynamicResource SkuaTextBrush}" VerticalAlignment="Center" />
-        </Grid>
-      </ScrollViewer>
-    </Border>
+        </Button>
+      </Grid>
+    </Grid>
   </Grid>
 </UserControl>

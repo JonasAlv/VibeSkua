@@ -39,15 +39,21 @@ public partial class LogTabUserControl : UserControl
 
         _subscribed = vm;
         if (vm is null)
+        {
+            UpdateCountText();
             return;
+        }
 
         vm.Logs.CollectionChanged += Logs_CollectionChanged;
+        UpdateCountText();
         if (vm.Logs.Count > 0)
             Dispatcher.UIThread.Post(() => ScrollToEnd(vm), DispatcherPriority.Loaded);
     }
 
     private void Logs_CollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
     {
+        // After the ListBox has handled the change, so a cleared log also clears the selected count.
+        Dispatcher.UIThread.Post(UpdateCountText, DispatcherPriority.Background);
         LogTabViewModel? vm = _subscribed;
         if (vm is null || vm.Logs.Count == 0)
             return;
@@ -76,12 +82,26 @@ public partial class LogTabUserControl : UserControl
         }
     }
 
-    private async void CopyButton_Click(object? sender, RoutedEventArgs e)
+    // Called by the Copy button on the Logs tab row: the selected lines, or the whole log when none are selected.
+    public async Task CopySelectedOrAllAsync()
     {
         if (LogsListBox.SelectedItems is { Count: > 0 })
             await CopySelectedLogsAsync();
         else if (DataContext is LogTabViewModel vm)
             vm.CopyLogCommand.Execute(null);
+    }
+
+    private void LogsListBox_SelectionChanged(object? sender, SelectionChangedEventArgs e)
+    {
+        UpdateCountText();
+    }
+
+    private void UpdateCountText()
+    {
+        int lines = _subscribed?.Logs.Count ?? 0;
+        int selected = LogsListBox.SelectedItems?.Count ?? 0;
+        string text = lines == 1 ? "1 line" : $"{lines:N0} lines";
+        CountText.Text = selected > 0 ? $"{text} · {selected} selected" : text;
     }
 
     private async void CopySelected_Click(object? sender, RoutedEventArgs e)

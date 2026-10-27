@@ -13,8 +13,9 @@ using Skua.Core.Interfaces;
 using Skua.Core.Messaging;
 using System;
 using System.Collections.Specialized;
+using System.ComponentModel;
 using System.Diagnostics;
-using System.Runtime.InteropServices;
+using System.IO;
 using System.Linq;
 using Skua.Core.Interfaces.ViewModels;
 using System.Threading;
@@ -71,13 +72,13 @@ public partial class MainWindow : Window
     {
         BuildMainMenu();
         _mainMenuVm.MainMenuItems.CollectionChanged += MainMenuItemsChanged;
-        if (_mainMenuVm.Plugins is System.Collections.Specialized.INotifyCollectionChanged notifyPlugins)
+        if (_mainMenuVm.Plugins is INotifyCollectionChanged notifyPlugins)
         {
             notifyPlugins.CollectionChanged += (s, e) => Dispatcher.UIThread.Post(BuildMainMenu);
         }
     }
 
-    private void MainMenuItemsChanged(object? sender, System.Collections.Specialized.NotifyCollectionChangedEventArgs e)
+    private void MainMenuItemsChanged(object? sender, NotifyCollectionChangedEventArgs e)
     {
         Dispatcher.UIThread.Post(BuildMainMenu);
     }
@@ -98,102 +99,51 @@ public partial class MainWindow : Window
 
         if (isTopLevel)
         {
-            menuItem.Classes.Add("top-nav-item");
-            MaterialIconKind? iconKind = viewModel.Header switch
-            {
-                "Scripts" => MaterialIconKind.ScriptTextOutline,
-                "Options" => MaterialIconKind.CogOutline,
-                "Tools & Helpers" => MaterialIconKind.WrenchOutline,
-                "Combat" => MaterialIconKind.SwordCross,
-                "Bank" => MaterialIconKind.BankOutline,
-                "Diagnostics" => MaterialIconKind.BugOutline,
-                "Plugins" => MaterialIconKind.PuzzleOutline,
-                _ => null
-            };
-
-            if (iconKind.HasValue)
-            {
-                var icon = new MaterialIcon
-                {
-                    Kind = iconKind.Value,
-                    Width = 14,
-                    Height = 14,
-                    VerticalAlignment = VerticalAlignment.Center
-                };
-                icon[!MaterialIcon.ForegroundProperty] = new global::Avalonia.Markup.Xaml.MarkupExtensions.DynamicResourceExtension("SkuaTextBrush");
-
-                var text = new TextBlock
-                {
-                    Text = viewModel.Header,
-                    VerticalAlignment = VerticalAlignment.Center,
-                    FontWeight = FontWeight.SemiBold,
-                    FontSize = 12
-                };
-                menuItem.Header = new StackPanel
-                {
-                    Orientation = Orientation.Horizontal,
-                    Spacing = 6,
-                    VerticalAlignment = VerticalAlignment.Center,
-                    Children = { icon, text }
-                };
-            }
-            else
-            {
-                menuItem.Header = viewModel.Header;
-            }
+            menuItem.Classes.Add("top-level");
+            menuItem.Padding = new Avalonia.Thickness(12, 0);
+            menuItem.Height = 36;
         }
         else
         {
-            MaterialIconKind? subIconKind = viewModel.Header switch
+            menuItem.Padding = new Avalonia.Thickness(12, 6);
+        }
+
+        if (viewModel is MainMenuItemViewModel item)
+        {
+            var headerContent = new StackPanel
             {
-                "Script Loader" => MaterialIconKind.ScriptOutline,
-                "Scheduler" => MaterialIconKind.CalendarClock,
-                "Game" => MaterialIconKind.GamepadVariantOutline,
-                "Application" => MaterialIconKind.ApplicationCogOutline,
-                "CoreBots" => MaterialIconKind.RobotOutline,
-                "Application Themes" => MaterialIconKind.PaletteOutline,
-                "HotKeys" => MaterialIconKind.KeyboardOutline,
-                "Loadouts Manager" => MaterialIconKind.AccountSwitchOutline,
-                "Fast Travel" => MaterialIconKind.CompassOutline,
-                "Loader" => MaterialIconKind.DownloadOutline,
-                "Grabber" => MaterialIconKind.HandBackRightOutline,
-                "Current Drops" => MaterialIconKind.GiftOutline,
-                "Junk Items" => MaterialIconKind.DeleteSweepOutline,
-                "Skills" => MaterialIconKind.LightningBoltOutline,
-                "Stats" => MaterialIconKind.ChartLine,
-                "Runtime" => MaterialIconKind.PlayNetworkOutline,
-                "Logs" => MaterialIconKind.FileDocumentOutline,
-                "Console" => MaterialIconKind.Console,
-                "Spammer" => MaterialIconKind.SendClockOutline,
-                "Logger" => MaterialIconKind.TextSearch,
-                "Interceptor" => MaterialIconKind.ShieldBugOutline,
-                _ => null
+                Orientation = Orientation.Horizontal,
+                Spacing = 8,
+                VerticalAlignment = VerticalAlignment.Center
             };
 
-            if (subIconKind.HasValue)
+            if (item.Icon != MaterialIconKind.None)
             {
-                var subIcon = new MaterialIcon
+                headerContent.Children.Add(new MaterialIcon
                 {
-                    Kind = subIconKind.Value,
-                    Width = 14,
-                    Height = 14,
-                    VerticalAlignment = VerticalAlignment.Center
-                };
-                subIcon[!MaterialIcon.ForegroundProperty] = new global::Avalonia.Markup.Xaml.MarkupExtensions.DynamicResourceExtension("SkuaMutedTextBrush");
-                menuItem.Icon = subIcon;
+                    Kind = item.Icon,
+                    Width = 16,
+                    Height = 16,
+                    VerticalAlignment = VerticalAlignment.Center,
+                    Foreground = isTopLevel ? Brushes.White : new SolidColorBrush(Color.Parse("#38BDF8"))
+                });
             }
-            menuItem.Header = viewModel.Header;
-        }
 
-        if (viewModel.Header == "Plugins")
-        {
-            foreach (IMainMenuItemViewModel subItem in _mainMenuVm.Plugins)
-                menuItem.Items.Add(CreateMainMenuItem(subItem, isTopLevel: false));
-        }
-        else if (viewModel.SubItems != null && viewModel.SubItems.Any())
-        {
-            foreach (IMainMenuItemViewModel subItem in viewModel.SubItems)
-                menuItem.Items.Add(CreateMainMenuItem(subItem, isTopLevel: false));
+            headerContent.Children.Add(new TextBlock
+            {
+                Text = item.Header,
+                VerticalAlignment = VerticalAlignment.Center,
+                FontWeight = isTopLevel ? FontWeight.SemiBold : FontWeight.Normal,
+                FontSize = isTopLevel ? 12 : 13
+            });
+
+            menuItem.Header = headerContent;
+
+            if (item.Header == "Plugins")
+                _pluginsMenuItem = menuItem;
+
+            foreach (var subItem in item.Items)
+                menuItem.Items.Add(CreateMainMenuItem(subItem));
         }
 
         return menuItem;
@@ -204,6 +154,8 @@ public partial class MainWindow : Window
         Opened += MainWindow_Opened;
         Closing += (s, e) => App.DisposeTrayIcon();
         Closed += MainWindow_Closed;
+
+#if IS_LINUX
         Deactivated += (s, e) =>
         {
             ReleaseAllPressedKeys();
@@ -214,8 +166,9 @@ public partial class MainWindow : Window
             ReleaseAllPressedKeys();
             Skua.App.Avalonia.Controls.WinFormsFlashHost.ForwardFocus(true);
         };
+#endif
 
-        if (_options is System.ComponentModel.INotifyPropertyChanged notifyOptions)
+        if (_options is INotifyPropertyChanged notifyOptions)
         {
             notifyOptions.PropertyChanged += (s, e) =>
             {
@@ -244,7 +197,8 @@ public partial class MainWindow : Window
             Skua.Shared.Avalonia.Services.ThemeResourceApplicator.ApplyTitleBarTheme(this, isDark);
         }
         catch { }
-        
+
+#if IS_LINUX
         Focusable = true;
         InitializeLinuxInput();
 
@@ -256,6 +210,7 @@ public partial class MainWindow : Window
         }
         _flash.InitializeFlash();
         TabIpc.StartListener(this, Environment.ProcessId, _ipcCancelCts.Token);
+#endif
 
         _tabTitleSyncTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
         string lastWrittenUsername = "";
@@ -270,18 +225,10 @@ public partial class MainWindow : Window
                     if (username != lastWrittenUsername)
                     {
                         lastWrittenUsername = username;
-                        string dir = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "VibeSkuaTabs");
-                        System.IO.Directory.CreateDirectory(dir);
-                        string file = System.IO.Path.Combine(dir, $"{Environment.ProcessId}.txt");
-                        System.IO.File.WriteAllText(file, username);
-                    }
-
-                    // Enhance pressed on another tab with this account's profile selected
-                    if (Skua.Core.Models.ConnectedAccounts.TakeEnhanceRequest())
-                    {
-                        var classEnhance = Ioc.Default.GetRequiredService<Skua.App.Avalonia.ViewModels.CoreBotsOptions.CBOClassEnhanceViewModel>();
-                        classEnhance.SetValues(Skua.App.Avalonia.ViewModels.CoreBotsOptions.CoreBotsViewModel.ReadProfile(username) ?? new());
-                        classEnhance.EnhanceCommand.Execute(null);
+                        string dir = Path.Combine(Path.GetTempPath(), "VibeSkuaTabs");
+                        Directory.CreateDirectory(dir);
+                        string file = Path.Combine(dir, $"{Environment.ProcessId}.txt");
+                        File.WriteAllText(file, username);
                     }
                 }
             }
@@ -294,22 +241,39 @@ public partial class MainWindow : Window
     {
         App.DisposeTrayIcon();
         _tabTitleSyncTimer?.Stop();
-        _ipcCancelCts.Cancel();
         try
         {
-            string file = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "VibeSkuaTabs", $"{Environment.ProcessId}.txt");
-            if (System.IO.File.Exists(file))
-                System.IO.File.Delete(file);
-
-            string readyFile = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "VibeSkuaTabs", $"ready_{Environment.ProcessId}.txt");
-            if (System.IO.File.Exists(readyFile))
-                System.IO.File.Delete(readyFile);
+            string file = Path.Combine(Path.GetTempPath(), "VibeSkuaTabs", $"{Environment.ProcessId}.txt");
+            if (File.Exists(file))
+                File.Delete(file);
         }
         catch { }
 
+        _ipcCancelCts.Cancel();
         _flash.FlashCall -= OnFlashCall;
         _startup.Dispose();
+        _flash.Dispose();
         StrongReferenceMessenger.Default.UnregisterAll(this);
         WeakReferenceMessenger.Default.UnregisterAll(this);
+    }
+
+    private void OnFlashCall(string function, params object[] args)
+    {
+        if (function == "loaded" && !_isFlashLoaded)
+        {
+            _isFlashLoaded = true;
+            Dispatcher.UIThread.Post(() =>
+            {
+                LoadingBar.IsVisible = false;
+                FlashHost.IsVisible = !_options.HeadlessMode;
+                HeadlessOverlay.IsVisible = _options.HeadlessMode;
+                try
+                {
+                    FlashHost?.SetScaleMode(false);
+                    _flash.Call("setGameObject", "stage.scaleMode", "showAll");
+                }
+                catch { }
+            });
+        }
     }
 }

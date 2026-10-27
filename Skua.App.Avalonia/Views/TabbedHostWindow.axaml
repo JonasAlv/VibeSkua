@@ -217,6 +217,11 @@
                                         <materialIcons:MaterialIcon Kind="AccountArrowRightOutline" Width="14" Height="14" />
                                     </MenuItem.Icon>
                                 </MenuItem>
+                                <MenuItem Header="Jump All to House" Click="MenuItem_JumpHouse_Click">
+                                    <MenuItem.Icon>
+                                        <materialIcons:MaterialIcon Kind="HomeOutline" Width="14" Height="14" />
+                                    </MenuItem.Icon>
+                                </MenuItem>
                                 <MenuItem Header="Accept Quest to All..." Click="MenuItem_AcceptQuest_Click">
                                     <MenuItem.Icon>
                                         <materialIcons:MaterialIcon Kind="FileDocumentEditOutline" Width="14" Height="14" />
@@ -250,6 +255,12 @@
                                     <MenuItem Header="Infinite Range" ToggleType="CheckBox" StaysOpenOnClick="True" IsChecked="{Binding InfiniteRange, Mode=TwoWay}">
                                         <MenuItem.Icon>
                                             <materialIcons:MaterialIcon Kind="ArrowExpandAll" Width="14" Height="14" />
+                                        </MenuItem.Icon>
+                                    </MenuItem>
+                                    <MenuItem Header="Aggro Monsters" ToggleType="CheckBox" StaysOpenOnClick="True" IsChecked="{Binding AggroMonsters, Mode=TwoWay}"
+                                              ToolTip.Tip="Provoke every monster in the room. Can keep you in combat and block quest turn-ins.">
+                                        <MenuItem.Icon>
+                                            <materialIcons:MaterialIcon Kind="Target" Width="14" Height="14" />
                                         </MenuItem.Icon>
                                     </MenuItem>
                                     <MenuItem Header="Streamer Mode" ToggleType="CheckBox" StaysOpenOnClick="True" IsChecked="{Binding StreamerMode, Mode=TwoWay}">

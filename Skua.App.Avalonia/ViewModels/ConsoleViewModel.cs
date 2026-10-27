@@ -39,6 +39,12 @@ public class Script{ public void ScriptMain(IScriptInterface Bot){";
     private string _snippetText = "Bot.Log(\"Test\");";
 
     [RelayCommand]
+    private void Clear()
+    {
+        SnippetText = string.Empty;
+    }
+
+    [RelayCommand]
     private async Task Run()
     {
         await Task.Run(() =>

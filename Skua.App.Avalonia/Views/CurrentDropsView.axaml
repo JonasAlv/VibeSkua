@@ -6,158 +6,77 @@
              xmlns:materialIcons="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
              x:Class="Skua.App.Avalonia.Views.CurrentDropsView"
              x:DataType="vms:CurrentDropsViewModel"
-             mc:Ignorable="d" d:DesignHeight="480" d:DesignWidth="560">
+             mc:Ignorable="d" d:DesignHeight="400" d:DesignWidth="500">
 
-  <Grid Margin="12" RowDefinitions="Auto,Auto,*,Auto" RowSpacing="10">
-    
-    <!-- Header Card -->
-    <Border Grid.Row="0"
-            Background="{DynamicResource SkuaSurfaceBrush}"
-            BorderBrush="{DynamicResource SkuaBorderBrush}"
-            BorderThickness="1"
-            CornerRadius="8"
-            Padding="12,10">
-      <Grid ColumnDefinitions="*,Auto" VerticalAlignment="Center">
-        <StackPanel Grid.Column="0" Spacing="2">
-          <TextBlock Text="FLOOR ITEM MONITOR"
-                     FontSize="10"
-                     FontWeight="Bold"
-                     Foreground="{DynamicResource SkuaMutedTextBrush}" />
-          <TextBlock FontSize="16"
-                     FontWeight="Bold"
-                     Foreground="{DynamicResource SkuaTextBrush}"
-                     Text="Current Drops" />
-        </StackPanel>
+  <Grid Margin="12" RowDefinitions="Auto,*,Auto" RowSpacing="10">
+    <!-- Search and count -->
+    <Grid Grid.Row="0" ColumnDefinitions="*,Auto" ColumnSpacing="8">
+      <TextBox Grid.Column="0"
+               Watermark="Search drops"
+               Text="{Binding SearchText, Mode=TwoWay}">
+        <TextBox.InnerLeftContent>
+          <materialIcons:MaterialIcon Kind="Magnify" Width="16" Height="16" Margin="10,0,0,0" Foreground="{DynamicResource SkuaMutedTextBrush}" />
+        </TextBox.InnerLeftContent>
+      </TextBox>
+      <Border Grid.Column="1" Classes="chip">
+        <TextBlock Text="{Binding FilteredCurrentDrops.Count, StringFormat='{}{0} drops'}" />
+      </Border>
+    </Grid>
 
-        <Border Grid.Column="1"
-                Background="{DynamicResource SkuaSurfaceAltBrush}"
-                BorderBrush="{DynamicResource SkuaBorderBrush}"
-                BorderThickness="1"
-                CornerRadius="20"
-                Padding="10,4"
-                VerticalAlignment="Center">
-          <TextBlock Text="{Binding FilteredCurrentDrops.Count, StringFormat='Available: {0}'}"
-                     FontSize="11"
-                     FontWeight="Bold"
-                     Foreground="{DynamicResource SkuaTextBrush}" />
-        </Border>
-      </Grid>
-    </Border>
-
-    <!-- Search Card -->
-    <Border Grid.Row="1"
-            Background="{DynamicResource SkuaSurfaceBrush}"
-            BorderBrush="{DynamicResource SkuaBorderBrush}"
-            BorderThickness="1"
-            CornerRadius="8"
-            Padding="8">
-      <TextBox Height="34"
-               VerticalContentAlignment="Center"
-               Watermark="Search current drops..."
-               Text="{Binding SearchText, Mode=TwoWay}" />
-    </Border>
-
-    <!-- Drops List Card -->
-    <Border Grid.Row="2"
-            Background="{DynamicResource SkuaPageBrush}"
-            BorderBrush="{DynamicResource SkuaBorderBrush}"
-            BorderThickness="1"
-            CornerRadius="8"
-            Padding="6">
-      <ListBox Classes="card-list" x:Name="DropsList"
-               ItemsSource="{Binding FilteredCurrentDrops}"
-               SelectedItem="{Binding SelectedDrop, Mode=TwoWay}"
-               SelectionMode="Multiple"
-               Background="Transparent"
-               BorderThickness="0">
-        <ListBox.ItemTemplate>
-          <DataTemplate>
-            <Border Classes="list-card"
-                    BorderThickness="1"
-                    CornerRadius="6"
-                    Margin="0,0,0,4"
-                    Padding="10,8">
-              <Grid ColumnDefinitions="Auto,*,Auto" VerticalAlignment="Center">
-                <materialIcons:MaterialIcon Grid.Column="0"
-                                            Kind="PackageVariantClosed"
-                                            Width="16"
-                                            Height="16"
-                                            Foreground="{DynamicResource SkuaMutedTextBrush}"
-                                            Margin="0,0,8,0"
-                                            VerticalAlignment="Center" />
-                <TextBlock Grid.Column="1"
-                           Text="{Binding Name}"
-                           FontWeight="Medium"
-                           FontSize="12"
-                           VerticalAlignment="Center" />
-                <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
-                  <Border Background="#263A2A"
-                          BorderBrush="#3E6B48"
-                          BorderThickness="1"
-                          CornerRadius="10"
-                          Padding="6,2"
-                          IsVisible="{Binding Coins}">
-                    <TextBlock Text="AC"
-                               FontSize="10"
-                               FontWeight="Bold"
-                               Foreground="#FFD700" />
-                  </Border>
-                  <Border Background="{DynamicResource SkuaSurfaceAltBrush}"
-                          BorderBrush="{DynamicResource SkuaBorderBrush}"
-                          BorderThickness="1"
-                          CornerRadius="10"
-                          Padding="8,2">
-                    <TextBlock Text="{Binding Quantity, StringFormat='x{0}'}"
-                               FontSize="10"
-                               FontWeight="Bold"
-                               Foreground="{DynamicResource SkuaMutedTextBrush}" />
-                  </Border>
-                </StackPanel>
-              </Grid>
+    <!-- Drops on the floor; select several to pick them up together -->
+    <ListBox Grid.Row="1"
+             x:Name="DropsList"
+             ItemsSource="{Binding FilteredCurrentDrops}"
+             SelectedItem="{Binding SelectedDrop, Mode=TwoWay}"
+             SelectionMode="Multiple"
+             SelectionChanged="DropsList_SelectionChanged"
+             Padding="4">
+      <ListBox.ItemTemplate>
+        <DataTemplate>
+          <Grid ColumnDefinitions="Auto,*,Auto,Auto" ColumnSpacing="8" MinHeight="24">
+            <materialIcons:MaterialIcon Grid.Column="0"
+                                        Kind="PackageVariantClosed"
+                                        Width="16" Height="16"
+                                        Foreground="{DynamicResource SkuaMutedTextBrush}"
+                                        VerticalAlignment="Center" />
+            <TextBlock Grid.Column="1" Text="{Binding Name}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+            <Border Grid.Column="2" Classes="chip gold" IsVisible="{Binding Coins}">
+              <TextBlock Text="AC" />
             </Border>
-          </DataTemplate>
-        </ListBox.ItemTemplate>
-      </ListBox>
-    </Border>
+            <Border Grid.Column="3" Classes="count">
+              <TextBlock Text="{Binding Quantity, StringFormat='x{0}'}" />
+            </Border>
+          </Grid>
+        </DataTemplate>
+      </ListBox.ItemTemplate>
+    </ListBox>
 
-    <!-- Bottom Action Toolbar Card -->
-    <Border Grid.Row="3"
-            Background="{DynamicResource SkuaSurfaceBrush}"
-            BorderBrush="{DynamicResource SkuaBorderBrush}"
-            BorderThickness="1"
-            CornerRadius="8"
-            Padding="10">
-      <Grid ColumnDefinitions="*,*,*" ColumnSpacing="8">
-        <Button HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Grid.Column="0"
-                Classes="skua-button skua-primary"
-                Height="34"
-                Click="PickupSelected_Click">
-          <StackPanel Orientation="Horizontal" Spacing="6" HorizontalAlignment="Center">
-            <materialIcons:MaterialIcon Kind="CursorDefaultClick" Width="14" Height="14" />
-            <TextBlock Text="Pickup Selected" VerticalAlignment="Center" FontWeight="Bold" />
-          </StackPanel>
-        </Button>
-
-        <Button HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Grid.Column="1"
-                Classes="skua-button"
-                Height="34"
-                Command="{Binding PickupAllCommand}">
-          <StackPanel Orientation="Horizontal" Spacing="6" HorizontalAlignment="Center">
-            <materialIcons:MaterialIcon Kind="SelectAll" Width="14" Height="14" />
-            <TextBlock Text="Pickup All" VerticalAlignment="Center" />
-          </StackPanel>
-        </Button>
-
-        <Button HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Grid.Column="2"
-                Classes="skua-button"
-                Height="34"
-                Command="{Binding PickupACCommand}">
-          <StackPanel Orientation="Horizontal" Spacing="6" HorizontalAlignment="Center">
-            <materialIcons:MaterialIcon Kind="Star" Width="14" Height="14" Foreground="{DynamicResource SkuaGoldBrush}" />
-            <TextBlock Text="Pickup AC Only" VerticalAlignment="Center" />
-          </StackPanel>
-        </Button>
-      </Grid>
-    </Border>
+    <!-- Actions -->
+    <Grid Grid.Row="2" ColumnDefinitions="*,Auto,Auto,Auto" ColumnSpacing="8">
+      <TextBlock Grid.Column="0"
+                 x:Name="SelectedCountText"
+                 Text="None selected"
+                 FontSize="11"
+                 Foreground="{DynamicResource SkuaMutedTextBrush}"
+                 VerticalAlignment="Center" />
+      <Button Grid.Column="1" Classes="skua-button w112" Command="{Binding PickupACCommand}" ToolTip.Tip="Pick up only AC items">
+        <StackPanel Orientation="Horizontal" Spacing="6">
+          <materialIcons:MaterialIcon Kind="Star" Width="15" Height="15" Foreground="{DynamicResource SkuaGoldBrush}" />
+          <TextBlock Text="AC only" VerticalAlignment="Center" />
+        </StackPanel>
+      </Button>
+      <Button Grid.Column="2" Classes="skua-button w112" Command="{Binding PickupAllCommand}">
+        <StackPanel Orientation="Horizontal" Spacing="6">
+          <materialIcons:MaterialIcon Kind="SelectAll" Width="15" Height="15" />
+          <TextBlock Text="Pick up all" VerticalAlignment="Center" />
+        </StackPanel>
+      </Button>
+      <Button Grid.Column="3" Classes="skua-button skua-primary w140" Click="PickupSelected_Click">
+        <StackPanel Orientation="Horizontal" Spacing="6">
+          <materialIcons:MaterialIcon Kind="HandBackRightOutline" Width="15" Height="15" />
+          <TextBlock Text="Pick up selected" VerticalAlignment="Center" />
+        </StackPanel>
+      </Button>
+    </Grid>
   </Grid>
 </UserControl>

@@ -2,65 +2,14 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:materialIcons="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
              x:Class="Skua.App.Avalonia.UserControls.LogTabUserControl">
-  <Grid RowDefinitions="Auto,*">
-    <!-- Action Toolbar -->
-    <Border Grid.Row="0"
-            Background="{DynamicResource SkuaSurfaceAltBrush}"
-            BorderBrush="{DynamicResource SkuaBorderBrush}"
-            BorderThickness="0,0,0,1"
-            Height="26"
-            Padding="8,0">
-      <Grid ColumnDefinitions="*,Auto" VerticalAlignment="Center">
-        <TextBlock Grid.Column="0"
-                   Text="{Binding Title, StringFormat='LOGS: {0}'}"
-                   FontSize="9"
-                   FontWeight="Bold"
-                   Foreground="{DynamicResource SkuaMutedTextBrush}"
-                   VerticalAlignment="Center" />
-        
-        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
-          <Button Classes="skua-button"
-                  Height="20"
-                  Padding="6,0"
-                  FontSize="10"
-                  Command="{Binding ClearLogCommand}">
-            <StackPanel Orientation="Horizontal" Spacing="3">
-              <materialIcons:MaterialIcon Kind="TrashCanOutline" Width="11" Height="11" />
-              <TextBlock Text="Clear" VerticalAlignment="Center" />
-            </StackPanel>
-          </Button>
-          <Button Classes="skua-button"
-                  Height="20"
-                  Padding="6,0"
-                  FontSize="10"
-                  Click="CopyButton_Click">
-            <StackPanel Orientation="Horizontal" Spacing="3">
-              <materialIcons:MaterialIcon Kind="ContentCopy" Width="11" Height="11" />
-              <TextBlock Text="Copy" VerticalAlignment="Center" />
-            </StackPanel>
-          </Button>
-          <Button Classes="skua-button"
-                  Height="20"
-                  Padding="6,0"
-                  FontSize="10"
-                  Command="{Binding SaveLogCommand}">
-            <StackPanel Orientation="Horizontal" Spacing="3">
-              <materialIcons:MaterialIcon Kind="ContentSaveOutline" Width="11" Height="11" />
-              <TextBlock Text="Save" VerticalAlignment="Center" />
-            </StackPanel>
-          </Button>
-        </StackPanel>
-      </Grid>
-    </Border>
-    
-    <!-- Logs Stream ListBox -->
+  <Grid RowDefinitions="*,Auto" RowSpacing="8">
+    <!-- Log lines: Ctrl+C or the context menu copies the selection -->
     <ListBox x:Name="LogsListBox"
-             Grid.Row="1"
+             Grid.Row="0"
              ItemsSource="{Binding Logs}"
              SelectionMode="Multiple"
              KeyDown="LogsListBox_KeyDown"
-             Background="Transparent"
-             BorderThickness="0"
+             SelectionChanged="LogsListBox_SelectionChanged"
              Padding="4"
              ScrollViewer.VerticalScrollBarVisibility="Visible"
              ScrollViewer.HorizontalScrollBarVisibility="Disabled"
@@ -96,6 +45,11 @@
         </Style>
       </ListBox.Styles>
     </ListBox>
+
+    <Grid Grid.Row="1" ColumnDefinitions="*,Auto">
+      <TextBlock Grid.Column="0" x:Name="CountText" Text="0 lines" FontSize="11" Foreground="{DynamicResource SkuaMutedTextBrush}" />
+      <TextBlock Grid.Column="1" Text="Ctrl+C or right-click to copy selected lines" FontSize="11" Foreground="{DynamicResource SkuaMutedTextBrush}" />
+    </Grid>
   </Grid>
 </UserControl>
 

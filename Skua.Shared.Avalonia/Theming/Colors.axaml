@@ -39,6 +39,13 @@
     <SolidColorBrush x:Key="SkuaDangerTintBrush" Color="#1FEF4444" />
     <SolidColorBrush x:Key="SkuaDangerTintStrongBrush" Color="#33EF4444" />
     <SolidColorBrush x:Key="SkuaDangerSoftBorderBrush" Color="#73EF4444" />
+    <!-- Status chip tints (fill and outline) -->
+    <SolidColorBrush x:Key="SkuaSuccessTintBrush" Color="#1F34D399" />
+    <SolidColorBrush x:Key="SkuaSuccessTintBorderBrush" Color="#5934D399" />
+    <SolidColorBrush x:Key="SkuaWarningTintBrush" Color="#1FFBBF24" />
+    <SolidColorBrush x:Key="SkuaWarningTintBorderBrush" Color="#59FBBF24" />
+    <SolidColorBrush x:Key="SkuaGoldTintBrush" Color="#1AFFD700" />
+    <SolidColorBrush x:Key="SkuaGoldTintBorderBrush" Color="#52FFD700" />
 
     <ResourceDictionary.ThemeDictionaries>
         <ResourceDictionary x:Key="Light">

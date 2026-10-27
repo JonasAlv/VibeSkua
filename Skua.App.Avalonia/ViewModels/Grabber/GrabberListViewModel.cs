@@ -73,6 +73,11 @@ public partial class GrabberListViewModel : ObservableRecipient
     public string Title { get; }
     public bool SelectMultiple { get; }
 
+    // Sidebar grouping and icon for the Grabber window; set where the tabs are created.
+    public string Group { get; init; } = string.Empty;
+    public Material.Icons.MaterialIconKind Icon { get; init; }
+    public bool IsSelectable => true;
+
     [ObservableProperty]
     private string _searchText = string.Empty;
 
@@ -176,7 +181,7 @@ public partial class GrabberListViewModel : ObservableRecipient
             return;
         }
 
-        string text = BuildExportText(targetItems);
+        string text = BuildDetailedExportText(targetItems);
         _fileDialogService.SaveText(text);
         ShowTemporaryMessage($"Exported {targetItems.Count} item(s) to file.");
     }
@@ -205,7 +210,7 @@ public partial class GrabberListViewModel : ObservableRecipient
         {
             Quest q => $"[{q.ID}] {q.Name}" + (q.Slot > 0 ? $" (Slot: {q.Slot})" : "") + (q.Upgrade ? " [Member]" : ""),
             InventoryItem inv => $"[{inv.ID}] {inv.Name} x{inv.Quantity} | Category: {inv.Category}" + (inv.Coins ? " [AC]" : "") + (inv.Upgrade ? " [Member]" : ""),
-            ShopItem s => $"[{s.ID}] {s.Name} | Cost: {s.Cost:N0} {(s.Coins ? "AC" : "Gold")}" + (s.Upgrade ? " [Member]" : ""),
+            ShopItem s => $"[{s.ID}] {s.Name} | Cost: {s.Cost:N0} {(s.Coins ? "AC" : "Gold")}" + (s.Upgrade ? " [Member]" : "") + (s.Requirements?.Count > 0 ? $" Requirements: {string.Join(", ", s.Requirements.Select(r => $"[{r.ID}] {r.Name} x{r.Quantity}"))}" : ""),
             Monster m => $"[{m.ID}] {m.Name} | Cell: {m.Cell} | HP: {m.HP}/{m.MaxHP}",
             MapItem mi => $"[{mi.ID}] Map Item (Quest: {mi.QuestID})",
             ShopInfo info => $"[{info.ID}] {info.Name}",
@@ -227,6 +232,99 @@ public partial class GrabberListViewModel : ObservableRecipient
             sb.AppendLine(FormatGrabbedItem(item));
         }
         return sb.ToString();
+    }
+
+    // Export writes everything the grab returned: a block per item with every public property, and nested lists
+    // (quest requirements, rewards, ...) expanded underneath. Copy keeps the one-line summary from BuildExportText.
+    public string BuildDetailedExportText(IEnumerable<object> items)
+    {
+        var list = items.ToList();
+        if (list.Count == 0)
+            return string.Empty;
+
+        StringBuilder sb = new();
+        sb.AppendLine($"=== {Title} ({list.Count} items) ===");
+        foreach (var item in list)
+        {
+            sb.AppendLine();
+            sb.AppendLine(FormatGrabbedItem(item));
+            AppendProperties(sb, item, 1, new HashSet<object>(ReferenceEqualityComparer.Instance) { item });
+        }
+        return sb.ToString();
+    }
+
+    private const int MaxExportDepth = 4;
+
+    private static void AppendProperties(StringBuilder sb, object obj, int depth, HashSet<object> visited)
+    {
+        string indent = new(' ', depth * 2);
+        foreach (var property in obj.GetType().GetProperties(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance))
+        {
+            if (!property.CanRead || property.GetIndexParameters().Length > 0)
+                continue;
+
+            object? value;
+            try
+            {
+                value = property.GetValue(obj);
+            }
+            catch
+            {
+                continue;
+            }
+
+            if (value is null)
+            {
+                sb.AppendLine($"{indent}{property.Name}: (none)");
+            }
+            else if (IsSimpleValue(value))
+            {
+                sb.AppendLine($"{indent}{property.Name}: {value}");
+            }
+            else if (value is System.Collections.IEnumerable enumerable)
+            {
+                List<object> entries;
+                try
+                {
+                    entries = enumerable.Cast<object?>().Where(e => e is not null).Cast<object>().ToList();
+                }
+                catch
+                {
+                    // A collection that throws while iterated is skipped, not allowed to abort the whole export.
+                    sb.AppendLine($"{indent}{property.Name}: (unreadable)");
+                    continue;
+                }
+
+                sb.AppendLine($"{indent}{property.Name} ({entries.Count}):");
+                foreach (var entry in entries)
+                {
+                    if (IsSimpleValue(entry))
+                    {
+                        sb.AppendLine($"{indent}  - {entry}");
+                        continue;
+                    }
+
+                    sb.AppendLine($"{indent}  - {FormatGrabbedItem(entry)}");
+                    if (depth < MaxExportDepth && visited.Add(entry))
+                        AppendProperties(sb, entry, depth + 2, visited);
+                }
+            }
+            else if (depth < MaxExportDepth && visited.Add(value))
+            {
+                sb.AppendLine($"{indent}{property.Name}:");
+                AppendProperties(sb, value, depth + 1, visited);
+            }
+            else
+            {
+                sb.AppendLine($"{indent}{property.Name}: {value}");
+            }
+        }
+    }
+
+    private static bool IsSimpleValue(object value)
+    {
+        Type type = value.GetType();
+        return type.IsPrimitive || type.IsEnum || value is string or decimal or DateTime or DateTimeOffset or TimeSpan or Guid;
     }
 
     [RelayCommand]

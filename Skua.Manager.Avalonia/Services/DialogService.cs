@@ -27,7 +27,7 @@ public class DialogService : IDialogService
     {
         if (!Dispatcher.UIThread.CheckAccess())
             return Dispatcher.UIThread.Invoke(() => ShowDialog(viewModel));
-        return ShowDialogInternal(viewModel, viewModel.GetType().Name);
+        return ShowDialogInternal(viewModel, DefaultTitle(viewModel));
     }
 
     public bool? ShowDialog<TViewModel>(TViewModel viewModel, string title) where TViewModel : class
@@ -37,11 +37,17 @@ public class DialogService : IDialogService
         return ShowDialogInternal(viewModel, title);
     }
 
+    // A dialog shown without a title uses its own (DialogViewModelBase.Title) instead of the view model's type name.
+    private static string DefaultTitle(object viewModel)
+    {
+        return viewModel is DialogViewModelBase { Title: { Length: > 0 } title } ? title : viewModel.GetType().Name;
+    }
+
     public bool? ShowDialog<TViewModel>(TViewModel viewModel, Action<TViewModel> callback) where TViewModel : class
     {
         if (!Dispatcher.UIThread.CheckAccess())
             return Dispatcher.UIThread.Invoke(() => ShowDialog(viewModel, callback));
-        bool? result = ShowDialogInternal(viewModel, viewModel.GetType().Name);
+        bool? result = ShowDialogInternal(viewModel, DefaultTitle(viewModel));
         if (result == true)
             callback?.Invoke(viewModel);
         return result;

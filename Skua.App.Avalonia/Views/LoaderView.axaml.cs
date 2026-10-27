@@ -20,6 +20,12 @@ public partial class LoaderView : UserControl
         return QuestList.SelectedItems.Cast<object>().ToList();
     }
 
+    private void QuestList_SelectionChanged(object? sender, SelectionChangedEventArgs e)
+    {
+        int count = QuestList.SelectedItems?.Count ?? 0;
+        SelectedCountText.Text = count == 0 ? "None selected" : $"{count} selected";
+    }
+
     private void LoadSelected_Click(object? sender, global::Avalonia.Interactivity.RoutedEventArgs e)
     {
         if (DataContext is LoaderViewModel vm)

@@ -12,7 +12,21 @@ public partial class GrabberViewModel : BotControlViewModelBase
     {
         _grabberTabs = new(grabberTabs);
         _selectedTab = _grabberTabs[0];
+
+        // Sidebar: a non-selectable header before the first tab of each group.
+        List<object> navItems = new();
+        string? lastGroup = null;
+        foreach (GrabberListViewModel tab in _grabberTabs)
+        {
+            if (!string.IsNullOrEmpty(tab.Group) && tab.Group != lastGroup)
+                navItems.Add(new GrabberNavHeader(tab.Group));
+            lastGroup = tab.Group;
+            navItems.Add(tab);
+        }
+        NavItems = navItems;
     }
+
+    public IReadOnlyList<object> NavItems { get; }
 
     [ObservableProperty]
     private ObservableCollection<GrabberListViewModel> _grabberTabs;
@@ -36,4 +50,10 @@ public partial class GrabberViewModel : BotControlViewModelBase
             }
         }
     }
+}
+
+/// <summary>Group label in the Grabber sidebar (not selectable).</summary>
+public sealed record GrabberNavHeader(string Title)
+{
+    public bool IsSelectable => false;
 }
