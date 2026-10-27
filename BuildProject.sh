@@ -39,15 +39,15 @@ if [ -d "$APP_BIN/player" ] && [ -f "$APP_BIN/player/Mugetsu" ]; then
     cp -rf "$APP_BIN/player"/* "$BUILD_DIR/player/"
     cp -f "$BUILD_DIR/player/Mugetsu" "$BUILD_DIR/Mugetsu"
     chmod +x "$BUILD_DIR/player/Mugetsu" "$BUILD_DIR/Mugetsu"
-elif [ -f "$SCRIPT_DIR/player/1.5.1-skua.3-linux/Mugetsu/Mugetsu" ]; then
+elif [ -f "$SCRIPT_DIR/player/1.5.1-skua.4-linux/Mugetsu/Mugetsu" ]; then
     echo "Using cached skua-mugetsu from player/..."
-    cp -f "$SCRIPT_DIR/player/1.5.1-skua.3-linux/Mugetsu/Mugetsu" "$BUILD_DIR/player/Mugetsu"
+    cp -f "$SCRIPT_DIR/player/1.5.1-skua.4-linux/Mugetsu/Mugetsu" "$BUILD_DIR/player/Mugetsu"
     cp -f "$BUILD_DIR/player/Mugetsu" "$BUILD_DIR/Mugetsu"
     chmod +x "$BUILD_DIR/player/Mugetsu" "$BUILD_DIR/Mugetsu"
 else
-    echo "Fetching skua-mugetsu v1.5.1-skua.3 from GitHub Releases..."
+    echo "Fetching skua-mugetsu v1.5.1-skua.4 from GitHub Releases..."
     TMP_ARCHIVE="$BUILD_DIR/skua-mugetsu.tar.gz"
-    if curl -sSL --fail "https://github.com/retr0gr4d3/skua-mugetsu/releases/download/v1.5.1-skua.3/Mugetsu-1.5.1-skua.3-linux.tar.gz" -o "$TMP_ARCHIVE" && [ -s "$TMP_ARCHIVE" ]; then
+    if curl -sSL --fail "https://github.com/retr0gr4d3/skua-mugetsu/releases/download/v1.5.1-skua.4/Mugetsu-1.5.1-skua.4-linux.tar.gz" -o "$TMP_ARCHIVE" && [ -s "$TMP_ARCHIVE" ]; then
         tar -xzf "$TMP_ARCHIVE" -C "$BUILD_DIR/player/" --strip-components=1
         rm -f "$TMP_ARCHIVE"
         cp -f "$BUILD_DIR/player/Mugetsu" "$BUILD_DIR/Mugetsu"

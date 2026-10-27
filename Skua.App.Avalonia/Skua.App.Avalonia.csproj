@@ -65,7 +65,7 @@
       Downloaded once into player/<version>-linux/ and copied to output player/ folder.
     -->
     <PropertyGroup>
-        <SkuaPlayerVersion>1.5.1-skua.3</SkuaPlayerVersion>
+        <SkuaPlayerVersion>1.5.1-skua.4</SkuaPlayerVersion>
         <SkuaPlayerOs>linux</SkuaPlayerOs>
         <SkuaPlayerArchive>Mugetsu-$(SkuaPlayerVersion)-linux.tar.gz</SkuaPlayerArchive>
         <SkuaPlayerExe>Mugetsu</SkuaPlayerExe>
