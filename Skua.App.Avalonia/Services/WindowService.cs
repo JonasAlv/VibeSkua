@@ -1,5 +1,8 @@
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Controls.ApplicationLifetimes;
+using Avalonia.Controls.Primitives;
+using Avalonia.Styling;
 using CommunityToolkit.Mvvm.DependencyInjection;
 using CommunityToolkit.Mvvm.ComponentModel;
 using Avalonia.Layout;
@@ -35,7 +38,7 @@ public class WindowService : IWindowService
     public void ShowWindow<TViewModel>(TViewModel viewModel) where TViewModel : class
     {
         Window window = CreateHostWindow(viewModel, GetWindowTitle(viewModel), 900, 600);
-        window.Show();
+        ShowWithMainWindow(window);
     }
 
     private void ShowSingleWindow<TViewModel>(int width, int height) where TViewModel : class
@@ -52,7 +55,7 @@ public class WindowService : IWindowService
         Window window = CreateHostWindow(vm, GetWindowTitle(vm), width, height);
         _typeWindows[typeof(TViewModel)] = window;
         window.Closed += (_, _) => _typeWindows.Remove(typeof(TViewModel));
-        window.Show();
+        ShowWithMainWindow(window);
     }
 
     private static string GetWindowTitle(object viewModel)
@@ -94,7 +97,7 @@ public class WindowService : IWindowService
         }
 
         if (!window.IsVisible)
-            window.Show();
+            ShowWithMainWindow(window);
         window.Activate();
 
         if (window.DataContext is ObservableRecipient r)
@@ -200,6 +203,10 @@ public class WindowService : IWindowService
             Skua.Shared.Avalonia.Services.WindowPlacementHelper.CenterOnActiveScreen(window);
         }
 
+        Style popupStyle = new(x => x.OfType<Popup>());
+        popupStyle.Setters.Add(new Setter(Popup.ShouldUseOverlayLayerProperty, true));
+        window.Styles.Add(popupStyle);
+
         return window;
     }
 
@@ -254,4 +261,29 @@ public class WindowService : IWindowService
                 HorizontalAlignment = HorizontalAlignment.Left
             }
         };
+
+    private static Window? GetMainWindow()
+    {
+        if (Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
+            return desktop.MainWindow;
+        return null;
+    }
+
+    private static void ShowWithMainWindow(Window window)
+    {
+        Window? main = GetMainWindow();
+        if (main != null && main != window && main.IsVisible)
+        {
+            try
+            {
+                window.Show(main);
+                return;
+            }
+            catch
+            {
+                // Fallback to parameterless Show
+            }
+        }
+        window.Show();
+    }
 }

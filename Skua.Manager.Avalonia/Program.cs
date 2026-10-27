@@ -225,21 +225,6 @@ internal static class Program
         AppBuilder builder = AppBuilder.Configure<App>()
             .UsePlatformDetect();
 
-#if IS_LINUX
-        builder = builder.With(new X11PlatformOptions
-        {
-            OverlayPopups = true
-        });
-#else
-        if (OperatingSystem.IsLinux())
-        {
-            builder = builder.With(new X11PlatformOptions
-            {
-                OverlayPopups = true
-            });
-        }
-#endif
-
 #if DEBUG
         builder = builder.WithDeveloperTools();
 #endif
