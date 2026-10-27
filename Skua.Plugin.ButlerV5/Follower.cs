@@ -89,6 +89,9 @@ public class Follower
     private string? _fullCountRoom;  // the room we're currently counting full-warnings for
     private string? _blockedRoom;    // a specific full room-instance we've parked on
     private int _badReads;
+    private DateTime _otherServerSince = DateTime.MinValue;
+    private bool _hopNow = true;
+    private DateTime _lastServerHop = DateTime.MinValue;
     private bool _suspended;
     private bool _wasLoggedIn;
     private bool? _lastWithMaster;
@@ -133,6 +136,8 @@ public class Follower
 
         Master = master;
         Source = source;
+        _hopNow = true;
+        _otherServerSince = DateTime.MinValue;
         _lastReportedOffGoto = null;
         _directJoinTarget = null;
         _directJoinAttempts = 0;
@@ -331,9 +336,36 @@ public class Follower
                 {
                     ParkOnce($"{master} is on a different server (theirs='{m.Server}' mine='{GameServer.CurrentName(_bot)}'). Parked.",
                         "The master is on a different server. Parked.");
+                    if (_otherServerSince == DateTime.MinValue)
+                        _otherServerSince = DateTime.UtcNow;
+                    else if ((_hopNow || DateTime.UtcNow - _otherServerSince > TimeSpan.FromSeconds(30))
+                        && (_hopNow || DateTime.UtcNow - _lastServerHop > TimeSpan.FromMinutes(5))
+                        && !string.IsNullOrWhiteSpace(m.Server))
+                    {
+                        _lastServerHop = DateTime.UtcNow;
+                        _otherServerSince = DateTime.MinValue;
+                        _hopNow = false;
+                        _log($"{master} is on {m.Server}; logging in there to follow again.",
+                            "The master is on another server; logging in there to follow again.");
+                        try
+                        {
+                            Thread.Sleep(Random.Shared.Next(0, 6000));
+                            _bot.Servers.Logout();
+                            Thread.Sleep(3000);
+                            bool ok = _bot.Servers.EnsureRelogin(m.Server);
+                            DebugLog.Log("Follower", $"server hop to {m.Server}: {(ok ? "ok" : "failed")}");
+                        }
+                        catch (Exception ex)
+                        {
+                            DebugLog.Log("Follower", $"server hop failed: {ex.Message}");
+                        }
+                        continue;
+                    }
                     Wait(token, 2000);
                     continue;
                 }
+                _otherServerSince = DateTime.MinValue;
+                _hopNow = false;
 
                 // Circuit breaker: a map we repeatedly failed to enter (entry gate kept
                 // bouncing us to battleon) is blocked until the master moves elsewhere.

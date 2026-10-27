@@ -403,7 +403,7 @@ public class FlashUtil : IFlashUtil
 
             string strVal = el.ValueKind switch
             {
-                JsonValueKind.String => el.GetString() ?? string.Empty,
+                JsonValueKind.String => string.IsNullOrEmpty(el.GetString()) ? string.Empty : new XText(el.GetString()!).ToString(),
                 JsonValueKind.True => "true",
                 JsonValueKind.False => "false",
                 _ => el.GetRawText()

@@ -14,6 +14,8 @@ public class Broadcaster
     private readonly Func<bool> _enabled;
     private readonly Func<bool> _questClone;
     private readonly Action<string> _log;
+    private readonly string _followersDirectory;
+    private DateTime _lastWriteUtc = DateTime.MinValue;
     private DateTime _lastQuestPublish = DateTime.MinValue;
     private DateTime _lastAttackingSeen = DateTime.MinValue;
     private volatile bool _publishing;
@@ -44,7 +46,7 @@ public class Broadcaster
 
     public Broadcaster(IScriptInterface bot, Func<bool> enabled, Func<bool> questClone,
         Func<string?> followingProvider, Func<string?> scriptNameProvider,
-        Func<string?> declinedProvider, Func<bool> parkingProvider, Action<string> log)
+        Func<string?> declinedProvider, Func<bool> parkingProvider, Action<string> log, string? followersDirectory = null)
     {
         _bot = bot;
         _enabled = enabled;
@@ -54,6 +56,7 @@ public class Broadcaster
         _declinedProvider = declinedProvider;
         _parkingProvider = parkingProvider;
         _log = log;
+        _followersDirectory = followersDirectory ?? Path.Combine(SyncFile.Directory, "followers");
     }
 
     /// <summary>Usernames this account (as master) has ordered to follow it.</summary>
@@ -64,9 +67,57 @@ public class Broadcaster
 
     public void SetFollowers(IEnumerable<string> followers)
     {
+        List<string> list;
         lock (_writeLock)
-            _followers = followers.Select(f => f.Trim()).Where(f => f.Length > 0).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+            list = _followers = followers.Select(f => f.Trim()).Where(f => f.Length > 0).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+        SaveFollowers(list);
         WriteNow();
+    }
+
+    private string FollowersPath(string username) =>
+        Path.Combine(_followersDirectory, $"{username.ToLowerInvariant()}.txt");
+
+    private void SaveFollowers(List<string> list)
+    {
+        try
+        {
+            string user = _bot.Player?.LoggedIn == true ? _bot.Player.Username ?? _lastUsername : _lastUsername;
+            if (string.IsNullOrWhiteSpace(user))
+                return;
+            string path = FollowersPath(user);
+            Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+            string temporary = path + $".{Environment.ProcessId}.tmp";
+            File.WriteAllLines(temporary, list);
+            File.Move(temporary, path, true);
+        }
+        catch { }
+    }
+
+    private void RestoreFollowers(string? username)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(username))
+                return;
+            lock (_writeLock)
+            {
+                if (_lastUsername.Length > 0 && !_lastUsername.Equals(username, StringComparison.OrdinalIgnoreCase))
+                    _followers = new();
+                if (_followers.Count > 0) return;
+            }
+            string path = FollowersPath(username);
+            if (!File.Exists(path))
+                return;
+            List<string> saved = File.ReadAllLines(path).Select(l => l.Trim()).Where(l => l.Length > 0).ToList();
+            if (saved.Count == 0)
+                return;
+            lock (_writeLock)
+                _followers = saved;
+            File.SetLastWriteTimeUtc(path, DateTime.UtcNow);
+            DebugLog.Log("Broadcaster", $"restored followers after a restart: {string.Join(",", saved)}");
+            _log($"Restored {saved.Count} follower{(saved.Count == 1 ? "" : "s")} from before the restart; they follow again.");
+        }
+        catch { }
     }
 
     public void Start()
@@ -106,6 +157,8 @@ public class Broadcaster
                         DebugLog.Log("Broadcaster", $"login state flipped -> {(loggedIn ? "logged in as " + _bot.Player?.Username : "logged out")}");
                         if (!loggedIn)
                             WriteOffline();
+                        else
+                            RestoreFollowers(_bot.Player?.Username);
                     }
 
                     if (loggedIn)
@@ -285,12 +338,13 @@ public class Broadcaster
     private void WriteIfChanged(SyncData data)
     {
         string serialized = data.Serialize();
-        if (serialized == _lastWritten)
+        if (serialized == _lastWritten && DateTime.UtcNow - _lastWriteUtc < TimeSpan.FromMinutes(1))
             return;
 
         if (SyncFile.Write(data))
         {
             _lastWritten = serialized;
+            _lastWriteUtc = DateTime.UtcNow;
             DebugLog.Log("Broadcaster", $"wrote: {DebugLog.Describe(data)}");
         }
         else
