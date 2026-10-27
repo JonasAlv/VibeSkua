@@ -416,16 +416,27 @@ public class Compiler : CSharpScriptExecution
                 if (!CompileAssemblyToDisk(source, outputPath))
                     return false;
 
-                if (loadContext != null)
+                for (int attempt = 0; attempt < 10; attempt++)
                 {
-                    using FileStream stream = File.OpenRead(outputPath);
-                    Assembly = loadContext.LoadFromStream(stream);
+                    try
+                    {
+                        if (loadContext != null)
+                        {
+                            using FileStream stream = File.OpenRead(outputPath);
+                            Assembly = loadContext.LoadFromStream(stream);
+                        }
+                        else
+                        {
+                            Assembly = Assembly.LoadFrom(outputPath);
+                        }
+                        return true;
+                    }
+                    catch (IOException) when (attempt < 9)
+                    {
+                        Thread.Sleep(50);
+                    }
                 }
-                else
-                {
-                    Assembly = Assembly.LoadFrom(outputPath);
-                }
-                return true;
+                return false;
             }
             finally
             {
@@ -438,16 +449,26 @@ public class Compiler : CSharpScriptExecution
             {
                 if (FastVerifyAssembly(outputPath))
                 {
-                    if (loadContext != null)
+                    for (int attempt = 0; attempt < 10; attempt++)
                     {
-                        using FileStream stream = File.OpenRead(outputPath);
-                        Assembly = loadContext.LoadFromStream(stream);
+                        try
+                        {
+                            if (loadContext != null)
+                            {
+                                using FileStream stream = File.OpenRead(outputPath);
+                                Assembly = loadContext.LoadFromStream(stream);
+                            }
+                            else
+                            {
+                                Assembly = Assembly.LoadFrom(outputPath);
+                            }
+                            return true;
+                        }
+                        catch (IOException) when (attempt < 9)
+                        {
+                            Thread.Sleep(50);
+                        }
                     }
-                    else
-                    {
-                        Assembly = Assembly.LoadFrom(outputPath);
-                    }
-                    return true;
                 }
             }
 
@@ -480,35 +501,51 @@ public class Compiler : CSharpScriptExecution
         if (SaveGeneratedCode)
             GeneratedClassCode = source;
 
-        using FileStream codeStream = new(outputPath, FileMode.Create, FileAccess.Write);
-        EmitResult? compilationResult = null;
-        if (CompileWithDebug)
+        string tempPath = $"{outputPath}.{Environment.ProcessId}.{Guid.NewGuid():N}.tmp";
+        try
         {
-            const DebugInformationFormat debugOptions = DebugInformationFormat.Embedded;
-            compilationResult = compilation.Emit(codeStream, options: new EmitOptions(debugInformationFormat: debugOptions));
-        }
-        else
-        {
-            compilationResult = compilation.Emit(codeStream);
-        }
-
-        if (!compilationResult.Success)
-        {
-            StringBuilder sb = new();
-            foreach (Diagnostic diag in
-                compilationResult.Diagnostics
-                    .Where(diagnostic => diagnostic.IsWarningAsError || diagnostic.Severity == DiagnosticSeverity.Error))
+            using (FileStream codeStream = new(tempPath, FileMode.Create, FileAccess.Write, FileShare.None))
             {
-                sb.AppendLine(diag.ToString());
+                EmitResult? compilationResult = null;
+                if (CompileWithDebug)
+                {
+                    const DebugInformationFormat debugOptions = DebugInformationFormat.Embedded;
+                    compilationResult = compilation.Emit(codeStream, options: new EmitOptions(debugInformationFormat: debugOptions));
+                }
+                else
+                {
+                    compilationResult = compilation.Emit(codeStream);
+                }
+
+                if (!compilationResult.Success)
+                {
+                    StringBuilder sb = new();
+                    foreach (Diagnostic diag in
+                        compilationResult.Diagnostics
+                            .Where(diagnostic => diagnostic.IsWarningAsError || diagnostic.Severity == DiagnosticSeverity.Error))
+                    {
+                        sb.AppendLine(diag.ToString());
+                    }
+
+                    ErrorType = ExecutionErrorTypes.Compilation;
+                    ErrorMessage = sb.ToString();
+                    SetErrors(new ApplicationException(ErrorMessage));
+                    return false;
+                }
             }
 
-            ErrorType = ExecutionErrorTypes.Compilation;
-            ErrorMessage = sb.ToString();
-            SetErrors(new ApplicationException(ErrorMessage));
+            File.Move(tempPath, outputPath, overwrite: true);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            SetErrors(ex);
             return false;
         }
-
-        return true;
+        finally
+        {
+            try { if (File.Exists(tempPath)) File.Delete(tempPath); } catch { }
+        }
     }
 
     private static void TryRunCleanup()
