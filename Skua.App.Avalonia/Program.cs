@@ -153,13 +153,25 @@ internal static class Program
         AppBuilder builder = AppBuilder.Configure<App>()
             .UsePlatformDetect();
 
-#if !IS_LINUX
+#if IS_LINUX
+        builder = builder.With(new X11PlatformOptions
+        {
+            OverlayPopups = true
+        });
+#else
         if (OperatingSystem.IsWindows())
         {
             builder = builder.With(new Win32PlatformOptions
             {
                 RenderingMode = new[] { Win32RenderingMode.AngleEgl, Win32RenderingMode.Software },
                 CompositionMode = new[] { Win32CompositionMode.WinUIComposition, Win32CompositionMode.RedirectionSurface }
+            });
+        }
+        else if (OperatingSystem.IsLinux())
+        {
+            builder = builder.With(new X11PlatformOptions
+            {
+                OverlayPopups = true
             });
         }
 #endif

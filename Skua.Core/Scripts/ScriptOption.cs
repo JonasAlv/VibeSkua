@@ -545,7 +545,7 @@ public partial class ScriptOption : ObservableRecipient, IScriptOption, IOptionD
         Dictionary<string, Func<object>> dict = new();
         foreach (PropertyInfo pi in GetType().GetProperties())
         {
-            if (pi.Name is nameof(OptionDictionary) or nameof(RescueAllies) or nameof(AllowThisAccountToRescue) or nameof(RescueDelayMinutes) or nameof(RescueDeathsBeforeCalling))
+            if (pi.Name == nameof(OptionDictionary) || pi.GetGetMethod() == null)
                 continue;
             MethodCallExpression methodCall = Expression.Call(Expression.Constant(this), pi.GetGetMethod()!, null);
             UnaryExpression convertedExpression = Expression.Convert(methodCall, typeof(object));
