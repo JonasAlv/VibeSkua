@@ -1,4 +1,4 @@
-﻿using Skua.Core.Flash;
+using Skua.Core.Flash;
 using Skua.Core.Interfaces;
 using Skua.Core.Messaging;
 using Skua.Core.Models.Skills;
@@ -80,6 +80,7 @@ public partial class ScriptSkill : IScriptSkill
 
     public void Start()
     {
+        _lastRank = -1;
         if (BaseProvider is null)
         {
             BaseProvider = new AdvancedSkillProvider(Player, Self, Target, Combat, Flash);
@@ -150,6 +151,7 @@ public partial class ScriptSkill : IScriptSkill
 
     public void LoadAdvanced(string className, bool autoEquip, ClassUseMode useMode = ClassUseMode.Base)
     {
+        _lastRank = -1;
         OverrideProvider = new AdvancedSkillProvider(Player, Self, Target, Combat, Flash);
 
         if (className == "generic")
