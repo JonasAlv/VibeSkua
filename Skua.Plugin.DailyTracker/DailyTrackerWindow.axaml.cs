@@ -27,59 +27,63 @@ public partial class DailyTrackerWindow : Window
     private List<QuestCategory> _categories = [];
     private bool _isRefreshing;
 
-    private record TrackedQuestDef(int Id, string Name, string Category, string ScriptPath);
-
-    private static readonly TrackedQuestDef[] _trackedDefs =
+    private static readonly int[] _trackedQuests =
     [
-        // Resources & Miscellaneous
-        new(2091, "Mine Crafting", "Resources & Miscellaneous", "Dailies/MineCrafting.cs"),
-        new(2098, "Hard Core Metals", "Resources & Miscellaneous", "Dailies/HardCoreMetals[Mem].cs"),
-        new(802, "Elders' Blood", "Resources & Miscellaneous", "Dailies/EldersBlood.cs"),
-        new(803, "Sparrow's Blood", "Resources & Miscellaneous", "Dailies/SparrowsBlood.cs"),
-        new(3075, "Doom Member Free Spin", "Resources & Miscellaneous", "Dailies/WheelofDoom.cs"),
-        new(3076, "Doom Free Weekly Spin", "Resources & Miscellaneous", "Dailies/WheelofDoom.cs"),
-        new(1239, "Free Member Magic Keys", "Resources & Miscellaneous", "Dailies/MonthlyTreasureChestKeys[Mem].cs"),
-        new(4069, "Free Daily Boost", "Resources & Miscellaneous", "Dailies/FreeDailyBoost[Mem].cs"),
-        new(10047, "A Grain of Dirt", "Resources & Miscellaneous", "Dailies/PearlOfNulgath.cs"),
-        new(486, "Shadow Shroud (Daily)", "Resources & Miscellaneous", "Dailies/ShadowShroud.cs"),
-
-        // Classes & Factions
-        new(3759, "BeastMaster Challenge", "Classes & Factions", "Dailies/BeastMasterChallenge[Mem].cs"),
-        new(3827, "Shadow Shield (Daily)", "Classes & Factions", "Dailies/ShadowScytheGeneral.cs"),
-        new(3965, "Glacera Ice Token (Cryomancer)", "Classes & Factions", "Dailies/Cryomancer.cs"),
-        new(2219, "Pyromancer", "Classes & Factions", "Dailies/Pyromancer.cs"),
-        new(1316, "The Collector", "Classes & Factions", "Dailies/TheCollector.cs"),
-        new(3596, "Embrace Your Chaos", "Classes & Factions", "Dailies/DagesScrollFragment.cs"),
-
-        // Lord of Order
-        new(7156, "Heart of Servitude", "Lord of Order", "Dailies/LordOfOrder.cs"),
-        new(7157, "Spirit of Justice", "Lord of Order", "Dailies/LordOfOrder.cs"),
-        new(7158, "Purification of Chaos", "Lord of Order", "Dailies/LordOfOrder.cs"),
-        new(7159, "Steadfast Will", "Lord of Order", "Dailies/LordOfOrder.cs"),
-        new(7160, "Strike of Order", "Lord of Order", "Dailies/LordOfOrder.cs"),
-        new(7161, "Harmony", "Lord of Order", "Dailies/LordOfOrder.cs"),
-        new(7162, "Ordinance", "Lord of Order", "Dailies/LordOfOrder.cs"),
-        new(7163, "Axiom", "Lord of Order", "Dailies/LordOfOrder.cs"),
-        new(7164, "Blessing of Order", "Lord of Order", "Dailies/LordOfOrder.cs"),
-        new(7165, "The Final Challenge", "Lord of Order", "Dailies/LordOfOrder.cs"),
-
-        // Ultra Bosses (Daily)
-        new(8152, "Ultra Ezrajal", "Ultra Bosses (Daily)", "Ultras/UltraEzrajal.cs"),
-        new(8153, "Ultra Warden", "Ultra Bosses (Daily)", "Ultras/UltraWarden.cs"),
-        new(8154, "Ultra Engineer", "Ultra Bosses (Daily)", "Ultras/UltraEngineer.cs"),
-        new(8245, "Ultra Tyndarius", "Ultra Bosses (Daily)", "Ultras/UltraAvatarTyndarius.cs"),
-        new(9852, "Queen Iona", "Ultra Bosses (Daily)", "Ultras/QueenIona.cs"),
-
-        // Ultra Bosses (Weekly)
-        new(8300, "Champion Drakath", "Ultra Bosses (Weekly)", "Ultras/ChampionDrakath.cs"),
-        new(8397, "Ultra Drago", "Ultra Bosses (Weekly)", "Ultras/UltraDrago.cs"),
-        new(8547, "Ultra Dage", "Ultra Bosses (Weekly)", "Ultras/UltraDage.cs"),
-        new(8692, "Ultra Nulgath", "Ultra Bosses (Weekly)", "Ultras/UltraNulgath.cs"),
-        new(8746, "Ultra Darkon", "Ultra Bosses (Weekly)", "Ultras/UltraDarkon.cs"),
-        new(9173, "Ultra Speaker", "Ultra Bosses (Weekly)", "Ultras/UltraSpeaker.cs"),
-        new(9803, "Astral Empyrean", "Ultra Bosses (Weekly)", "Ultras/AstralEmpyrean.cs"),
-        new(10301, "Ultra Gramiel", "Ultra Bosses (Weekly)", "Ultras/UltraGramiel.cs")
+        2091, 2098, 802, 803, 3075, 3076, 1239, 10047,
+        3759, 3827, 3965, 3596,
+        7156, 7157, 7158, 7159, 7160, 7161, 7162, 7163, 7164, 7165,
+        8152, 8153, 8154, 8245, 8300, 8397, 8547, 8692, 8746, 9173, 10301
     ];
+
+    private static readonly string[] _questNames =
+    [
+        "Mine Crafting", "Hard Core Metals", "Elders' Blood", "Sparrow's Blood",
+        "Doom Member Free Spin", "Doom Free Weekly Spin", "Free Member Magic Keys", "A Grain of Dirt",
+        "BeastMaster Challenge", "Shadow Shield (Daily)",
+        "Glacera Ice Token (Cryomancer)", "Embrace Your Chaos",
+        "Heart of Servitude", "Spirit of Justice", "Purification of Chaos", "Steadfast Will",
+        "Strike of Order", "Harmony", "Ordinance", "Axiom", "Blessing of Order", "The Final Challenge",
+        "Ultra Ezrajal", "Ultra Warden", "Ultra Engineer", "Ultra Tyndarius",
+        "Champion Drakath", "Ultra Drago", "Ultra Dage", "Ultra Nulgath",
+        "Ultra Darkon", "Ultra Speaker", "Ultra Gramiel"
+    ];
+
+    private static readonly Dictionary<int, string> _questScriptNames = new()
+    {
+        { 2091, "Dailies\\MineCrafting.cs" },
+        { 2098, "Dailies\\HardCoreMetals[Mem].cs" },
+        { 802,  "Dailies\\EldersBlood.cs" },
+        { 803,  "Dailies\\SparrowsBlood.cs" },
+        { 3075, "Dailies\\WheelofDoom.cs" },
+        { 3076, "Dailies\\WheelofDoom.cs" },
+        { 1239, "Dailies\\FreeDailyBoost[Mem].cs" },
+        { 10047, "Dailies\\PearlOfNulgath.cs" },
+        { 3759, "Dailies\\BeastMasterChallenge[Mem].cs" },
+        { 3827, "Dailies\\ShadowShroud.cs" },
+        { 3965, "Dailies\\Cryomancer.cs" },
+        { 7156, "Dailies\\LordOfOrder.cs" },
+        { 7157, "Dailies\\LordOfOrder.cs" },
+        { 7158, "Dailies\\LordOfOrder.cs" },
+        { 7159, "Dailies\\LordOfOrder.cs" },
+        { 7160, "Dailies\\LordOfOrder.cs" },
+        { 7161, "Dailies\\LordOfOrder.cs" },
+        { 7162, "Dailies\\LordOfOrder.cs" },
+        { 7163, "Dailies\\LordOfOrder.cs" },
+        { 7164, "Dailies\\LordOfOrder.cs" },
+        { 7165, "Dailies\\LordOfOrder.cs" },
+        { 3596, "Dailies\\DagesScrollFragment.cs" },
+        { 8152, "Ultras\\UltraEzrajal.cs" },
+        { 8153, "Ultras\\UltraWarden.cs" },
+        { 8154, "Ultras\\UltraEngineer.cs" },
+        { 8245, "Ultras\\UltraAvatarTyndarius.cs" },
+        { 8300, "Ultras\\ChampionDrakath.cs" },
+        { 8397, "Ultras\\UltraDrago.cs" },
+        { 8547, "Ultras\\UltraDage.cs" },
+        { 8692, "Ultras\\UltraNulgath.cs" },
+        { 8746, "Ultras\\UltraDarkon.cs" },
+        { 9173, "Ultras\\UltraSpeaker.cs" },
+        { 10301, "Ultras\\UltraGramiel.cs" }
+    };
 
     public DailyTrackerWindow() : this(null!)
     {
@@ -115,19 +119,18 @@ public partial class DailyTrackerWindow : Window
         }
     }
 
-    private void EnsureAllQuestsLoaded(int[] questIds)
+    private void EnsureAllQuestsLoaded()
     {
         try
         {
             if (_bot == null || !_bot.Player.LoggedIn)
                 return;
 
-            int[] missingIds = questIds.Where(id => !_bot.Quests.Tree.Any(q => q.ID == id)).ToArray();
-            if (missingIds.Length == 0)
+            if (_trackedQuests.All(id => _bot.Quests.Tree.Any(q => q.ID == id)))
                 return;
 
-            _bot.Quests.Load(missingIds);
-            _bot.Wait.ForTrue(() => missingIds.All(id => _bot.Quests.Tree.Any(q => q.ID == id)), null, 6, 200);
+            _bot.Quests.Load(_trackedQuests);
+            _bot.Wait.ForTrue(() => _trackedQuests.All(id => _bot.Quests.Tree.Any(q => q.ID == id)), null, 15, 200);
         }
         catch (Exception ex)
         {
@@ -135,169 +138,52 @@ public partial class DailyTrackerWindow : Window
         }
     }
 
-    private void EnsureBankLoaded()
-    {
-        try
-        {
-            if (_bot != null && _bot.Player.LoggedIn && !_bot.Bank.Loaded)
-            {
-                _bot.Bank.Load();
-            }
-        }
-        catch { }
-    }
-
-    private bool HasItem(string name, int quantity = 1)
-    {
-        try
-        {
-            if (_bot == null || !_bot.Player.LoggedIn)
-                return false;
-
-            if (_bot.Inventory.Contains(name, quantity))
-                return true;
-
-            if (_bot.Bank.Loaded && _bot.Bank.Contains(name, quantity))
-                return true;
-        }
-        catch { }
-        return false;
-    }
-
-    private bool HasItem(int id, int quantity = 1)
-    {
-        try
-        {
-            if (_bot == null || !_bot.Player.LoggedIn)
-                return false;
-
-            if (_bot.Inventory.Contains(id, quantity))
-                return true;
-
-            if (_bot.Bank.Loaded && _bot.Bank.Contains(id, quantity))
-                return true;
-        }
-        catch { }
-        return false;
-    }
-
-    private bool IsQuestDone(int id)
-    {
-        try
-        {
-            if (_bot.Quests.IsDailyComplete(id))
-                return true;
-        }
-        catch { }
-
-        // Lord of Order (Quests 7156-7165)
-        if (id >= 7156 && id <= 7165)
-        {
-            if (HasItem("Lord of Order") || HasItem(50741) || HasItem(50576))
-                return true;
-
-            try
-            {
-                int targetVal = id - 7156 + 1;
-                if (_bot.Flash.CallGameFunction<int>("world.getQuestValue", 327) >= targetVal)
-                    return true;
-            }
-            catch { }
-        }
-
-        // Cryomancer (Quest 3965 - Glacera Ice Token)
-        if (id == 3965 && HasItem("Cryomancer"))
-            return true;
-
-        // Pyromancer (Quest 2219)
-        if (id == 2219 && (HasItem("Pyromancer") || HasItem(12811) || HasItem(12812)))
-            return true;
-
-        // The Collector (Quest 1316)
-        if (id == 1316 && (HasItem("The Collector") || HasItem("Collector")))
-            return true;
-
-        // BeastMaster Challenge (Quest 3759)
-        if (id == 3759 && HasItem("BeastMaster"))
-            return true;
-
-        // A Grain of Dirt (Pearl of Nulgath - Quest 10047)
-        if (id == 10047 && HasItem("Pearl of Nulgath"))
-            return true;
-
-        // Shadow Shield (Daily) (Quest 3827 member / 3828 non-member)
-        if (id == 3827)
-        {
-            if (HasItem("ShadowScythe General"))
-                return true;
-            try
-            {
-                if (_bot.Quests.IsDailyComplete(3828))
-                    return true;
-            }
-            catch { }
-        }
-
-        // Sparrow's Blood (Quest 803 - max stack 3)
-        if (id == 803 && HasItem("Sparrow's Blood", 3))
-            return true;
-
-        // Shadow Shroud (Daily) (Quest 486 - max stack 15)
-        if (id == 486 && HasItem("Shadow Shroud", 15))
-            return true;
-
-        // Embrace Your Chaos (Dage's Scroll Fragment - Quest 3596 - target stack 13)
-        if (id == 3596 && HasItem("Dage's Scroll Fragment", 13))
-            return true;
-
-        // Mine Crafting (Quest 2091)
-        if (id == 2091 && HasItem("Blinding Light of Destiny") && HasItem("Necrotic Sword of Doom"))
-            return true;
-
-        return false;
-    }
-
     private async Task LoadQuestsAsync()
     {
         if (_bot == null)
             return;
 
-        int[] questIds = _trackedDefs.Select(d => d.Id).Distinct().ToArray();
-        Dictionary<int, bool> doneMap = [];
-
-        if (_bot.Player.LoggedIn)
+        bool[] doneStates = await Task.Run(() =>
         {
-            doneMap = await Task.Run(() =>
+            EnsureAllQuestsLoaded();
+            bool[] results = new bool[_trackedQuests.Length];
+            for (int i = 0; i < _trackedQuests.Length; i++)
             {
-                EnsureAllQuestsLoaded(questIds);
-                EnsureBankLoaded();
-                Dictionary<int, bool> map = [];
-                foreach (int id in questIds)
+                try
                 {
-                    map[id] = IsQuestDone(id);
+                    results[i] = _bot.Quests.IsDailyComplete(_trackedQuests[i]);
+                    if (!results[i] && _trackedQuests[i] >= 7156 && _trackedQuests[i] <= 7165)
+                    {
+                        int targetVal = _trackedQuests[i] - 7156 + 1;
+                        if (_bot.Flash.CallGameFunction<int>("world.getQuestValue", 327) >= targetVal)
+                            results[i] = true;
+                    }
                 }
-                return map;
-            });
+                catch
+                {
+                    results[i] = false;
+                }
+            }
+            return results;
+        });
+
+        List<QuestItem> questItems = [];
+        for (int i = 0; i < _trackedQuests.Length; i++)
+        {
+            QuestItem item = new(_trackedQuests[i], _questNames[i], doneStates[i]);
+            if (_questScriptNames.TryGetValue(_trackedQuests[i], out string? script))
+                item.ScriptName = script;
+            questItems.Add(item);
         }
 
-        List<QuestItem> questItems = _trackedDefs.Select(d =>
-        {
-            bool isDone = doneMap.TryGetValue(d.Id, out bool done) && done;
-            return new QuestItem(d.Id, d.Name, isDone)
-            {
-                ScriptName = d.ScriptPath,
-                Category = d.Category
-            };
-        }).ToList();
-
-        _categories = questItems
-            .GroupBy(q => q.Category)
-            .Select(g => new QuestCategory
-            {
-                Name = g.Key,
-                Quests = g.ToList()
-            })
-            .ToList();
+        _categories =
+        [
+            new() { Name = "Resources & Miscellaneous", Quests = [.. questItems.Take(8)] },
+            new() { Name = "Classes & Factions", Quests = [.. questItems.Skip(8).Take(4)] },
+            new() { Name = "Lord of Order", Quests = [.. questItems.Skip(12).Take(10)] },
+            new() { Name = "Ultra Bosses (Daily)", Quests = [.. questItems.Skip(22).Take(4)] },
+            new() { Name = "Ultra Bosses (Weekly)", Quests = [.. questItems.Skip(26)] }
+        ];
 
         Dispatcher.UIThread.Post(() => CategoriesControl.ItemsSource = _categories);
     }
@@ -309,21 +195,6 @@ public partial class DailyTrackerWindow : Window
 
         StrongReferenceMessenger.Default.Register<DailyTrackerWindow, ScriptStoppedMessage, int>(
             this, (int)MessageChannels.ScriptStatus, (r, m) => r.OnScriptStopped(m));
-
-        StrongReferenceMessenger.Default.Register<DailyTrackerWindow, LoginMessage, int>(
-            this, (int)MessageChannels.GameEvents, (r, m) =>
-            {
-                _ = Task.Run(async () =>
-                {
-                    try
-                    {
-                        await Task.Delay(1000);
-                        if (_cts?.IsCancellationRequested != true)
-                            await LoadQuestsAsync();
-                    }
-                    catch { }
-                });
-            });
     }
 
     private void OnQuestTurnIn(QuestTurninMessage message)
@@ -367,7 +238,7 @@ public partial class DailyTrackerWindow : Window
 
     private async Task RefreshQuestStatesAsync()
     {
-        if (_bot == null || !_bot.Player.LoggedIn)
+        if (_bot == null)
             return;
 
         if (!await _refreshLock.WaitAsync(0))
@@ -375,22 +246,35 @@ public partial class DailyTrackerWindow : Window
 
         try
         {
-            if (_categories.Count == 0)
-            {
-                await LoadQuestsAsync();
-                return;
-            }
-
             await Task.Run(() =>
             {
-                int[] allIds = _categories.SelectMany(c => c.Quests).Select(q => q.ID).Distinct().ToArray();
-                EnsureAllQuestsLoaded(allIds);
-                EnsureBankLoaded();
+                EnsureAllQuestsLoaded();
                 foreach (QuestCategory category in _categories)
                 {
                     foreach (QuestItem quest in category.Quests)
                     {
-                        bool newState = IsQuestDone(quest.ID);
+                        bool newState;
+                        try
+                        {
+                            newState = _bot.Quests.IsDailyComplete(quest.ID);
+                        }
+                        catch (Exception ex)
+                        {
+                            System.Diagnostics.Trace.WriteLine($"Quest refresh failed {quest.ID}: {ex}");
+                            continue;
+                        }
+
+                        if (!newState && quest.ID >= 7156 && quest.ID <= 7165)
+                        {
+                            try
+                            {
+                                int targetVal = quest.ID - 7156 + 1;
+                                if (_bot.Flash.CallGameFunction<int>("world.getQuestValue", 327) >= targetVal)
+                                    newState = true;
+                            }
+                            catch { }
+                        }
+
                         if (quest.IsDone != newState)
                             Dispatcher.UIThread.Post(() => quest.IsDone = newState);
                     }
@@ -446,11 +330,6 @@ public partial class DailyTrackerWindow : Window
         }
     }
 
-    private void AllDailies_Click(object? sender, RoutedEventArgs e)
-    {
-        StartScript("Dailies/0AllDailies.cs");
-    }
-
     private void StartScript_Click(object? sender, RoutedEventArgs e)
     {
         if (sender is not Button btn) return;
@@ -463,72 +342,35 @@ public partial class DailyTrackerWindow : Window
         if (sender is not Button btn) return;
         string? categoryName = btn.Tag as string;
         if (categoryName == "Lord of Order")
-            StartScript("Dailies/LordOfOrder.cs");
-    }
-
-    private string? ResolveScriptPath(string scriptRelative)
-    {
-        if (string.IsNullOrWhiteSpace(scriptRelative))
-            return null;
-
-        string normalized = scriptRelative.Replace('\\', Path.DirectorySeparatorChar).Replace('/', Path.DirectorySeparatorChar);
-
-        // 1. Direct check in SkuaScriptsDIR
-        string fullPath = Path.Combine(ClientFileSources.SkuaScriptsDIR, normalized);
-        if (File.Exists(fullPath))
-            return fullPath;
-
-        // 2. Direct check in AppContext.BaseDirectory / "Scripts"
-        string appPath = Path.Combine(AppContext.BaseDirectory, "Scripts", normalized);
-        if (File.Exists(appPath))
-            return appPath;
-
-        // 3. Search in SkuaScriptsDIR by filename (e.g. UltraEzrajal.cs or 1UltraEzrajalv3.cs)
-        string fileName = Path.GetFileName(normalized);
-        if (Directory.Exists(ClientFileSources.SkuaScriptsDIR))
-        {
-            string? found = Directory.EnumerateFiles(ClientFileSources.SkuaScriptsDIR, fileName, SearchOption.AllDirectories)
-                .FirstOrDefault();
-            if (found != null)
-                return found;
-
-            // Also check for v3/v2 variant (e.g. UltraEzrajal.cs -> *UltraEzrajal*.cs)
-            string nameWithoutExt = Path.GetFileNameWithoutExtension(normalized);
-            string? fuzzyFound = Directory.EnumerateFiles(ClientFileSources.SkuaScriptsDIR, $"*{nameWithoutExt}*.cs", SearchOption.AllDirectories)
-                .FirstOrDefault(f => !f.Contains("Cached-Scripts"));
-            if (fuzzyFound != null)
-                return fuzzyFound;
-        }
-
-        return null;
+            StartScript("Dailies\\LordOfOrder.cs");
     }
 
     private void StartScript(string scriptName)
     {
-        string? path = ResolveScriptPath(scriptName);
-        if (path == null)
+        string normalized = scriptName.Replace('\\', Path.DirectorySeparatorChar).Replace('/', Path.DirectorySeparatorChar);
+        string path = Path.Combine(ClientFileSources.SkuaScriptsDIR, normalized);
+        if (!File.Exists(path))
         {
-            _bot?.Log($"[Daily Tracker] Script not found: {scriptName}");
-            return;
+            string fallback = Path.Combine(AppContext.BaseDirectory, "Scripts", normalized);
+            if (File.Exists(fallback))
+                path = fallback;
         }
 
-        _bot?.Log($"[Daily Tracker] Starting {Path.GetFileName(path)}...");
+        if (!File.Exists(path))
+        {
+            System.Diagnostics.Trace.WriteLine($"Script not found: {path}");
+            return;
+        }
         Task.Run(async () =>
         {
             try
             {
-                if (_bot.Manager.ScriptRunning)
-                {
-                    _bot.Log($"[Daily Tracker] Stopping running script...");
-                    await _bot.Manager.StopScript();
-                }
-
                 _bot.Manager.SetLoadedScript(path);
                 await _bot.Manager.StartScript();
             }
             catch (Exception ex)
             {
-                _bot?.Log($"[Daily Tracker] Failed to start {Path.GetFileName(path)}: {ex.Message}");
+                System.Diagnostics.Trace.WriteLine($"Failed to start script {scriptName}: {ex}");
             }
         });
     }
@@ -574,7 +416,6 @@ public class QuestItem : INotifyPropertyChanged
 
     public int ID { get; set; }
     public string Name { get; set; } = string.Empty;
-    public string Category { get; set; } = string.Empty;
 
     private bool _isDone;
 
