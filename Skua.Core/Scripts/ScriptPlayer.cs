@@ -145,7 +145,27 @@ public partial class ScriptPlayer : IScriptPlayer
     [ObjectBinding("world.myAvatar.dataLeaf.sta")]
     private PlayerStats? _stats;
 
-    public InventoryItem? CurrentClass => Playing ? Inventory.Items?.Find(i => i is { Equipped: true, Category: ItemCategory.Class }) : null;
+    public InventoryItem? CurrentClass
+    {
+        get
+        {
+            if (!Playing)
+                return null;
+
+            try
+            {
+                var equippedArmor = Flash.GetGameObject<InventoryItem>("world.myAvatar.objData.eqp.ar");
+                if (equippedArmor != null && !string.IsNullOrEmpty(equippedArmor.Name))
+                {
+                    equippedArmor.Equipped = true;
+                    return equippedArmor;
+                }
+            }
+            catch { }
+
+            return Inventory.Items?.Find(i => i is { Equipped: true, Category: ItemCategory.Class });
+        }
+    }
 
     public void Rest(bool full = false)
     {

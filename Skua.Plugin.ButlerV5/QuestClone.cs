@@ -72,9 +72,27 @@ public static class QuestClone
             string content;
             Stopwatch sw = Stopwatch.StartNew();
 
-            string? json = null;
-            try { json = bot.Flash.GetGameObject("world.myAvatar.objData"); } catch { }
-            Dictionary<string, string>? strings = ExtractQuestStrings(json);
+            Dictionary<string, string>? strings = null;
+            try
+            {
+                Dictionary<string, string> dict = new();
+                foreach (string field in QuestStringFields)
+                {
+                    string? s = bot.Flash.GetGameObject<string>($"world.myAvatar.objData.{field}");
+                    if (!string.IsNullOrEmpty(s))
+                        dict[field] = s;
+                }
+                if (dict.Count > 0)
+                    strings = dict;
+            }
+            catch { }
+
+            if (strings == null)
+            {
+                string? json = null;
+                try { json = bot.Flash.GetGameObject("world.myAvatar.objData"); } catch { }
+                strings = ExtractQuestStrings(json);
+            }
 
             if (strings != null)
             {

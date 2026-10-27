@@ -253,13 +253,19 @@ public class Broadcaster
                 }
                 _lastUsername = player.Username;
 
-                // CurrentClass scans inventory; sample at roster cadence rather than
-                // on every 250ms location poll. A transient read failure keeps the
-                // last known class until the next sample.
+                // Read the equipped class name directly from Flash eqp.ar.sName to avoid
+                // scanning inventory via CurrentClass (which would serialize all owned items to JSON).
                 if ((DateTime.UtcNow - _lastClassCheck).TotalSeconds >= 2)
                 {
                     _lastClassCheck = DateTime.UtcNow;
-                    try { _lastClassName = player.CurrentClass?.Name ?? _lastClassName; }
+                    try
+                    {
+                        string? className = _bot.Flash.GetGameObject<string>("world.myAvatar.objData.eqp.ar.sName");
+                        if (!string.IsNullOrWhiteSpace(className))
+                            _lastClassName = className;
+                        else
+                            _lastClassName = player.CurrentClass?.Name ?? _lastClassName;
+                    }
                     catch { }
                 }
 

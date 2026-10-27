@@ -55,11 +55,20 @@ public partial class ScriptInterface
     {
         try
         {
+            Dictionary<string, string> result = new();
+            foreach (string field in QuestFields)
+            {
+                string? val = Flash.GetGameObject<string>($"world.myAvatar.objData.{field}");
+                if (!string.IsNullOrEmpty(val))
+                    result[field] = val;
+            }
+            if (result.Count > 0)
+                return result;
+
             string? json = Flash.GetGameObject("world.myAvatar.objData");
             if (string.IsNullOrEmpty(json))
                 return null;
             using System.Text.Json.JsonDocument doc = System.Text.Json.JsonDocument.Parse(json);
-            Dictionary<string, string> result = new();
             foreach (string field in QuestFields)
                 if (doc.RootElement.TryGetProperty(field, out System.Text.Json.JsonElement el) && el.ValueKind == System.Text.Json.JsonValueKind.String)
                     result[field] = el.GetString() ?? "";
