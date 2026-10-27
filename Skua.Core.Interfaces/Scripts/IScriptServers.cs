@@ -23,6 +23,37 @@ public interface IScriptServers : INotifyPropertyChanged
     void SetLoginInfo(string username, string password);
 
     /// <summary>
+    /// Keeps the username and password the game currently holds (what the player typed in) so a re-login
+    /// can still use them after the game is reloaded. Returns false when there are none.
+    /// </summary>
+    bool RememberLoginInfo();
+
+    /// <summary>The server a re-login is currently trying, or null.</summary>
+    string? CurrentLoginServer { get; set; }
+
+    /// <summary>
+    /// The server the account was last in game on. Automatic re-logins go back there (unless "relogin to any
+    /// server" is on, or that server just got stuck), so groups and ButlerV5 followers stay together.
+    /// </summary>
+    string? PreferredReloginServer { get; set; }
+
+    /// <summary>
+    /// Marks a server whose login just got stuck; re-logins avoid it for a few minutes while other
+    /// servers are available.
+    /// </summary>
+    void MarkServerStalled(string? serverName);
+
+    /// <summary>
+    /// True after a logout someone asked for (you, the army, a script, the in-game Logout button), as
+    /// opposed to the logouts re-login does on its own. The login watchdog leaves such accounts logged out.
+    /// Logging in again clears it.
+    /// </summary>
+    bool UserLoggedOut { get; set; }
+
+    /// <summary>Logs out as part of a re-login (doesn't count as <see cref="UserLoggedOut"/>).</summary>
+    void LogoutForRelogin();
+
+    /// <summary>
     /// The IP of the last server the player was connected to.
     /// </summary>
     string LastIP { get; set; }

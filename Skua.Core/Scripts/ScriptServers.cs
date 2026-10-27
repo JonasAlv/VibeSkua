@@ -50,6 +50,44 @@ public partial class ScriptServers : ObservableRecipient, IScriptServers
     private string _password;
 
     public string LastIP { get; set; } = string.Empty;
+
+    public string? CurrentLoginServer { get; set; }
+
+    private static readonly TimeSpan StalledServerCooldown = TimeSpan.FromMinutes(3);
+    private readonly Dictionary<string, DateTime> _stalledServers = new(StringComparer.OrdinalIgnoreCase);
+
+    public void MarkServerStalled(string? serverName)
+    {
+        if (string.IsNullOrWhiteSpace(serverName))
+            return;
+        lock (_stalledServers)
+            _stalledServers[serverName] = DateTime.UtcNow;
+        ReloginLog($"Avoiding {serverName} for {StalledServerCooldown.TotalMinutes:0} minutes (login got stuck there).");
+    }
+
+    private List<string> RecentlyStalledServers()
+    {
+        lock (_stalledServers)
+        {
+            DateTime cutoff = DateTime.UtcNow - StalledServerCooldown;
+            foreach (string old in _stalledServers.Where(kv => kv.Value < cutoff).Select(kv => kv.Key).ToList())
+                _stalledServers.Remove(old);
+            return _stalledServers.Keys.ToList();
+        }
+    }
+
+    public bool RememberLoginInfo()
+    {
+        if (_loginInfoSetted)
+            return true;
+        string? username = Player.Username;
+        string? password = Player.Password;
+        if (string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(password)
+            || username == "loginInfo.strUsername" || password == "loginInfo.strPassword")
+            return false;
+        SetLoginInfo(username, password);
+        return true;
+    }
     public string LastName { get; set; } = string.Empty;
     public bool IsIntentionalLogout { get; set; }
     public string? CachedUsername => _loginInfoSetted && !string.IsNullOrWhiteSpace(_username) ? _username : (!string.IsNullOrWhiteSpace(Player.Username) && Player.Username != "loginInfo.strUsername" ? Player.Username : null);
@@ -69,12 +107,25 @@ public partial class ScriptServers : ObservableRecipient, IScriptServers
     private void _login(string username, string password)
     {
         IsIntentionalLogout = false;
+        UserLoggedOut = false;
+    }
+
+    public bool UserLoggedOut { get; set; }
+    private bool _internalLogout;
+
+    public void LogoutForRelogin()
+    {
+        _internalLogout = true;
+        try { Logout(); }
+        finally { _internalLogout = false; }
     }
 
     [MethodCallBinding("logout", RunMethodPost = true, GameFunction = true)]
     private void _logout()
     {
         IsIntentionalLogout = true;
+        if (!_internalLogout)
+            UserLoggedOut = true;
         CommunityToolkit.Mvvm.Messaging.StrongReferenceMessenger.Default.Send<Skua.Core.Messaging.LogoutRequestedMessage, int>(new(), (int)Skua.Core.Messaging.MessageChannels.GameEvents);
         DisconnectToLogin();
     }
@@ -308,22 +359,29 @@ public partial class ScriptServers : ObservableRecipient, IScriptServers
 
         HashSet<string> triedServers = attemptedServers ?? new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
-        Server? selectedServer = FindByName(candidates, preferredName, true, triedServers);
+        // Servers where a login just got stuck count as tried, as long as some other server is left.
+        HashSet<string> avoid = new(triedServers, StringComparer.OrdinalIgnoreCase);
+        foreach (string stalled in RecentlyStalledServers())
+            avoid.Add(stalled);
+        if (!candidates.Exists(x => !avoid.Contains(x.Name ?? string.Empty)))
+            avoid = triedServers;
+
+        Server? selectedServer = FindByName(candidates, preferredName, true, avoid);
         if (selectedServer is not null)
             return selectedServer;
 
         if (Options.AutoReloginAny)
         {
-            selectedServer = candidates.Find(x => x.IP != LastIP && !triedServers.Contains(x.Name ?? string.Empty));
+            selectedServer = candidates.Find(x => x.IP != LastIP && !avoid.Contains(x.Name ?? string.Empty));
             if (selectedServer is not null)
                 return selectedServer;
         }
 
-        selectedServer = FindByName(candidates, Options.ReloginServer, true, triedServers);
+        selectedServer = FindByName(candidates, Options.ReloginServer, true, avoid);
         if (selectedServer is not null)
             return selectedServer;
 
-        selectedServer = candidates.Find(x => !triedServers.Contains(x.Name ?? string.Empty));
+        selectedServer = candidates.Find(x => !avoid.Contains(x.Name ?? string.Empty));
         if (selectedServer is not null)
             return selectedServer;
 
@@ -446,6 +504,7 @@ public partial class ScriptServers : ObservableRecipient, IScriptServers
         bool autoRelogSwitch = Options.AutoRelogin;
         Options.AutoRelogin = false;
         ReloginLog($"Relogging on server {server.Name} [{server.PlayerCount}/{server.MaxPlayers}].");
+        CurrentLoginServer = server.Name;
 
         StrongReferenceMessenger.Default.Send<LogoutRequestedMessage, int>(new(), (int)MessageChannels.GameEvents);
         StrongReferenceMessenger.Default.Send<LogoutMessage, int>((int)MessageChannels.GameEvents);
@@ -483,13 +542,16 @@ public partial class ScriptServers : ObservableRecipient, IScriptServers
         return Task.Run(() => EnsureRelogin(serverName, CancellationToken.None)).GetAwaiter().GetResult();
     }
 
+    public string? PreferredReloginServer { get; set; }
+
     public async Task<bool> EnsureRelogin(CancellationToken token)
     {
         token.ThrowIfCancellationRequested();
         IsIntentionalLogout = false;
         await GetServers(true);
         token.ThrowIfCancellationRequested();
-        Server? server = SelectReloginServer();
+        // Back to the server the account was on (the stuck-server list still applies).
+        Server? server = SelectReloginServer(Options.AutoReloginAny ? null : PreferredReloginServer);
         if (server is null)
         {
             ReloginLog("No eligible servers available for auto relogin.");
@@ -617,6 +679,7 @@ public partial class ScriptServers : ObservableRecipient, IScriptServers
                     continue;
                 }
                 attemptedServers.Add(targetServer.Name ?? string.Empty);
+                CurrentLoginServer = targetServer.Name;
 
                 ReloginLog($"Attempt {tries}/{Options.ReloginTries}: trying {targetServer.Name} [{targetServer.PlayerCount}/{targetServer.MaxPlayers}].");
 

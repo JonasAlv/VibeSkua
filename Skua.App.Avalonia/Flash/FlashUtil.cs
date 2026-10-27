@@ -26,8 +26,19 @@ using Skua.Core.Messaging;
 using Skua.Core.Models;
 using Skua.Core.Utils;
 
-public class FlashUtil : IFlashUtil
+public class FlashUtil : IFlashUtil, IRestartableGamePlayer
 {
+    public void RestartGamePlayer()
+    {
+        InitializeFlash();
+    }
+
+    public bool CanRestartClient => false;
+
+    public void RestartClient(bool runScript)
+    {
+        RestartGamePlayer();
+    }
     private readonly IMessenger _messenger;
     private readonly Lazy<IScriptManager> _lazyManager;
     private readonly ConcurrentDictionary<ulong, TaskCompletionSource<JsonElement>> _pendingCalls = new();
@@ -376,6 +387,13 @@ public class FlashUtil : IFlashUtil
 
     public object Call(string function, Type type, params object[] args)
     {
+        if (function == "headless")
+        {
+            bool on = args.Length > 0 && Convert.ToBoolean(args[0]);
+            SendJsonLine(new { cmd = "headless", on });
+            return default!;
+        }
+
         if (_lazyManager.Value.ShouldExit && Thread.CurrentThread.Name == "Script Thread")
             _lazyManager.Value.ScriptCts?.Token.ThrowIfCancellationRequested();
 

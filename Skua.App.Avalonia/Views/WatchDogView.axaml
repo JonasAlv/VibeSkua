@@ -1,0 +1,40 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vms="clr-namespace:Skua.App.Avalonia.ViewModels.Options"
+             x:Class="Skua.App.Avalonia.Views.WatchDogView" x:DataType="vms:WatchDogViewModel">
+  <Grid Margin="14" RowDefinitions="Auto,*" RowSpacing="12">
+    <StackPanel Spacing="4">
+      <TextBlock Text="Watch Dog" FontSize="20" FontWeight="Bold" />
+      <TextBlock Text="Rescue preferences apply immediately across updated clients on this PC."
+                 TextWrapping="Wrap" Foreground="{DynamicResource SkuaMutedTextBrush}" />
+    </StackPanel>
+    <TabControl Grid.Row="1">
+      <TabItem Header="Rescue Allies">
+        <StackPanel Margin="14" Spacing="16">
+          <CheckBox Content="Rescue Allies — all accounts" IsChecked="{Binding Options.RescueAllies, Mode=TwoWay}" />
+          <CheckBox Content="Allow this account to rescue" IsChecked="{Binding Options.AllowThisAccountToRescue, Mode=TwoWay}" />
+          <TextBlock Text="Account exclusions only prevent helping. Excluded accounts can still request help. Idle accounts can rescue without a loaded script."
+                     TextWrapping="Wrap" Foreground="{DynamicResource SkuaMutedTextBrush}" />
+        </StackPanel>
+      </TabItem>
+      <TabItem Header="Rescue Settings">
+        <StackPanel Margin="14" Spacing="14">
+          <TextBlock Text="Request help when either threshold is reached without a kill. The timer starts at the first death and requires at least two deaths. A kill resets both counters."
+                     TextWrapping="Wrap" />
+          <Grid ColumnDefinitions="*,140" ColumnSpacing="12">
+            <TextBlock Text="Rescue delay (minutes)" VerticalAlignment="Center" />
+            <NumericUpDown Grid.Column="1" Minimum="1" Maximum="120" Increment="1" FormatString="0"
+                           Value="{Binding Options.RescueDelayMinutes, Mode=TwoWay}" />
+          </Grid>
+          <Grid ColumnDefinitions="*,140" ColumnSpacing="12">
+            <TextBlock Text="Deaths before requesting rescue" VerticalAlignment="Center" />
+            <NumericUpDown Grid.Column="1" Minimum="1" Maximum="100" Increment="1" FormatString="0"
+                           Value="{Binding Options.RescueDeathsBeforeCalling, Mode=TwoWay}" />
+          </Grid>
+          <TextBlock Text="Defaults: 15 minutes or 10 deaths. Changes apply to the current streak on the next watchdog check. Existing rescue calls continue until a kill or another normal stop condition."
+                     TextWrapping="Wrap" FontSize="11" Foreground="{DynamicResource SkuaMutedTextBrush}" />
+        </StackPanel>
+      </TabItem>
+    </TabControl>
+  </Grid>
+</UserControl>

@@ -1,4 +1,4 @@
-﻿using Skua.Core.Models.Items;
+using Skua.Core.Models.Items;
 using Skua.Core.Utils;
 using System.ComponentModel;
 
@@ -180,6 +180,9 @@ public interface IScriptDrop : INotifyPropertyChanged
     /// </summary>
     /// <param name="skipWait">Whether <see cref="IScriptOption.SafeTimings"/> is ignored.</param>
     void RejectAll(bool skipWait = false);
+    void RejectCurrentDrops(bool keepAC);
+    Task<string> PickupACToBankAsync(CancellationToken cancellationToken = default);
+    string ACBankingStatus { get; }
 
     /// <summary>
     /// Rejects all drops except those in the specified list of <paramref name="names"/>.

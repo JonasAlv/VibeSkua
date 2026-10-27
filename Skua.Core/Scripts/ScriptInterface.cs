@@ -12,7 +12,7 @@ using System.Diagnostics;
 
 namespace Skua.Core.Scripts;
 
-public class ScriptInterface : IScriptInterface, IScriptInterfaceManager, IDisposable
+public partial class ScriptInterface : IScriptInterface, IScriptInterfaceManager, IDisposable
 {
     private CancellationTokenSource? ScriptInterfaceCTS;
     private readonly Thread ScriptInterfaceThread;
@@ -357,6 +357,7 @@ public class ScriptInterface : IScriptInterface, IScriptInterfaceManager, IDispo
                 });
 
                 _limit.LimitedRun("connDetail", 100, () => (lastConnChange, lastConnDetail) = CheckStuckonLoading(lastConnChange, lastConnDetail));
+                _limit.LimitedRun("loginWatchdog", 500, LoginWatchdogTick);
 
                 if (Manager.ScriptRunning)
                     RunScriptHandlers();
@@ -403,6 +404,8 @@ public class ScriptInterface : IScriptInterface, IScriptInterfaceManager, IDispo
     /// <param name="lastConnChange">Last time the loading message changed.</param>
     /// <param name="lastConnDetail">Last loading message.</param>
     /// <returns>The last loading message and its time</returns>
+    private int _lastConnLostLog = Environment.TickCount - 60000;
+
     private (int newTime, string newText) CheckStuckonLoading(int lastConnChange, string lastConnDetail)
     {
         string connDetail = Flash.IsNull("mcConnDetail.stage") ? "null" : Flash.GetGameObject("mcConnDetail.txtDetail.text", "null")!;
@@ -414,8 +417,10 @@ public class ScriptInterface : IScriptInterface, IScriptInterfaceManager, IDispo
             return (Environment.TickCount, connDetail);
         if (connDetail.Contains("has been lost") && !_waitForLogin && !Servers.IsConnected)
         {
-            if (!Servers.IsIntentionalLogout)
+            // Checked 10 times a second: with auto relogin off this used to log (and try) every time.
+            if (!Servers.IsIntentionalLogout && Environment.TickCount - _lastConnLostLog > 15000)
             {
+                _lastConnLostLog = Environment.TickCount;
                 Log("Connection lost detected. Triggering auto re-login.");
                 BeginLogout();
             }
@@ -433,7 +438,7 @@ public class ScriptInterface : IScriptInterface, IScriptInterfaceManager, IDispo
                         if (Options.AutoRelogin)
                             BeginLogout();
                         else
-                            Servers.Logout();
+                            Servers.DisconnectForRelogin();
                         return;
                     }
                     Map.Join(Map.LastMap);
@@ -444,7 +449,7 @@ public class ScriptInterface : IScriptInterface, IScriptInterfaceManager, IDispo
                 if (Options.AutoRelogin)
                     BeginLogout();
                 else
-                    Servers.Logout();
+                    Servers.DisconnectForRelogin();
             }
         }
         if (connDetail == lastConnDetail)
@@ -512,6 +517,8 @@ public class ScriptInterface : IScriptInterface, IScriptInterfaceManager, IDispo
                         case "logout":
                             Log("Intentional logout button clicked by user in game. Auto re-login disarmed.");
                             Servers.IsIntentionalLogout = true;
+                            Servers.UserLoggedOut = true;
+                            _wdRestartScript = false;
                             CancelRelogin();
                             if (Manager.ScriptRunning)
                                 _ = Manager.StopScript();
@@ -520,6 +527,8 @@ public class ScriptInterface : IScriptInterface, IScriptInterfaceManager, IDispo
                         case "changeServer":
                             Log("Intentional 'Change Server' button clicked by user in game. Auto re-login disarmed.");
                             Servers.IsIntentionalLogout = true;
+                            Servers.UserLoggedOut = true;
+                            _wdRestartScript = false;
                             CancelRelogin();
                             if (Manager.ScriptRunning)
                                 _ = Manager.StopScript();
@@ -556,6 +565,8 @@ public class ScriptInterface : IScriptInterface, IScriptInterfaceManager, IDispo
                 break;
 
             case "pext":
+                if (((string)args[0]).Contains("Missing Quest Progress", StringComparison.OrdinalIgnoreCase))
+                    OnMissingQuestProgress();
                 dynamic packet = JsonConvert.DeserializeObject<dynamic>((string)args[0])!;
                 string type = packet["params"].type;
                 dynamic data = packet["params"].dataObj;
@@ -733,6 +744,8 @@ public class ScriptInterface : IScriptInterface, IScriptInterfaceManager, IDispo
                     case "eLO2":
                         Log("In-game exit logout packet (eLO) detected. Disarming auto re-login.");
                         Servers.IsIntentionalLogout = true;
+                        Servers.UserLoggedOut = true;
+                        _wdRestartScript = false;
                         CancelRelogin();
                         if (Manager.ScriptRunning)
                             _ = Manager.StopScript();
@@ -742,6 +755,8 @@ public class ScriptInterface : IScriptInterface, IScriptInterfaceManager, IDispo
                     case "eSL2":
                         Log("In-game exit to server list packet (eSL) detected. Disarming auto re-login.");
                         Servers.IsIntentionalLogout = true;
+                        Servers.UserLoggedOut = true;
+                        _wdRestartScript = false;
                         CancelRelogin();
                         if (Manager.ScriptRunning)
                             _ = Manager.StopScript();
@@ -822,6 +837,12 @@ public class ScriptInterface : IScriptInterface, IScriptInterfaceManager, IDispo
         bool wasRunning = Manager.ScriptRunning;
         CancellationTokenSource reloginCts = new();
         _reloginCTS = reloginCts;
+        // VibeSkuffle: the login watchdog starts the script again once the account is properly back in game
+        // (it waits for the login to finish and checks that the script really started).
+        if (wasRunning)
+            _wdRestartScript = true;
+        // Claim the re-login before awaiting the script stop, so the crash recovery doesn't start a
+        // second login meanwhile.
         _waitForLogin = true;
         try
         {
@@ -841,7 +862,7 @@ public class ScriptInterface : IScriptInterface, IScriptInterfaceManager, IDispo
             {
                 delay = Math.Max(800, Options.ReloginTryDelay);
             }
-            Relogin(delay, wasRunning, reloginCts);
+            Relogin(delay, false, reloginCts);
         }
         catch
         {
@@ -875,6 +896,7 @@ public class ScriptInterface : IScriptInterface, IScriptInterfaceManager, IDispo
     private void Relogin(int delay, bool startScript, CancellationTokenSource reloginCts)
     {
         reloginCts.Token.ThrowIfCancellationRequested();
+        _reloginStartsScript = startScript;
         Servers.DisconnectForRelogin();
         Log($"Waiting {delay}ms for re-login.");
         _reloginTask = Schedule(delay, async _ =>

@@ -39,6 +39,8 @@ public interface IScriptOption : INotifyPropertyChanged
     /// When enabled will pick up any AC item that drops, even when the drop should be rejected.
     /// </summary>
     bool AcceptACDrops { get; set; }
+    bool PickupACDropsAndSendToBank { get; set; }
+    bool RejectNonACDrops { get; set; }
 
     /// <summary>
     /// When enabled will pick up any item that drops.
@@ -49,6 +51,19 @@ public interface IScriptOption : INotifyPropertyChanged
     /// When enabled will reject all items that drops (if <see cref="AcceptACDrops" /> is <see langword="true"/> will first accept AC items and then reject).
     /// </summary>
     bool RejectAllDrops { get; set; }
+
+    /// <summary>
+    /// When enabled, a script's "Reject Else" (and its RejectExcept calls) no longer throw away drops the script
+    /// didn't ask for; they stay in the drop list so they can be picked up by hand. "Reject All Drops" still works.
+    /// </summary>
+    bool IgnoreScriptRejectElse { get; set; }
+
+    /// <summary>
+    /// When enabled and a script is running, this account goes to help another account on the same server that
+    /// keeps dying (10 deaths without a kill, or 15 minutes of only deaths), then comes back and starts its script again.
+    /// </summary>
+    bool RescueAllies { get; set; }
+    bool AllowThisAccountToRescue { get; set; }
 
     /// <summary>
     /// Determines whether all monsters in the MAP should be provoked. They will all attack you at the same time.

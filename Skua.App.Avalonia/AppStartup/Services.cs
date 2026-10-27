@@ -122,6 +122,7 @@ public static class Services
             new("Loader", () => s.GetRequiredService<LoaderViewModel>()),
             new("Grabber", () => s.GetRequiredService<GrabberViewModel>()),
             new("Game", () => s.GetRequiredService<GameOptionsViewModel>()),
+            new("Watch Dog", () => s.GetRequiredService<WatchDogViewModel>()),
             new("Application", () => s.GetRequiredService<ApplicationOptionsViewModel>()),
             new("Console", () => s.GetRequiredService<ConsoleViewModel>()),
             new("Diagnostics", () => s.GetRequiredService<DiagnosticsViewModel>()),
@@ -151,6 +152,7 @@ public static class Services
         services.AddSingleton(LogTabs.CreateViewModels);
 
         services.AddTransient(Options.CreateGameOptions);
+        services.AddTransient(s => new WatchDogViewModel((ScriptOption)s.GetRequiredService<IScriptOption>()));
         services.AddTransient(Options.CreateAppOptions);
 
         services.AddTransient(PacketLogger.CreateViewModel);

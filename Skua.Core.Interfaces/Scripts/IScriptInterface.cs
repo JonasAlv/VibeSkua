@@ -1,4 +1,4 @@
-﻿using Skua.Core.Interfaces.Services;
+using Skua.Core.Interfaces.Services;
 using Skua.Core.Models;
 
 namespace Skua.Core.Interfaces;
@@ -34,6 +34,12 @@ public interface IScriptInterfaceManager
 /// </remarks>
 public interface IScriptInterface
 {
+    /// <summary>
+    /// VibeSkuffle: true while a recovery is under way (re-login, game window restart, script restart, Rescue
+    /// Allies), when a stopped script is about to start again rather than finished.
+    /// </summary>
+    bool RecoveryPending => false;
+
     /// <summary>
     /// Static instance of the current <see cref="IScriptInterface"/>.
     /// </summary>

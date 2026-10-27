@@ -17,7 +17,9 @@ public partial class ScriptDrop : ObservableRecipient, IScriptDrop, IAsyncDispos
         Lazy<IScriptWait> wait,
         Lazy<IScriptOption> options,
         Lazy<IScriptPlayer> player,
-        Lazy<IScriptInventory> inventory)
+        Lazy<IScriptInventory> inventory,
+        Lazy<IScriptBank> bank,
+        Lazy<IScriptCombat> combat)
     {
         _lazySend = send;
         _lazyWait = wait;
@@ -26,6 +28,9 @@ public partial class ScriptDrop : ObservableRecipient, IScriptDrop, IAsyncDispos
         _lazyPlayer = player;
         _lazyFlash = flash;
         _lazyInventory = inventory;
+        _bank = bank;
+        _combat = combat;
+        _autoLootTask = Task.Run(AutoLootLoop);
 
         StrongReferenceMessenger.Default.Register<ScriptDrop, ItemDroppedMessage, int>(this, (int)MessageChannels.GameEvents, AddDrop);
         StrongReferenceMessenger.Default.Register<ScriptDrop, LogoutMessage, int>(this, (int)MessageChannels.GameEvents, ClearDrops);
@@ -75,6 +80,7 @@ public partial class ScriptDrop : ObservableRecipient, IScriptDrop, IAsyncDispos
             return;
 
         ItemBase drop = _currentDropInfos.Find(d => d.Name.ToLowerInvariant() == name.ToLowerInvariant())!;
+        if ((drop.Coins && Options.PickupACDropsAndSendToBank) || (!drop.Coins && Options.RejectNonACDrops)) return;
         if (!drop.Temp && !Inventory.HasSpaceFor(drop))
             return;
         Send.Packet($"%xt%zm%getDrop%{Map.RoomID}%{drop.ID}%");
@@ -86,6 +92,7 @@ public partial class ScriptDrop : ObservableRecipient, IScriptDrop, IAsyncDispos
     public void Pickup(int id)
     {
         ItemBase? drop = CurrentDropInfos.FirstOrDefault(i => i.ID == id);
+        if (drop != null && ((drop.Coins && Options.PickupACDropsAndSendToBank) || (!drop.Coins && Options.RejectNonACDrops))) return;
         if (drop is null || (!drop.Temp && !Inventory.HasSpaceFor(drop)))
             return;
 
@@ -132,6 +139,8 @@ public partial class ScriptDrop : ObservableRecipient, IScriptDrop, IAsyncDispos
     {
         if (Options.AcceptACDrops)
             PickupACItems();
+        if (Options.IgnoreScriptRejectElse)
+            return;
         RejectExceptCore(names);
     }
 
@@ -139,6 +148,8 @@ public partial class ScriptDrop : ObservableRecipient, IScriptDrop, IAsyncDispos
     {
         if (Options.AcceptACDrops)
             PickupACItems();
+        if (Options.IgnoreScriptRejectElse)
+            return;
         IEnumerable<string> items = CurrentDropInfos.Where(d => ids.Contains(d.ID)).Select(d => d.Name);
         RejectExceptCore(items);
     }
@@ -153,7 +164,7 @@ public partial class ScriptDrop : ObservableRecipient, IScriptDrop, IAsyncDispos
     private void RejectExceptCore(IEnumerable<string> names)
     {
         HashSet<string> keep = new(names, StringComparer.OrdinalIgnoreCase);
-        if (Options.AcceptACDrops)
+        if (Options.AcceptACDrops || Options.PickupACDropsAndSendToBank)
             keep.UnionWith(CurrentDropInfos.Where(d => d.Coins).Select(d => d.Name));
         if (!Flash.Call<bool>("rejectExcept", keep.Join(',').ToLowerInvariant()))
             return;
@@ -273,7 +284,7 @@ public partial class ScriptDrop : ObservableRecipient, IScriptDrop, IAsyncDispos
                 if (pickupNames.Length > 0)
                     Pickup(pickupNames);
 
-                if (RejectElse)
+                if (RejectElse && !Options.IgnoreScriptRejectElse)
                     RejectExcept(BuildRejectElseWhitelist(pickupNames, pickupIDs));
             }
             catch (OperationCanceledException) when (token.IsCancellationRequested)
@@ -320,6 +331,7 @@ public partial class ScriptDrop : ObservableRecipient, IScriptDrop, IAsyncDispos
 
     private void ClearDrops(ScriptDrop recipient, LogoutMessage message)
     {
+        Interlocked.Increment(ref recipient._lootSession);
         recipient._currentDropInfos.Clear();
         recipient.OnPropertyChanged(nameof(recipient.CurrentDropInfos));
         recipient.OnPropertyChanged(nameof(recipient.CurrentDrops));
@@ -357,6 +369,7 @@ public partial class ScriptDrop : ObservableRecipient, IScriptDrop, IAsyncDispos
     {
         if (_disposed) return;
         _disposed = true;
+        _autoLootCts.Cancel();
 
         try
         {
@@ -385,6 +398,7 @@ public partial class ScriptDrop : ObservableRecipient, IScriptDrop, IAsyncDispos
     {
         if (_disposed) return;
         _disposed = true;
+        _autoLootCts.Cancel();
 
         try
         {

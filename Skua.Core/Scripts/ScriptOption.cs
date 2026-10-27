@@ -28,11 +28,15 @@ public partial class ScriptOption : ObservableRecipient, IScriptOption, IOptionD
         _lagKiller = _userLagKiller;
         _isInitializing = true;
         GetOptions();
+        _pickupACDropsAndSendToBank = settingsService?.Get<bool>("VibeSkuffle.PickupACDropsAndSendToBank") ?? false;
+        _rejectNonACDrops = settingsService?.Get<bool>("VibeSkuffle.RejectNonACDrops") ?? false;
         OptionDictionary = GenerateDictionary().ToImmutableDictionary();
         StrongReferenceMessenger.Default.Register<ScriptOption, ScriptStartedMessage, int>(this, (int)MessageChannels.ScriptStatus, ScriptStarted);
         StrongReferenceMessenger.Default.Register<ScriptOption, ScriptStoppedMessage, int>(this, (int)MessageChannels.ScriptStatus, ScriptStopped);
         StrongReferenceMessenger.Default.Register<ScriptOption, MapChangedMessage, int>(this, (int)MessageChannels.GameEvents, MapChanged);
         _isInitializing = false;
+        _rescueSettings = WatchDog.Shared.SharedRescueSettings.Instance;
+        _rescueSettings.Changed += NotifyRescueSettingsChanged;
     }
 
     private void ScriptStarted(ScriptOption recipient, ScriptStartedMessage message)
@@ -131,6 +135,60 @@ public partial class ScriptOption : ObservableRecipient, IScriptOption, IOptionD
     {
         get => _acceptACDrops;
         set => SetProperty(ref _acceptACDrops, value, true);
+    }
+
+    private bool _pickupACDropsAndSendToBank;
+    public bool PickupACDropsAndSendToBank
+    {
+        get => _pickupACDropsAndSendToBank;
+        set { if (SetProperty(ref _pickupACDropsAndSendToBank, value, true) && !_isInitializing) _settingsService?.Set("VibeSkuffle.PickupACDropsAndSendToBank", value); }
+    }
+
+    private bool _rejectNonACDrops;
+    public bool RejectNonACDrops
+    {
+        get => _rejectNonACDrops;
+        set { if (SetProperty(ref _rejectNonACDrops, value, true) && !_isInitializing) _settingsService?.Set("VibeSkuffle.RejectNonACDrops", value); }
+    }
+
+    [ObservableProperty]
+    private bool _ignoreScriptRejectElse;
+
+    private WatchDog.Shared.SharedRescueSettings? _rescueSettings;
+    private string _rescueAccount = "";
+    public bool RescueAllies
+    {
+        get => _rescueSettings?.Enabled ?? false;
+        set { if (!_isInitializing) _rescueSettings?.SetEnabled(value); }
+    }
+    public bool AllowThisAccountToRescue
+    {
+        get => _rescueSettings?.IsAllowed(_rescueAccount) ?? true;
+        set { if (!_isInitializing && _rescueAccount.Length > 0) _rescueSettings?.SetAllowed(_rescueAccount, value); }
+    }
+    public int RescueDelayMinutes
+    {
+        get => _rescueSettings?.DelayMinutes ?? 15;
+        set { if (!_isInitializing) _rescueSettings?.SetDelayMinutes(value); }
+    }
+    public int RescueDeathsBeforeCalling
+    {
+        get => _rescueSettings?.DeathsBeforeRescue ?? 10;
+        set { if (!_isInitializing) _rescueSettings?.SetDeathsBeforeRescue(value); }
+    }
+    internal void BindRescueAccount(string? account)
+    {
+        account = account?.Trim() ?? "";
+        if (string.Equals(account, _rescueAccount, StringComparison.OrdinalIgnoreCase)) return;
+        _rescueAccount = account;
+        OnPropertyChanged(nameof(AllowThisAccountToRescue));
+    }
+    private void NotifyRescueSettingsChanged()
+    {
+        OnPropertyChanged(nameof(RescueAllies));
+        OnPropertyChanged(nameof(AllowThisAccountToRescue));
+        OnPropertyChanged(nameof(RescueDelayMinutes));
+        OnPropertyChanged(nameof(RescueDeathsBeforeCalling));
     }
 
     private bool _acceptAllDrops;
@@ -242,18 +300,19 @@ public partial class ScriptOption : ObservableRecipient, IScriptOption, IOptionD
     {
         try
         {
+            _lazyFlash.Value.Call("headless", value);
             if (value)
             {
                 _lazyFlash.Value.Call("setGameObject", "stage.frameRate", 2);
                 _lazyFlash.Value.Call("setGameObject", "stage.quality", "LOW");
-                _lazyFlash.Value.Call("setGameObject", "world.rootClass.mixer.soundTransform.volume", 0);
+                _lazyFlash.Value.Call("world.rootClass.mixer.soundTransform.volume", 0);
                 Skua.Core.Utils.MemoryUtils.TrimWorkingSet();
             }
             else
             {
-                _lazyFlash.Value.Call("setGameObject", "stage.frameRate", 30);
+                _lazyFlash.Value.Call("setGameObject", "stage.frameRate", SetFPS > 2 ? SetFPS : 24);
                 _lazyFlash.Value.Call("setGameObject", "stage.quality", "HIGH");
-                _lazyFlash.Value.Call("setGameObject", "world.rootClass.mixer.soundTransform.volume", 1);
+                _lazyFlash.Value.Call("world.rootClass.mixer.soundTransform.volume", 1);
             }
         }
         catch { }
@@ -420,7 +479,7 @@ public partial class ScriptOption : ObservableRecipient, IScriptOption, IOptionD
         StringCollection saveOptions = new();
         foreach (PropertyInfo pi in GetType().GetProperties())
         {
-            if (pi.Name == nameof(OptionDictionary))
+            if (pi.Name is nameof(OptionDictionary) or nameof(RescueAllies) or nameof(AllowThisAccountToRescue) or nameof(RescueDelayMinutes) or nameof(RescueDeathsBeforeCalling))
                 continue;
             string key = pi.Name;
             object? value = pi.GetValue(this);
@@ -439,7 +498,7 @@ public partial class ScriptOption : ObservableRecipient, IScriptOption, IOptionD
 
         foreach (PropertyInfo pi in GetType().GetProperties())
         {
-            if (pi.Name == nameof(OptionDictionary))
+            if (pi.Name is nameof(OptionDictionary) or nameof(RescueAllies) or nameof(AllowThisAccountToRescue) or nameof(RescueDelayMinutes) or nameof(RescueDeathsBeforeCalling))
                 continue;
             if (_userOptions.ContainsKey(pi.Name))
             {
@@ -458,7 +517,7 @@ public partial class ScriptOption : ObservableRecipient, IScriptOption, IOptionD
         ScriptOption defaults = new(_lazyFlash);
         foreach (PropertyInfo pi in GetType().GetProperties())
         {
-            if (pi.Name == nameof(OptionDictionary))
+            if (pi.Name is nameof(OptionDictionary) or nameof(RescueAllies) or nameof(AllowThisAccountToRescue) or nameof(RescueDelayMinutes) or nameof(RescueDeathsBeforeCalling))
                 continue;
 
             pi.SetValue(this, pi.GetValue(defaults), null);
@@ -486,7 +545,7 @@ public partial class ScriptOption : ObservableRecipient, IScriptOption, IOptionD
         Dictionary<string, Func<object>> dict = new();
         foreach (PropertyInfo pi in GetType().GetProperties())
         {
-            if (pi.Name == nameof(OptionDictionary))
+            if (pi.Name is nameof(OptionDictionary) or nameof(RescueAllies) or nameof(AllowThisAccountToRescue) or nameof(RescueDelayMinutes) or nameof(RescueDeathsBeforeCalling))
                 continue;
             MethodCallExpression methodCall = Expression.Call(Expression.Constant(this), pi.GetGetMethod()!, null);
             UnaryExpression convertedExpression = Expression.Convert(methodCall, typeof(object));

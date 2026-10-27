@@ -8,32 +8,46 @@ using Skua.Shared.Avalonia.ViewModels;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.ComponentModel;
 using System.Linq;
+using System.Threading.Tasks;
 
 namespace Skua.App.Avalonia.ViewModels;
 
 public partial class CurrentDropsViewModel : BotControlViewModelBase
 {
-    public CurrentDropsViewModel(IScriptDrop drops, IScriptPlayer player)
+    public CurrentDropsViewModel(IScriptDrop drops, IScriptPlayer player, IScriptInventory inventory, IScriptBank bank)
         : base("Current Drops", 500, 400)
     {
         _drops = drops;
         _player = player;
+        _inventory = inventory;
+        _bank = bank;
         FilteredCurrentDrops = new ObservableCollection<ItemBase>();
     }
 
     protected override void OnActivated()
     {
+        _drops.PropertyChanged += DropsPropertyChanged;
         StrongReferenceMessenger.Default.Register<CurrentDropsViewModel, ItemDroppedMessage, int>(this, (int)MessageChannels.GameEvents, CurrentDropsChanged);
         RefreshDrops();
     }
 
     protected override void OnDeactivated()
     {
+        _drops.PropertyChanged -= DropsPropertyChanged;
         StrongReferenceMessenger.Default.UnregisterAll(this);
     }
 
     private readonly IScriptPlayer _player;
+    private readonly IScriptInventory _inventory;
+    private readonly IScriptBank _bank;
+
+    [ObservableProperty]
+    private string _status = string.Empty;
+
+    [ObservableProperty]
+    private bool _banking;
     private readonly IScriptDrop _drops;
     private string _searchText = string.Empty;
 
@@ -103,9 +117,56 @@ public partial class CurrentDropsViewModel : BotControlViewModelBase
         RefreshDrops();
     }
 
+    /// <summary>Picks up only the AC drops, then puts each picked-up item straight into the bank.</summary>
+    [RelayCommand]
+    private async Task PickupACToBank()
+    {
+        if (Banking || !_player.Playing)
+            return;
+        Banking = true;
+        try
+        {
+            Status = "Waiting for a safe break in combat...";
+            Status = await _drops.PickupACToBankAsync();
+        }
+        catch (Exception ex)
+        {
+            Status = "Failed: " + ex.Message;
+        }
+        finally
+        {
+            Banking = false;
+            RefreshDrops();
+        }
+    }
+
+    [RelayCommand]
+    private void RejectAll()
+    {
+        _drops.RejectCurrentDrops(false);
+        RefreshDrops();
+    }
+
+    [RelayCommand]
+    private void RejectNonAC()
+    {
+        _drops.RejectCurrentDrops(true);
+        RefreshDrops();
+    }
+
     private void CurrentDropsChanged(CurrentDropsViewModel recipient, ItemDroppedMessage message)
     {
-        recipient.RefreshDrops();
+        global::Avalonia.Threading.Dispatcher.UIThread.Post(recipient.RefreshDrops);
+    }
+
+    private void DropsPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName is nameof(IScriptDrop.CurrentDropInfos) or nameof(IScriptDrop.CurrentDrops) or nameof(IScriptDrop.ACBankingStatus))
+            global::Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+            {
+                if (!Banking && e.PropertyName == nameof(IScriptDrop.ACBankingStatus)) Status = _drops.ACBankingStatus;
+                RefreshDrops();
+            });
     }
 
     private void RefreshDrops()
