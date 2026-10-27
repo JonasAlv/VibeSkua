@@ -135,6 +135,128 @@ public partial class DailyTrackerWindow : Window
         }
     }
 
+    private void EnsureBankLoaded()
+    {
+        try
+        {
+            if (_bot != null && _bot.Player.LoggedIn && !_bot.Bank.Loaded)
+            {
+                _bot.Bank.Load();
+            }
+        }
+        catch { }
+    }
+
+    private bool HasItem(string name, int quantity = 1)
+    {
+        try
+        {
+            if (_bot == null || !_bot.Player.LoggedIn)
+                return false;
+
+            if (_bot.Inventory.Contains(name, quantity))
+                return true;
+
+            if (_bot.Bank.Loaded && _bot.Bank.Contains(name, quantity))
+                return true;
+        }
+        catch { }
+        return false;
+    }
+
+    private bool HasItem(int id, int quantity = 1)
+    {
+        try
+        {
+            if (_bot == null || !_bot.Player.LoggedIn)
+                return false;
+
+            if (_bot.Inventory.Contains(id, quantity))
+                return true;
+
+            if (_bot.Bank.Loaded && _bot.Bank.Contains(id, quantity))
+                return true;
+        }
+        catch { }
+        return false;
+    }
+
+    private bool IsQuestDone(int id)
+    {
+        try
+        {
+            if (_bot.Quests.IsDailyComplete(id))
+                return true;
+        }
+        catch { }
+
+        // Lord of Order (Quests 7156-7165)
+        if (id >= 7156 && id <= 7165)
+        {
+            if (HasItem("Lord of Order") || HasItem(50741) || HasItem(50576))
+                return true;
+
+            try
+            {
+                int targetVal = id - 7156 + 1;
+                if (_bot.Flash.CallGameFunction<int>("world.getQuestValue", 327) >= targetVal)
+                    return true;
+            }
+            catch { }
+        }
+
+        // Cryomancer (Quest 3965 - Glacera Ice Token)
+        if (id == 3965 && HasItem("Cryomancer"))
+            return true;
+
+        // Pyromancer (Quest 2219)
+        if (id == 2219 && (HasItem("Pyromancer") || HasItem(12811) || HasItem(12812)))
+            return true;
+
+        // The Collector (Quest 1316)
+        if (id == 1316 && (HasItem("The Collector") || HasItem("Collector")))
+            return true;
+
+        // BeastMaster Challenge (Quest 3759)
+        if (id == 3759 && HasItem("BeastMaster"))
+            return true;
+
+        // A Grain of Dirt (Pearl of Nulgath - Quest 10047)
+        if (id == 10047 && HasItem("Pearl of Nulgath"))
+            return true;
+
+        // Shadow Shield (Daily) (Quest 3827 member / 3828 non-member)
+        if (id == 3827)
+        {
+            if (HasItem("ShadowScythe General"))
+                return true;
+            try
+            {
+                if (_bot.Quests.IsDailyComplete(3828))
+                    return true;
+            }
+            catch { }
+        }
+
+        // Sparrow's Blood (Quest 803 - max stack 3)
+        if (id == 803 && HasItem("Sparrow's Blood", 3))
+            return true;
+
+        // Shadow Shroud (Daily) (Quest 486 - max stack 15)
+        if (id == 486 && HasItem("Shadow Shroud", 15))
+            return true;
+
+        // Embrace Your Chaos (Dage's Scroll Fragment - Quest 3596 - target stack 13)
+        if (id == 3596 && HasItem("Dage's Scroll Fragment", 13))
+            return true;
+
+        // Mine Crafting (Quest 2091)
+        if (id == 2091 && HasItem("Blinding Light of Destiny") && HasItem("Necrotic Sword of Doom"))
+            return true;
+
+        return false;
+    }
+
     private async Task LoadQuestsAsync()
     {
         if (_bot == null)
@@ -148,24 +270,11 @@ public partial class DailyTrackerWindow : Window
             doneMap = await Task.Run(() =>
             {
                 EnsureAllQuestsLoaded(questIds);
+                EnsureBankLoaded();
                 Dictionary<int, bool> map = [];
                 foreach (int id in questIds)
                 {
-                    try
-                    {
-                        bool done = _bot.Quests.IsDailyComplete(id);
-                        if (!done && id >= 7156 && id <= 7165)
-                        {
-                            int targetVal = id - 7156 + 1;
-                            if (_bot.Flash.CallGameFunction<int>("world.getQuestValue", 327) >= targetVal)
-                                done = true;
-                        }
-                        map[id] = done;
-                    }
-                    catch
-                    {
-                        map[id] = false;
-                    }
+                    map[id] = IsQuestDone(id);
                 }
                 return map;
             });
@@ -276,32 +385,12 @@ public partial class DailyTrackerWindow : Window
             {
                 int[] allIds = _categories.SelectMany(c => c.Quests).Select(q => q.ID).Distinct().ToArray();
                 EnsureAllQuestsLoaded(allIds);
+                EnsureBankLoaded();
                 foreach (QuestCategory category in _categories)
                 {
                     foreach (QuestItem quest in category.Quests)
                     {
-                        bool newState;
-                        try
-                        {
-                            newState = _bot.Quests.IsDailyComplete(quest.ID);
-                        }
-                        catch (Exception ex)
-                        {
-                            System.Diagnostics.Trace.WriteLine($"Quest refresh failed {quest.ID}: {ex}");
-                            continue;
-                        }
-
-                        if (!newState && quest.ID >= 7156 && quest.ID <= 7165)
-                        {
-                            try
-                            {
-                                int targetVal = quest.ID - 7156 + 1;
-                                if (_bot.Flash.CallGameFunction<int>("world.getQuestValue", 327) >= targetVal)
-                                    newState = true;
-                            }
-                            catch { }
-                        }
-
+                        bool newState = IsQuestDone(quest.ID);
                         if (quest.IsDone != newState)
                             Dispatcher.UIThread.Post(() => quest.IsDone = newState);
                     }

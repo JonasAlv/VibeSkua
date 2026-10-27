@@ -24,6 +24,8 @@ public partial class ScriptOption : ObservableRecipient, IScriptOption, IOptionD
     {
         _lazyFlash = flash;
         _settingsService = settingsService;
+        _userLagKiller = _settingsService?.Get<bool>("UserLagKiller", false) ?? false;
+        _lagKiller = _userLagKiller;
         _isInitializing = true;
         GetOptions();
         OptionDictionary = GenerateDictionary().ToImmutableDictionary();
@@ -35,6 +37,9 @@ public partial class ScriptOption : ObservableRecipient, IScriptOption, IOptionD
 
     private void ScriptStarted(ScriptOption recipient, ScriptStartedMessage message)
     {
+        recipient._scriptRunning = true;
+        recipient._userLagKiller = recipient._lagKiller;
+
         if (!recipient.AutoCrowdMode)
             return;
 
@@ -71,9 +76,8 @@ public partial class ScriptOption : ObservableRecipient, IScriptOption, IOptionD
     private void ScriptStopped(ScriptOption recipient, ScriptStoppedMessage message)
     {
         recipient.AutoRelogin = false;
-        recipient.LagKiller = false;
-        recipient.LagKiller = true;
-        recipient.LagKiller = false;
+        recipient._scriptRunning = false;
+        recipient.LagKiller = recipient._userLagKiller;
         recipient.AggroAllMonsters = false;
         recipient.AggroMonsters = false;
         recipient.SkipCutscenes = false;
@@ -168,8 +172,32 @@ public partial class ScriptOption : ObservableRecipient, IScriptOption, IOptionD
     [CallBinding("magnetize", UseValue = false, Get = false, HasSetter = true)]
     private bool _magnetise;
 
-    [CallBinding("killLag", Get = false, HasSetter = true)]
     private bool _lagKiller;
+    private bool _userLagKiller;
+    private bool _scriptRunning;
+
+    public bool LagKiller
+    {
+        get => _lagKiller;
+        set
+        {
+            if (!_scriptRunning && !_isInitializing && _settingsService != null)
+            {
+                _userLagKiller = value;
+                _settingsService.Set("UserLagKiller", value);
+            }
+
+            try
+            {
+                var flash = _lazyFlash?.Value;
+                if (flash != null)
+                    flash.Call("killLag", value);
+            }
+            catch { }
+
+            SetProperty(ref _lagKiller, value);
+        }
+    }
 
     [ObjectBinding("stage.frameRate", Get = false, HasSetter = true)]
     private int _setFPS = 24;
