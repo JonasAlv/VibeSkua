@@ -118,10 +118,17 @@ elif [ -f "$BUILD_DIR/Mugetsu" ]; then
     cp -f "$BUILD_DIR/Mugetsu" "$CURRENT_DIR/Mugetsu"
     chmod +x "$CURRENT_DIR/Mugetsu"
 else
-    echo "Mugetsu binary not found. Downloading from https://github.com/JonasAlv/mugetsu/releases/latest/download/Mugetsu..."
-    curl -sSL "https://github.com/JonasAlv/mugetsu/releases/latest/download/Mugetsu" -o "$CURRENT_DIR/Mugetsu"
-    chmod +x "$CURRENT_DIR/Mugetsu"
-    cp -f "$CURRENT_DIR/Mugetsu" "$BUILD_DIR/Mugetsu" 2>/dev/null || true
+    echo "Mugetsu binary not found in $BUILD_DIR. Fetching from https://github.com/JonasAlv/mugetsu/releases/latest/download/Mugetsu..."
+    TMP_MUGETSU="$CURRENT_DIR/Mugetsu.tmp.$$"
+    if curl -sSL --fail "https://github.com/JonasAlv/mugetsu/releases/latest/download/Mugetsu" -o "$TMP_MUGETSU" && [ -s "$TMP_MUGETSU" ]; then
+        mv -f "$TMP_MUGETSU" "$CURRENT_DIR/Mugetsu"
+        chmod +x "$CURRENT_DIR/Mugetsu"
+        cp -f "$CURRENT_DIR/Mugetsu" "$BUILD_DIR/Mugetsu" 2>/dev/null || true
+    else
+        rm -f "$TMP_MUGETSU"
+        echo "Error: Failed to download Mugetsu from GitHub Releases!" >&2
+        exit 1
+    fi
 fi
 
 chmod +x "$CURRENT_DIR/VibeSkua" "$CURRENT_DIR/VibeSkua.Manager" 2>/dev/null || true

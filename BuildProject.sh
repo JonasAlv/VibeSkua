@@ -35,12 +35,25 @@ fi
 # 5. Copy or download Mugetsu binary
 MUGETSU_SRC="$SCRIPT_DIR/../mugetsu/source/build/out/Mugetsu"
 if [ -f "$MUGETSU_SRC" ]; then
+    echo "Using local Mugetsu binary from $MUGETSU_SRC..."
     cp -f "$MUGETSU_SRC" "$BUILD_DIR/Mugetsu"
     chmod +x "$BUILD_DIR/Mugetsu"
-elif [ ! -f "$BUILD_DIR/Mugetsu" ]; then
-    echo "Mugetsu binary not found. Downloading from https://github.com/JonasAlv/mugetsu/releases/latest/download/Mugetsu..."
-    curl -sSL "https://github.com/JonasAlv/mugetsu/releases/latest/download/Mugetsu" -o "$BUILD_DIR/Mugetsu"
-    chmod +x "$BUILD_DIR/Mugetsu"
+else
+    echo "Fetching latest Mugetsu binary from https://github.com/JonasAlv/mugetsu/releases/latest/download/Mugetsu..."
+    TMP_MUGETSU="$BUILD_DIR/Mugetsu.tmp.$$"
+    if curl -sSL --fail "https://github.com/JonasAlv/mugetsu/releases/latest/download/Mugetsu" -o "$TMP_MUGETSU" && [ -s "$TMP_MUGETSU" ]; then
+        mv -f "$TMP_MUGETSU" "$BUILD_DIR/Mugetsu"
+        chmod +x "$BUILD_DIR/Mugetsu"
+        echo "Successfully updated Mugetsu to latest release."
+    else
+        rm -f "$TMP_MUGETSU"
+        if [ -f "$BUILD_DIR/Mugetsu" ]; then
+            echo "Warning: Could not fetch latest Mugetsu release; reusing existing $BUILD_DIR/Mugetsu."
+        else
+            echo "Error: Failed to download Mugetsu from GitHub Releases!" >&2
+            exit 1
+        fi
+    fi
 fi
 
 # 6. Set executable permissions
