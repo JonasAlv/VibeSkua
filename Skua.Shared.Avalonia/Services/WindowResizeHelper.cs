@@ -17,6 +17,7 @@ public static class WindowResizeHelper
     private const double CornerThickness = 14.0;
 
     private static readonly ConditionalWeakTable<Window, object> AttachedWindows = new();
+    private static readonly ConditionalWeakTable<Window, HorizontalResizeState> ActiveResizes = new();
 
     private static readonly Cursor CursorTopLeft = new(StandardCursorType.TopLeftCorner);
     private static readonly Cursor CursorTopRight = new(StandardCursorType.TopRightCorner);
@@ -56,13 +57,18 @@ public static class WindowResizeHelper
             return;
         }
 
+        Point pos = e.GetPosition(window);
+        WindowEdge? edge = GetEdge(pos, window.Bounds.Size);
+        if (ActiveResizes.TryGetValue(window, out HorizontalResizeState? resize))
+        {
+            UpdateHorizontalResize(window, e, resize);
+            return;
+        }
+
         // If mouse button is held and we are not in resize mode, user is dragging content inside window
         var pointProps = e.GetCurrentPoint(window).Properties;
         if (pointProps.IsLeftButtonPressed && window.Cursor == null)
             return;
-
-        Point pos = e.GetPosition(window);
-        WindowEdge? edge = GetEdge(pos, window.Bounds.Size);
         if (edge.HasValue)
         {
             window.Cursor = GetCursorForEdge(edge.Value);
@@ -91,6 +97,19 @@ public static class WindowResizeHelper
 
         try
         {
+            if (edge is WindowEdge.West or WindowEdge.East)
+            {
+                ActiveResizes.Remove(window);
+                ActiveResizes.Add(window, new HorizontalResizeState(
+                    edge.Value,
+                    window.PointToScreen(e.GetPosition(window)),
+                    window.Position,
+                    window.Bounds.Width));
+                e.Pointer.Capture(window);
+                e.Handled = true;
+                return;
+            }
+
             // If window was using SizeToContent, fix the current dimensions to prevent layout collapse
             if (window.SizeToContent != SizeToContent.Manual)
             {
@@ -114,14 +133,19 @@ public static class WindowResizeHelper
 
         Point pos = e.GetPosition(window);
         WindowEdge? edge = GetEdge(pos, window.Bounds.Size);
+        ActiveResizes.Remove(window);
+        e.Pointer.Capture(null);
         if (!edge.HasValue && window.Cursor != null)
             window.Cursor = null;
     }
 
     private static void OnPointerCaptureLost(object? sender, PointerCaptureLostEventArgs e)
     {
-        if (sender is Window window && window.Cursor != null)
+        if (sender is Window window)
+        {
+            ActiveResizes.Remove(window);
             window.Cursor = null;
+        }
     }
 
     private static void OnPointerExited(object? sender, PointerEventArgs e)
@@ -176,4 +200,38 @@ public static class WindowResizeHelper
         WindowEdge.West or WindowEdge.East => CursorWestEast,
         _ => Cursor.Default
     };
+
+    private static void UpdateHorizontalResize(Window window, PointerEventArgs e, HorizontalResizeState resize)
+    {
+        PixelPoint current = window.PointToScreen(e.GetPosition(window));
+        int delta = current.X - resize.StartPointer.X;
+        double width = resize.StartWidth;
+        int left = resize.StartPosition.X;
+
+        if (resize.Edge == WindowEdge.East)
+            width += delta;
+        else
+        {
+            width -= delta;
+            left += delta;
+        }
+
+        double minimum = Math.Max(window.MinWidth, 320);
+        if (width < minimum)
+        {
+            if (resize.Edge == WindowEdge.West)
+                left = resize.StartPosition.X + (int)(resize.StartWidth - minimum);
+            width = minimum;
+        }
+
+        window.Width = width;
+        if (resize.Edge == WindowEdge.West)
+            window.Position = new PixelPoint(left, resize.StartPosition.Y);
+    }
+
+    private sealed record HorizontalResizeState(
+        WindowEdge Edge,
+        PixelPoint StartPointer,
+        PixelPoint StartPosition,
+        double StartWidth);
 }
