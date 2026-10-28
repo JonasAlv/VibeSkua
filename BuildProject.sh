@@ -3,8 +3,9 @@ set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BUILD_DIR="$SCRIPT_DIR/Build"
-WATCHDOG_ROOT="${WATCHDOG_ROOT:-$SCRIPT_DIR/../WatchDog-Linux}"
-WATCHDOG_DLL="$WATCHDOG_ROOT/src/bin/Release/net10.0/WatchDog.dll"
+WATCHDOG_VERSION="$(sed -n 's:.*<WatchDogVersion>\([^<]*\)</WatchDogVersion>.*:\1:p' "$SCRIPT_DIR/SkuaPlayerVersion.props")"
+WATCHDOG_CACHE="$BUILD_DIR/.cache/watchdog/v${WATCHDOG_VERSION}/WatchDog.dll"
+WATCHDOG_URL="https://github.com/JonasAlv/Watch-Dog-linux/releases/download/v${WATCHDOG_VERSION}/WatchDog.dll"
 SKUA_PLAYER_VERSION="$(sed -n 's:.*<SkuaPlayerVersion>\([^<]*\)</SkuaPlayerVersion>.*:\1:p' "$SCRIPT_DIR/SkuaPlayerVersion.props")"
 SKUA_PLAYER_OS="$(sed -n 's:.*<SkuaPlayerOs>\([^<]*\)</SkuaPlayerOs>.*:\1:p' "$SCRIPT_DIR/SkuaPlayerVersion.props")"
 SKUA_PLAYER_CACHE="$SCRIPT_DIR/player/${SKUA_PLAYER_VERSION}-${SKUA_PLAYER_OS}"
@@ -33,10 +34,19 @@ cp -f "$MGR_BIN"/VibeSkua.Manager* "$BUILD_DIR/" 2>/dev/null || true
 cp -f "$SCRIPT_DIR/Skua.Plugin.DailyTracker/bin/Release/net10.0"/Skua.Plugin.*.dll "$BUILD_DIR/plugins/" 2>/dev/null || true
 cp -f "$SCRIPT_DIR/Skua.Plugin.ButlerV5/bin/Release/net10.0"/ButlerV5.dll "$BUILD_DIR/plugins/" 2>/dev/null || true
 cp -f "$SCRIPT_DIR/Skua.Plugin.Cosmetics/bin/Release/net10.0"/Skua.Plugin.Cosmetics.dll "$BUILD_DIR/plugins/" 2>/dev/null || true
-if [ -f "$WATCHDOG_DLL" ]; then
-    cp -f "$WATCHDOG_DLL" "$BUILD_DIR/plugins/WatchDog.dll"
-    echo "Bundled Linux Watch Dog plugin from $WATCHDOG_ROOT"
+if [ ! -f "$WATCHDOG_CACHE" ]; then
+    mkdir -p "$(dirname "$WATCHDOG_CACHE")"
+    tmp_watchdog="$WATCHDOG_CACHE.tmp"
+    echo "Fetching Watch Dog v${WATCHDOG_VERSION} from GitHub Releases..."
+    if curl -fsSL "$WATCHDOG_URL" -o "$tmp_watchdog" && [ -s "$tmp_watchdog" ]; then
+        mv -f "$tmp_watchdog" "$WATCHDOG_CACHE"
+    else
+        rm -f "$tmp_watchdog"
+        echo "Error: Failed to download Watch Dog v${WATCHDOG_VERSION}." >&2
+        exit 1
+    fi
 fi
+cp -f "$WATCHDOG_CACHE" "$BUILD_DIR/plugins/WatchDog.dll"
 
 # 4. Copy SWF client
 if [ -f "$SCRIPT_DIR/Skua.AS3/skua/bin/skua.swf" ]; then

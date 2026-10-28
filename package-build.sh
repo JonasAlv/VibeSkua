@@ -17,8 +17,6 @@ BUILD_DIR="$SCRIPT_DIR/Build"
 BINARY_DIR="$BUILD_DIR/VibeSkua-linux-Binary"
 CURRENT_DIR="$BUILD_DIR/payload/current"
 OUTPUT_DIR="$BUILD_DIR"
-WATCHDOG_ROOT="${WATCHDOG_ROOT:-$SCRIPT_DIR/../WatchDog-Linux}"
-WATCHDOG_DLL="$WATCHDOG_ROOT/src/bin/Release/net10.0/WatchDog.dll"
 SKUA_PLAYER_VERSION="$(sed -n 's:.*<SkuaPlayerVersion>\([^<]*\)</SkuaPlayerVersion>.*:\1:p' "$SCRIPT_DIR/SkuaPlayerVersion.props")"
 SKUA_PLAYER_OS="$(sed -n 's:.*<SkuaPlayerOs>\([^<]*\)</SkuaPlayerOs>.*:\1:p' "$SCRIPT_DIR/SkuaPlayerVersion.props")"
 SKUA_PLAYER_CACHE="$SCRIPT_DIR/player/${SKUA_PLAYER_VERSION}-${SKUA_PLAYER_OS}"
@@ -110,8 +108,6 @@ cp -f "$SCRIPT_DIR/Skua.Plugin.ButlerV5/bin/Release/net10.0"/ButlerV5.dll "$CURR
 cp -f "$SCRIPT_DIR/Skua.Plugin.Cosmetics/bin/Release/net10.0"/Skua.Plugin.Cosmetics.dll "$CURRENT_DIR/plugins/" 2>/dev/null || true
 if [ -f "$BUILD_DIR/plugins/WatchDog.dll" ]; then
     cp -f "$BUILD_DIR/plugins/WatchDog.dll" "$CURRENT_DIR/plugins/WatchDog.dll"
-elif [ -f "$WATCHDOG_DLL" ]; then
-    cp -f "$WATCHDOG_DLL" "$CURRENT_DIR/plugins/WatchDog.dll"
 fi
 
 # Copy skua.swf (Essential AS3 game client & bot API bridge)
