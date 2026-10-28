@@ -1,5 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
+    <Import Project="..\SkuaPlayerVersion.props" />
+
     <PropertyGroup>
         <OutputType>WinExe</OutputType>
         <TargetFramework>net10.0</TargetFramework>
@@ -65,8 +67,6 @@
       Downloaded once into player/<version>-linux/ and copied to output player/ folder.
     -->
     <PropertyGroup>
-        <SkuaPlayerVersion>1.5.1-skua.4</SkuaPlayerVersion>
-        <SkuaPlayerOs>linux</SkuaPlayerOs>
         <SkuaPlayerArchive>Mugetsu-$(SkuaPlayerVersion)-linux.tar.gz</SkuaPlayerArchive>
         <SkuaPlayerExe>Mugetsu</SkuaPlayerExe>
         <SkuaPlayerUrl>https://github.com/retr0gr4d3/skua-mugetsu/releases/download/v$(SkuaPlayerVersion)/$(SkuaPlayerArchive)</SkuaPlayerUrl>

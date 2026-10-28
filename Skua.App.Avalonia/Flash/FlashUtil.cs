@@ -104,9 +104,15 @@ public class FlashUtil : IFlashUtil, IRestartableGamePlayer
             DirectoryInfo? dir = new(AppContext.BaseDirectory);
             while (dir is not null)
             {
-                string devPath = Path.Combine(dir.FullName, "player", "1.5.1-skua.2-linux", "Mugetsu", "Mugetsu");
-                if (File.Exists(devPath))
-                    return devPath;
+                string playerRoot = Path.Combine(dir.FullName, "player");
+                if (Directory.Exists(playerRoot))
+                {
+                    string? devPath = Directory
+                        .EnumerateFiles(playerRoot, "Mugetsu", SearchOption.AllDirectories)
+                        .FirstOrDefault(path => string.Equals(Path.GetFileName(path), playerExe, StringComparison.Ordinal));
+                    if (devPath is not null)
+                        return devPath;
+                }
                 dir = dir.Parent;
             }
 

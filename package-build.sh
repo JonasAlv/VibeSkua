@@ -17,6 +17,11 @@ BUILD_DIR="$SCRIPT_DIR/Build"
 BINARY_DIR="$BUILD_DIR/VibeSkua-linux-Binary"
 CURRENT_DIR="$BUILD_DIR/payload/current"
 OUTPUT_DIR="$BUILD_DIR"
+SKUA_PLAYER_VERSION="$(sed -n 's:.*<SkuaPlayerVersion>\([^<]*\)</SkuaPlayerVersion>.*:\1:p' "$SCRIPT_DIR/SkuaPlayerVersion.props")"
+SKUA_PLAYER_OS="$(sed -n 's:.*<SkuaPlayerOs>\([^<]*\)</SkuaPlayerOs>.*:\1:p' "$SCRIPT_DIR/SkuaPlayerVersion.props")"
+SKUA_PLAYER_CACHE="$SCRIPT_DIR/player/${SKUA_PLAYER_VERSION}-${SKUA_PLAYER_OS}"
+SKUA_PLAYER_ARCHIVE="Mugetsu-${SKUA_PLAYER_VERSION}-${SKUA_PLAYER_OS}.tar.gz"
+SKUA_PLAYER_URL="https://github.com/retr0gr4d3/skua-mugetsu/releases/download/v${SKUA_PLAYER_VERSION}/${SKUA_PLAYER_ARCHIVE}"
 
 MODE="appimage"
 
@@ -115,8 +120,8 @@ if [ -d "$APP_BIN/player" ] && [ -f "$APP_BIN/player/Mugetsu" ]; then
     cp -rf "$APP_BIN/player"/* "$CURRENT_DIR/player/"
     cp -f "$CURRENT_DIR/player/Mugetsu" "$CURRENT_DIR/Mugetsu"
     chmod +x "$CURRENT_DIR/player/Mugetsu" "$CURRENT_DIR/Mugetsu"
-elif [ -f "$SCRIPT_DIR/player/1.5.1-skua.4-linux/Mugetsu/Mugetsu" ]; then
-    cp -f "$SCRIPT_DIR/player/1.5.1-skua.4-linux/Mugetsu/Mugetsu" "$CURRENT_DIR/player/Mugetsu"
+elif [ -f "$SKUA_PLAYER_CACHE/Mugetsu/Mugetsu" ]; then
+    cp -f "$SKUA_PLAYER_CACHE/Mugetsu/Mugetsu" "$CURRENT_DIR/player/Mugetsu"
     cp -f "$CURRENT_DIR/player/Mugetsu" "$CURRENT_DIR/Mugetsu"
     chmod +x "$CURRENT_DIR/player/Mugetsu" "$CURRENT_DIR/Mugetsu"
 elif [ -f "$BUILD_DIR/Mugetsu" ]; then
@@ -124,9 +129,9 @@ elif [ -f "$BUILD_DIR/Mugetsu" ]; then
     cp -f "$BUILD_DIR/Mugetsu" "$CURRENT_DIR/Mugetsu"
     chmod +x "$CURRENT_DIR/player/Mugetsu" "$CURRENT_DIR/Mugetsu"
 else
-    echo "Mugetsu binary not found locally. Fetching official skua-mugetsu v1.5.1-skua.4 from GitHub Releases..."
+    echo "Mugetsu binary not found locally. Fetching official skua-mugetsu v${SKUA_PLAYER_VERSION} from GitHub Releases..."
     TMP_ARCHIVE="$CURRENT_DIR/skua-mugetsu.tar.gz"
-    if curl -sSL --fail "https://github.com/retr0gr4d3/skua-mugetsu/releases/download/v1.5.1-skua.4/Mugetsu-1.5.1-skua.4-linux.tar.gz" -o "$TMP_ARCHIVE" && [ -s "$TMP_ARCHIVE" ]; then
+    if curl -sSL --fail "$SKUA_PLAYER_URL" -o "$TMP_ARCHIVE" && [ -s "$TMP_ARCHIVE" ]; then
         tar -xzf "$TMP_ARCHIVE" -C "$CURRENT_DIR/player/" --strip-components=1
         rm -f "$TMP_ARCHIVE"
         cp -f "$CURRENT_DIR/player/Mugetsu" "$CURRENT_DIR/Mugetsu"
