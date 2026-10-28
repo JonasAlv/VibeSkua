@@ -708,7 +708,7 @@ public class DialogService : IDialogService
             ExtendClientAreaToDecorationsHint = true,
             ExtendClientAreaChromeHints = global::Avalonia.Platform.ExtendClientAreaChromeHints.NoChrome,
             ExtendClientAreaTitleBarHeightHint = 32,
-            CanResize = false,
+            CanResize = true,
             ShowActivated = true,
             Classes = { "skua" }
         };

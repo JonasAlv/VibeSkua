@@ -10,6 +10,7 @@
         Title="{Binding Title}"
         Width="850"
         Height="500"
+        CanResize="True"
         WindowStartupLocation="CenterScreen"
         Icon="avares://Skua.Shared.Avalonia/Assets/SkuaIcon.ico"
         SystemDecorations="BorderOnly"

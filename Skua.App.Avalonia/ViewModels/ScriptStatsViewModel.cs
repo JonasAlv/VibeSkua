@@ -19,5 +19,5 @@ public class ScriptStatsViewModel : ObservableObject, IManagedWindow
     public string Title => "Stats";
     public int Width => 440;
     public int Height => 320;
-    public bool CanResize => false;
+    public bool CanResize => true;
 }

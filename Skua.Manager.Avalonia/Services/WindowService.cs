@@ -103,6 +103,7 @@ public class WindowService : IWindowService
         Window window = new()
         {
             Title = title,
+            CanResize = true,
             SystemDecorations = SystemDecorations.BorderOnly,
             ExtendClientAreaToDecorationsHint = true,
             ExtendClientAreaChromeHints = global::Avalonia.Platform.ExtendClientAreaChromeHints.NoChrome,

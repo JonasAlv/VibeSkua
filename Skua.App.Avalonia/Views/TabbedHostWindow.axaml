@@ -8,6 +8,7 @@
         x:Class="Skua.App.Avalonia.Views.TabbedHostWindow"
         Classes="skua"
         Title="VibeSkua" Icon="avares://Skua.Shared.Avalonia/Assets/SkuaIcon.ico" Height="700" Width="1100"
+        CanResize="True"
         WindowStartupLocation="CenterScreen"
         Background="{DynamicResource SkuaPageBrush}"
         SystemDecorations="BorderOnly"

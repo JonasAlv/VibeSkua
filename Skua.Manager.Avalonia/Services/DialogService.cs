@@ -621,7 +621,7 @@ public class DialogService : IDialogService
             Title = title,
             Width = 420,
             SizeToContent = SizeToContent.Height,
-            CanResize = false,
+            CanResize = true,
             WindowStartupLocation = WindowStartupLocation.Manual,
             SystemDecorations = SystemDecorations.BorderOnly,
             ExtendClientAreaToDecorationsHint = true,
