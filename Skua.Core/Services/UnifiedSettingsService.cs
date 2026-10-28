@@ -21,9 +21,10 @@ public class UnifiedSettingsService
     {
         ClientFileSources.EnsureInitialized();
         _clientSettingsFile = Path.Combine(ClientFileSources.SkuaDIR, "ClientSettings.json");
-        _managerSettingsFile = Path.Combine(ClientFileSources.SkuaDIR, "ManagerSettings.json");
+        _managerSettingsFile = Path.Combine(ClientFileSources.ManagerDIR, "ManagerSettings.json");
 
         Directory.CreateDirectory(ClientFileSources.SkuaDIR);
+        Directory.CreateDirectory(ClientFileSources.ManagerDIR);
 
         _fileMutex = new Mutex(false, @"Global\VibeSkua.Settings.IO");
     }

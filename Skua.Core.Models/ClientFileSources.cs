@@ -15,6 +15,7 @@ public static class ClientFileSources
     public static string LegacySkuaDIR { get; } = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Skua");
     public static string SkuaDIR { get; } = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "VibeSkua");
     public static string VibeSkuaDIR => SkuaDIR;
+    public static string ManagerDIR { get; } = Path.Combine(SkuaDIR, "Manager");
     public static string SkuaSettingsDIR { get; } = Path.Combine(SkuaDIR, "Skua.settings.json");
     public static string SkuaScriptsDIR { get; } = Path.Combine(SkuaDIR, "Scripts");
     public static string SkuaThemesDIR { get; } = Path.Combine(SkuaDIR, "themes");

@@ -882,7 +882,7 @@ public partial class ArmyQueueViewModel : ObservableRecipient
 
         try
         {
-            string configDir = ClientFileSources.SkuaDIR;
+            string configDir = ClientFileSources.ManagerDIR;
             Directory.CreateDirectory(configDir);
             string filePath = Path.Combine(configDir, "ArmyQueues.json");
 
@@ -976,7 +976,7 @@ public partial class ArmyQueueViewModel : ObservableRecipient
 
         try
         {
-            string filePath = Path.Combine(ClientFileSources.SkuaDIR, "ArmyQueues.json");
+            string filePath = Path.Combine(ClientFileSources.ManagerDIR, "ArmyQueues.json");
             Dictionary<string, ArmyQueueConfig> configs = LoadAllConfigs();
             configs.Remove(SelectedPreset);
             File.WriteAllText(filePath, JsonSerializer.Serialize(configs, new JsonSerializerOptions { WriteIndented = true }));
@@ -992,7 +992,7 @@ public partial class ArmyQueueViewModel : ObservableRecipient
 
     private Dictionary<string, ArmyQueueConfig> LoadAllConfigs()
     {
-        string filePath = Path.Combine(ClientFileSources.SkuaDIR, "ArmyQueues.json");
+        string filePath = Path.Combine(ClientFileSources.ManagerDIR, "ArmyQueues.json");
         if (!File.Exists(filePath))
             return new Dictionary<string, ArmyQueueConfig>(StringComparer.OrdinalIgnoreCase);
 
@@ -1062,7 +1062,7 @@ public partial class ArmyQueueViewModel : ObservableRecipient
 
         try
         {
-            string configDir = ClientFileSources.SkuaDIR;
+            string configDir = ClientFileSources.ManagerDIR;
             Directory.CreateDirectory(configDir);
             string filePath = Path.Combine(configDir, "ArmyQueueActive.json");
 
@@ -1096,7 +1096,7 @@ public partial class ArmyQueueViewModel : ObservableRecipient
     {
         try
         {
-            string configDir = ClientFileSources.SkuaDIR;
+            string configDir = ClientFileSources.ManagerDIR;
             string filePath = Path.Combine(configDir, "ArmyQueueActive.json");
 
             if (File.Exists(filePath))
