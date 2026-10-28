@@ -115,29 +115,42 @@ public sealed class ScriptPathResolver : IScriptPathResolver
         List<string> existing = candidates
             .Select(Canonicalize)
             .Distinct(StringComparer.OrdinalIgnoreCase)
-            .Select(ResolveExistingFile)
-            .Where(p => p is not null)
-            .Select(p => p!)
-            .Distinct(StringComparer.Ordinal)
             .ToList();
 
-        if (existing.Count == 0 && normalizedSpecifier.StartsWith($"Scripts{Path.DirectorySeparatorChar}", StringComparison.OrdinalIgnoreCase))
+        List<string> resolvedFiles = new();
+        List<string> errors = new();
+        foreach (string candidate in existing)
+        {
+            string? resolved = ResolveExistingFile(candidate, out string? error);
+            if (resolved is not null)
+                resolvedFiles.Add(resolved);
+            else if (error is not null)
+                errors.Add($"{candidate}: {error}");
+        }
+
+        if (resolvedFiles.Count == 0 && normalizedSpecifier.StartsWith($"Scripts{Path.DirectorySeparatorChar}", StringComparison.OrdinalIgnoreCase))
         {
             string subPath = normalizedSpecifier[("Scripts".Length + 1)..];
             string? downloaded = TryDownloadMissingInclude(subPath);
             if (!string.IsNullOrEmpty(downloaded) && File.Exists(downloaded))
-                existing.Add(Canonicalize(downloaded));
+                resolvedFiles.Add(Canonicalize(downloaded));
         }
 
-        ScriptPathResolution resolution = new(existing.FirstOrDefault(), existing);
+        resolvedFiles = resolvedFiles.Distinct(
+            OperatingSystem.IsWindows() ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal).ToList();
+
+        ScriptPathResolution resolution = new(resolvedFiles.FirstOrDefault(), resolvedFiles, errors.Count > 0 ? string.Join("; ", errors) : null);
         if (resolution.SelectedPath != null)
             _resolutionCache[cacheKey] = resolution;
 
         return resolution;
     }
 
-    private static string? ResolveExistingFile(string path)
+    // Linux filesystems distinguish case, while script catalogs commonly use Windows-style paths.
+    // Resolve one segment at a time and refuse ambiguous matches instead of guessing.
+    private static string? ResolveExistingFile(string path, out string? error)
     {
+        error = null;
         if (File.Exists(path))
             return path;
 
@@ -186,8 +199,14 @@ public sealed class ScriptPathResolver : IScriptPathResolver
 
             return File.Exists(current) ? current : null;
         }
-        catch
+        catch (IOException exception)
         {
+            error = exception.Message;
+            return null;
+        }
+        catch (UnauthorizedAccessException exception)
+        {
+            error = exception.Message;
             return null;
         }
     }
@@ -211,7 +230,7 @@ public sealed class ScriptPathResolver : IScriptPathResolver
             }
 
             string localTarget = Path.Combine(_repositoryRoot, relativePath.Replace('/', Path.DirectorySeparatorChar));
-            string? existingLocal = ResolveExistingFile(localTarget);
+            string? existingLocal = ResolveExistingFile(localTarget, out _);
             if (existingLocal is not null)
                 return existingLocal;
 

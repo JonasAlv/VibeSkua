@@ -12,7 +12,10 @@ public sealed record ScriptSource(string FullPath, ScriptSourceKind Kind, bool E
     public bool IsExplicitFile => Kind == ScriptSourceKind.CustomFile;
 }
 
-public sealed record ScriptPathResolution(string? SelectedPath, IReadOnlyList<string> ExistingCandidates)
+public sealed record ScriptPathResolution(
+    string? SelectedPath,
+    IReadOnlyList<string> ExistingCandidates,
+    string? Error = null)
 {
     public bool IsAmbiguous => ExistingCandidates.Count > 1;
 }
