@@ -78,6 +78,11 @@ public static class WindowResizeHelper
         if (sender is not Window window)
             return;
 
+        // The custom title bar's minimize/maximize/close buttons live at the window edge.
+        // Never turn their clicks into resize drags.
+        if (e.Source is Button)
+            return;
+
         if (!e.GetCurrentPoint(window).Properties.IsLeftButtonPressed)
             return;
 
