@@ -17,6 +17,7 @@ public class GameHost : NativeControlHost
     private static nint _display;
     private nint _holder;
     private DispatcherTimer? _fitTimer;
+    private nint _player;
 
     public static event Action? GameClicked
     {
@@ -80,13 +81,42 @@ public class GameHost : NativeControlHost
             return;
         if (XGetGeometry(_display, _holder, out _, out _, out _, out uint width, out uint height, out _, out _) == 0)
             return;
-        if (XQueryTree(_display, _holder, out _, out _, out nint children, out uint count) == 0 || children == 0)
+        if (XQueryTree(_display, _holder, out _, out _, out nint children, out uint count) == 0)
             return;
-        nint player = count > 0 ? Marshal.ReadIntPtr(children) : 0;
-        XFree(children);
-        if (player == 0 || XGetGeometry(_display, player, out _, out _, out _, out uint playerWidth, out uint playerHeight, out _, out _) == 0)
+
+        nint player = 0;
+        try
+        {
+            // The player normally has one direct child. Keep selecting the first
+            // live child so a restarted player or recreated X11 window is picked
+            // up without requiring a new Avalonia control.
+            if (count > 0 && children != 0)
+                player = Marshal.ReadIntPtr(children);
+        }
+        finally
+        {
+            if (children != 0)
+                XFree(children);
+        }
+
+        if (player == 0)
+        {
+            _player = 0;
             return;
-        if (playerWidth != width || playerHeight != height)
+        }
+
+        if (XGetGeometry(_display, player, out _, out _, out _, out uint playerWidth, out uint playerHeight, out _, out _) == 0)
+        {
+            _player = 0;
+            return;
+        }
+
+        bool playerChanged = _player != player;
+        _player = player;
+        if (playerChanged)
+            XMapWindow(_display, player);
+
+        if (playerChanged || playerWidth != width || playerHeight != height)
         {
             XMoveResizeWindow(_display, player, 0, 0, width, height);
             XFlush(_display);
@@ -112,6 +142,9 @@ public class GameHost : NativeControlHost
 
     [DllImport(LibX11)]
     private static extern int XMoveResizeWindow(nint display, nint window, int x, int y, uint width, uint height);
+
+    [DllImport(LibX11)]
+    private static extern int XMapWindow(nint display, nint window);
 
     [DllImport(LibX11)]
     private static extern int XFree(nint data);

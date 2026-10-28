@@ -6,6 +6,7 @@ using Avalonia.Threading;
 using System;
 using System.Reflection;
 using System.Runtime.InteropServices;
+using System.Runtime.CompilerServices;
 
 namespace Skua.Shared.Avalonia.Services;
 
@@ -42,6 +43,7 @@ public static class X11WindowPositionTracker
     private static PropertyInfo? _posChangedProp;
     private static MethodInfo? _updateScalingMethod;
     private static bool _initialized;
+    private static readonly ConditionalWeakTable<Window, object> _trackedWindows = new();
 
     static X11WindowPositionTracker()
     {
@@ -96,6 +98,17 @@ public static class X11WindowPositionTracker
         if (!OperatingSystem.IsLinux())
             return;
 
+        // Track can be called by more than one window/service setup path. Do not
+        // attach another set of handlers and another timer to an already tracked
+        // window; duplicate timers can cause visible popup jitter under XWayland.
+        lock (_lock)
+        {
+            if (_trackedWindows.TryGetValue(window, out _))
+                return;
+
+            _trackedWindows.Add(window, new object());
+        }
+
         window.AddHandler(InputElement.PointerMovedEvent, (s, e) => SyncPosition(window), RoutingStrategies.Tunnel);
         window.AddHandler(InputElement.PointerPressedEvent, (s, e) => SyncPosition(window), RoutingStrategies.Tunnel);
         window.AddHandler(InputElement.PointerEnteredEvent, (s, e) => SyncPosition(window), RoutingStrategies.Tunnel);
@@ -146,19 +159,18 @@ public static class X11WindowPositionTracker
 
             if (_x11WindowType == null || !_x11WindowType.IsInstanceOfType(platformImpl))
             {
-                // Try to find type if not loaded during static constructor
-                if (!_initialized)
-                {
-                    _x11WindowType = platformImpl.GetType();
-                    _positionField = _x11WindowType.GetField("_position", BindingFlags.NonPublic | BindingFlags.Instance);
-                    _posChangedProp = _x11WindowType.GetProperty("PositionChanged", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
-                    _updateScalingMethod = _x11WindowType.GetMethod("UpdateScaling", BindingFlags.NonPublic | BindingFlags.Instance);
-                    _initialized = true;
-                }
-                else
+                // Avalonia may load its X11 backend after this type's static
+                // constructor. Discover it from the live platform implementation.
+                if (_initialized || !platformImpl.GetType().Name.Contains("X11", StringComparison.Ordinal))
                 {
                     return;
                 }
+
+                _x11WindowType = platformImpl.GetType();
+                _positionField = _x11WindowType.GetField("_position", BindingFlags.NonPublic | BindingFlags.Instance);
+                _posChangedProp = _x11WindowType.GetProperty("PositionChanged", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+                _updateScalingMethod = _x11WindowType.GetMethod("UpdateScaling", BindingFlags.NonPublic | BindingFlags.Instance);
+                _initialized = true;
             }
 
             IntPtr handle = window.TryGetPlatformHandle()?.Handle ?? IntPtr.Zero;
@@ -171,7 +183,8 @@ public static class X11WindowPositionTracker
             if (XTranslateCoordinates(_display, handle, _rootWindow, 0, 0, out int realX, out int realY, out _) != 0)
             {
                 PixelPoint livePos = new(realX, realY);
-                PixelPoint? currentPos = _positionField?.GetValue(platformImpl) as PixelPoint?;
+                object? currentValue = _positionField?.GetValue(platformImpl);
+                PixelPoint? currentPos = currentValue is PixelPoint position ? position : null;
 
                 if (!currentPos.HasValue || currentPos.Value != livePos)
                 {
