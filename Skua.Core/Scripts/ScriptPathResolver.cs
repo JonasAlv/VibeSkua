@@ -167,23 +167,21 @@ public sealed class ScriptPathResolver : IScriptPathResolver
                 if (!Directory.Exists(current))
                     return null;
 
-                string? matched = null;
-                foreach (string entry in Directory.EnumerateFileSystemEntries(current))
-                {
-                    if (string.Equals(Path.GetFileName(entry), segment, StringComparison.OrdinalIgnoreCase))
-                    {
-                        if (isLast ? File.Exists(entry) : Directory.Exists(entry))
-                        {
-                            matched = entry;
-                            break;
-                        }
-                    }
-                }
+                string[] matches = Directory.EnumerateFileSystemEntries(current)
+                    .Where(entry => string.Equals(
+                        Path.GetFileName(entry),
+                        segment,
+                        StringComparison.OrdinalIgnoreCase))
+                    .Where(entry => isLast ? File.Exists(entry) : Directory.Exists(entry))
+                    .Take(2)
+                    .ToArray();
 
-                if (matched is null)
+                // Never guess when a Linux directory contains both names differing only by
+                // case; Windows would treat that as one path, but Linux cannot do so safely.
+                if (matches.Length != 1)
                     return null;
 
-                current = matched;
+                current = matches[0];
             }
 
             return File.Exists(current) ? current : null;
