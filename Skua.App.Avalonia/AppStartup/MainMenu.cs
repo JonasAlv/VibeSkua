@@ -34,7 +34,6 @@ internal class MainMenu
         windowService.RegisterManagedWindow<LoadoutsViewModel>("Loadouts Manager");
 
         windowService.RegisterManagedWindow<GameOptionsViewModel>("Game");
-        windowService.RegisterManagedWindow<WatchDogViewModel>("Watch Dog");
         windowService.RegisterManagedWindow<ApplicationOptionsViewModel>("Application");
         windowService.RegisterManagedWindow<CoreBotsViewModel>("CoreBots");
         windowService.RegisterManagedWindow<ApplicationThemesViewModel>("Application Themes");
@@ -78,7 +77,6 @@ internal class MainMenu
             new("Options", new List<MainMenuItemViewModel>()
             {
                 new("Game"),
-                new("Watch Dog"),
                 new("Application"),
                 new("CoreBots"),
                 new("Application Themes"),

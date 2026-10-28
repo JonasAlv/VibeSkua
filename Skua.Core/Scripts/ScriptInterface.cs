@@ -357,8 +357,6 @@ public partial class ScriptInterface : IScriptInterface, IScriptInterfaceManager
                 });
 
                 _limit.LimitedRun("connDetail", 100, () => (lastConnChange, lastConnDetail) = CheckStuckonLoading(lastConnChange, lastConnDetail));
-                _limit.LimitedRun("loginWatchdog", 500, LoginWatchdogTick);
-
                 if (Manager.ScriptRunning)
                     RunScriptHandlers();
 
@@ -518,7 +516,6 @@ public partial class ScriptInterface : IScriptInterface, IScriptInterfaceManager
                             Log("Intentional logout button clicked by user in game. Auto re-login disarmed.");
                             Servers.IsIntentionalLogout = true;
                             Servers.UserLoggedOut = true;
-                            _wdRestartScript = false;
                             CancelRelogin();
                             if (Manager.ScriptRunning)
                                 _ = Manager.StopScript();
@@ -528,7 +525,6 @@ public partial class ScriptInterface : IScriptInterface, IScriptInterfaceManager
                             Log("Intentional 'Change Server' button clicked by user in game. Auto re-login disarmed.");
                             Servers.IsIntentionalLogout = true;
                             Servers.UserLoggedOut = true;
-                            _wdRestartScript = false;
                             CancelRelogin();
                             if (Manager.ScriptRunning)
                                 _ = Manager.StopScript();
@@ -565,8 +561,6 @@ public partial class ScriptInterface : IScriptInterface, IScriptInterfaceManager
                 break;
 
             case "pext":
-                if (((string)args[0]).Contains("Missing Quest Progress", StringComparison.OrdinalIgnoreCase))
-                    OnMissingQuestProgress();
                 dynamic packet = JsonConvert.DeserializeObject<dynamic>((string)args[0])!;
                 string type = packet["params"].type;
                 dynamic data = packet["params"].dataObj;
@@ -745,7 +739,6 @@ public partial class ScriptInterface : IScriptInterface, IScriptInterfaceManager
                         Log("In-game exit logout packet (eLO) detected. Disarming auto re-login.");
                         Servers.IsIntentionalLogout = true;
                         Servers.UserLoggedOut = true;
-                        _wdRestartScript = false;
                         CancelRelogin();
                         if (Manager.ScriptRunning)
                             _ = Manager.StopScript();
@@ -756,7 +749,6 @@ public partial class ScriptInterface : IScriptInterface, IScriptInterfaceManager
                         Log("In-game exit to server list packet (eSL) detected. Disarming auto re-login.");
                         Servers.IsIntentionalLogout = true;
                         Servers.UserLoggedOut = true;
-                        _wdRestartScript = false;
                         CancelRelogin();
                         if (Manager.ScriptRunning)
                             _ = Manager.StopScript();
@@ -834,13 +826,8 @@ public partial class ScriptInterface : IScriptInterface, IScriptInterfaceManager
         }
 
         Log("Auto re-login triggered.");
-        bool wasRunning = Manager.ScriptRunning;
         CancellationTokenSource reloginCts = new();
         _reloginCTS = reloginCts;
-        // VibeSkuffle: the login watchdog starts the script again once the account is properly back in game
-        // (it waits for the login to finish and checks that the script really started).
-        if (wasRunning)
-            _wdRestartScript = true;
         // Claim the re-login before awaiting the script stop, so the crash recovery doesn't start a
         // second login meanwhile.
         _waitForLogin = true;
@@ -896,7 +883,6 @@ public partial class ScriptInterface : IScriptInterface, IScriptInterfaceManager
     private void Relogin(int delay, bool startScript, CancellationTokenSource reloginCts)
     {
         reloginCts.Token.ThrowIfCancellationRequested();
-        _reloginStartsScript = startScript;
         Servers.DisconnectForRelogin();
         Log($"Waiting {delay}ms for re-login.");
         _reloginTask = Schedule(delay, async _ =>

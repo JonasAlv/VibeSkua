@@ -35,8 +35,6 @@ public partial class ScriptOption : ObservableRecipient, IScriptOption, IOptionD
         StrongReferenceMessenger.Default.Register<ScriptOption, ScriptStoppedMessage, int>(this, (int)MessageChannels.ScriptStatus, ScriptStopped);
         StrongReferenceMessenger.Default.Register<ScriptOption, MapChangedMessage, int>(this, (int)MessageChannels.GameEvents, MapChanged);
         _isInitializing = false;
-        _rescueSettings = WatchDog.Shared.SharedRescueSettings.Instance;
-        _rescueSettings.Changed += NotifyRescueSettingsChanged;
     }
 
     private void ScriptStarted(ScriptOption recipient, ScriptStartedMessage message)
@@ -153,43 +151,6 @@ public partial class ScriptOption : ObservableRecipient, IScriptOption, IOptionD
 
     [ObservableProperty]
     private bool _ignoreScriptRejectElse;
-
-    private WatchDog.Shared.SharedRescueSettings? _rescueSettings;
-    private string _rescueAccount = "";
-    public bool RescueAllies
-    {
-        get => _rescueSettings?.Enabled ?? false;
-        set { if (!_isInitializing) _rescueSettings?.SetEnabled(value); }
-    }
-    public bool AllowThisAccountToRescue
-    {
-        get => _rescueSettings?.IsAllowed(_rescueAccount) ?? true;
-        set { if (!_isInitializing && _rescueAccount.Length > 0) _rescueSettings?.SetAllowed(_rescueAccount, value); }
-    }
-    public int RescueDelayMinutes
-    {
-        get => _rescueSettings?.DelayMinutes ?? 15;
-        set { if (!_isInitializing) _rescueSettings?.SetDelayMinutes(value); }
-    }
-    public int RescueDeathsBeforeCalling
-    {
-        get => _rescueSettings?.DeathsBeforeRescue ?? 10;
-        set { if (!_isInitializing) _rescueSettings?.SetDeathsBeforeRescue(value); }
-    }
-    internal void BindRescueAccount(string? account)
-    {
-        account = account?.Trim() ?? "";
-        if (string.Equals(account, _rescueAccount, StringComparison.OrdinalIgnoreCase)) return;
-        _rescueAccount = account;
-        OnPropertyChanged(nameof(AllowThisAccountToRescue));
-    }
-    private void NotifyRescueSettingsChanged()
-    {
-        OnPropertyChanged(nameof(RescueAllies));
-        OnPropertyChanged(nameof(AllowThisAccountToRescue));
-        OnPropertyChanged(nameof(RescueDelayMinutes));
-        OnPropertyChanged(nameof(RescueDeathsBeforeCalling));
-    }
 
     private bool _acceptAllDrops;
 
@@ -479,7 +440,7 @@ public partial class ScriptOption : ObservableRecipient, IScriptOption, IOptionD
         StringCollection saveOptions = new();
         foreach (PropertyInfo pi in GetType().GetProperties())
         {
-            if (pi.Name is nameof(OptionDictionary) or nameof(RescueAllies) or nameof(AllowThisAccountToRescue) or nameof(RescueDelayMinutes) or nameof(RescueDeathsBeforeCalling))
+            if (pi.Name is nameof(OptionDictionary))
                 continue;
             string key = pi.Name;
             object? value = pi.GetValue(this);
@@ -498,7 +459,7 @@ public partial class ScriptOption : ObservableRecipient, IScriptOption, IOptionD
 
         foreach (PropertyInfo pi in GetType().GetProperties())
         {
-            if (pi.Name is nameof(OptionDictionary) or nameof(RescueAllies) or nameof(AllowThisAccountToRescue) or nameof(RescueDelayMinutes) or nameof(RescueDeathsBeforeCalling))
+            if (pi.Name is nameof(OptionDictionary))
                 continue;
             if (_userOptions.ContainsKey(pi.Name))
             {
@@ -517,7 +478,7 @@ public partial class ScriptOption : ObservableRecipient, IScriptOption, IOptionD
         ScriptOption defaults = new(_lazyFlash);
         foreach (PropertyInfo pi in GetType().GetProperties())
         {
-            if (pi.Name is nameof(OptionDictionary) or nameof(RescueAllies) or nameof(AllowThisAccountToRescue) or nameof(RescueDelayMinutes) or nameof(RescueDeathsBeforeCalling))
+            if (pi.Name is nameof(OptionDictionary))
                 continue;
 
             pi.SetValue(this, pi.GetValue(defaults), null);

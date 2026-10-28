@@ -3,6 +3,8 @@ set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BUILD_DIR="$SCRIPT_DIR/Build"
+WATCHDOG_ROOT="${WATCHDOG_ROOT:-$SCRIPT_DIR/../WatchDog-Linux}"
+WATCHDOG_DLL="$WATCHDOG_ROOT/src/bin/Release/net10.0/WatchDog.dll"
 SKUA_PLAYER_VERSION="$(sed -n 's:.*<SkuaPlayerVersion>\([^<]*\)</SkuaPlayerVersion>.*:\1:p' "$SCRIPT_DIR/SkuaPlayerVersion.props")"
 SKUA_PLAYER_OS="$(sed -n 's:.*<SkuaPlayerOs>\([^<]*\)</SkuaPlayerOs>.*:\1:p' "$SCRIPT_DIR/SkuaPlayerVersion.props")"
 SKUA_PLAYER_CACHE="$SCRIPT_DIR/player/${SKUA_PLAYER_VERSION}-${SKUA_PLAYER_OS}"
@@ -31,6 +33,10 @@ cp -f "$MGR_BIN"/VibeSkua.Manager* "$BUILD_DIR/" 2>/dev/null || true
 cp -f "$SCRIPT_DIR/Skua.Plugin.DailyTracker/bin/Release/net10.0"/Skua.Plugin.*.dll "$BUILD_DIR/plugins/" 2>/dev/null || true
 cp -f "$SCRIPT_DIR/Skua.Plugin.ButlerV5/bin/Release/net10.0"/ButlerV5.dll "$BUILD_DIR/plugins/" 2>/dev/null || true
 cp -f "$SCRIPT_DIR/Skua.Plugin.Cosmetics/bin/Release/net10.0"/Skua.Plugin.Cosmetics.dll "$BUILD_DIR/plugins/" 2>/dev/null || true
+if [ -f "$WATCHDOG_DLL" ]; then
+    cp -f "$WATCHDOG_DLL" "$BUILD_DIR/plugins/WatchDog.dll"
+    echo "Bundled Linux Watch Dog plugin from $WATCHDOG_ROOT"
+fi
 
 # 4. Copy SWF client
 if [ -f "$SCRIPT_DIR/Skua.AS3/skua/bin/skua.swf" ]; then

@@ -30,18 +30,8 @@ internal class Options
 
         foreach (PropertyInfo pi in scriptOpt.GetType().GetProperties())
         {
-            if (pi.Name is nameof(ScriptOption.RescueDelayMinutes) or nameof(ScriptOption.RescueDeathsBeforeCalling) or nameof(IScriptOption.OptionDictionary) or nameof(ObservableRecipient.IsActive) or nameof(IScriptOption.GuildColor) or nameof(IScriptOption.NameColor) or "IsIpcMessageProcessing" or nameof(IScriptOption.ReloginTryDelay) or nameof(IScriptOption.UseFunctionBasedSkills))
+            if (pi.Name is nameof(IScriptOption.OptionDictionary) or nameof(ObservableRecipient.IsActive) or nameof(IScriptOption.GuildColor) or nameof(IScriptOption.NameColor) or "IsIpcMessageProcessing" or nameof(IScriptOption.ReloginTryDelay) or nameof(IScriptOption.UseFunctionBasedSkills))
                 continue;
-            if (pi.Name == nameof(IScriptOption.RescueAllies))
-            {
-                options.Add(new BindingOptionItemViewModel<bool, ScriptOption>("Rescue Allies - all accounts", "Shared immediately across updated VibeSkuffle and Watch Dog clients on this PC.", "1", pi.Name, (ScriptOption)scriptOpt, new RelayCommand<bool>(b => scriptOpt.RescueAllies = b)));
-                continue;
-            }
-            if (pi.Name == nameof(IScriptOption.AllowThisAccountToRescue))
-            {
-                options.Add(new BindingOptionItemViewModel<bool, ScriptOption>("Allow this account to rescue", "Exclude this logged-in account from helping. It can still receive help. Saved per account.", "1", pi.Name, (ScriptOption)scriptOpt, new RelayCommand<bool>(b => scriptOpt.AllowThisAccountToRescue = b)));
-                continue;
-            }
             if (pi.PropertyType == typeof(bool))
                 options.Add(CreateOptionItem<bool>(s, pi.Name, "1", new RelayCommand<bool>(b => pi.SetValue(scriptOpt, b))));
             else if (pi.PropertyType == typeof(string))
