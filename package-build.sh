@@ -9,6 +9,7 @@
 #   --binary,   -b  : Build direct binary portable distribution
 #   --appimage, -i  : Build standalone AppImages (explicit)
 #   --all,      -a  : Build both AppImage and direct binary distributions
+# Optional: SKUA_PLAYER_V2_LOCAL=<folder> supplies a local x86-64-v2 Mugetsu binary.
 # ==============================================================================
 set -Eeuo pipefail
 
@@ -22,6 +23,7 @@ SKUA_PLAYER_OS="$(sed -n 's:.*<SkuaPlayerOs>\([^<]*\)</SkuaPlayerOs>.*:\1:p' "$S
 SKUA_PLAYER_CACHE="$SCRIPT_DIR/player/${SKUA_PLAYER_VERSION}-${SKUA_PLAYER_OS}"
 SKUA_PLAYER_ARCHIVE="Mugetsu-${SKUA_PLAYER_VERSION}-${SKUA_PLAYER_OS}.tar.gz"
 SKUA_PLAYER_URL="https://github.com/retr0gr4d3/skua-mugetsu/releases/download/v${SKUA_PLAYER_VERSION}/${SKUA_PLAYER_ARCHIVE}"
+SKUA_PLAYER_V2_CACHE="$SCRIPT_DIR/player/${SKUA_PLAYER_VERSION}-${SKUA_PLAYER_OS}-x86-64-v2"
 
 MODE="appimage"
 
@@ -45,6 +47,7 @@ while [[ $# -gt 0 ]]; do
             echo "  --binary,   -b  Build direct binary portable distribution"
             echo "  --appimage, -i  Build standalone AppImages"
             echo "  --all,      -a  Build both AppImage and direct binary distributions"
+            echo "  SKUA_PLAYER_V2_LOCAL=<folder>  Bundle local x86-64-v2 Mugetsu (folder contains Mugetsu)"
             exit 0
             ;;
         *)
@@ -127,7 +130,7 @@ fi
 cp -a "$SCRIPT_DIR/FFDec/." "$CURRENT_DIR/FFDec/"
 
 # Copy or download official Skua Mugetsu Flash runner (https://github.com/retr0gr4d3/skua-mugetsu)
-mkdir -p "$CURRENT_DIR/player"
+mkdir -p "$CURRENT_DIR/player" "$CURRENT_DIR/player-x86-64-v2"
 if [ -s "$APP_BIN/player/Mugetsu" ]; then
     cp -a "$APP_BIN/player/." "$CURRENT_DIR/player/"
     cp -f "$CURRENT_DIR/player/Mugetsu" "$CURRENT_DIR/Mugetsu"
@@ -154,6 +157,22 @@ else
         echo "Error: Failed to download official skua-mugetsu from GitHub Releases!" >&2
         exit 1
     fi
+fi
+
+# Bundle the x86-64-v2 player when available. It is optional for releases that do not publish it.
+if [[ -s "$APP_BIN/player-x86-64-v2/Mugetsu" ]]; then
+    cp -a "$APP_BIN/player-x86-64-v2/." "$CURRENT_DIR/player-x86-64-v2/"
+elif [[ -s "$SKUA_PLAYER_V2_CACHE/Mugetsu/Mugetsu" ]]; then
+    cp -a "$SKUA_PLAYER_V2_CACHE/Mugetsu/." "$CURRENT_DIR/player-x86-64-v2/"
+elif [[ -s "$BUILD_DIR/player-x86-64-v2/Mugetsu" ]]; then
+    cp -a "$BUILD_DIR/player-x86-64-v2/." "$CURRENT_DIR/player-x86-64-v2/"
+fi
+if [[ -s "$CURRENT_DIR/player-x86-64-v2/Mugetsu" ]]; then
+    chmod +x "$CURRENT_DIR/player-x86-64-v2/Mugetsu"
+    echo "Bundled x86-64-v2 Mugetsu player."
+else
+    rmdir "$CURRENT_DIR/player-x86-64-v2" 2>/dev/null || true
+    echo "No x86-64-v2 Mugetsu asset is available; packaging the standard player only."
 fi
 
 chmod +x "$CURRENT_DIR/VibeSkua" "$CURRENT_DIR/VibeSkua.Manager"

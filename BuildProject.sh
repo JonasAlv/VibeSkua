@@ -11,6 +11,7 @@ SKUA_PLAYER_OS="$(sed -n 's:.*<SkuaPlayerOs>\([^<]*\)</SkuaPlayerOs>.*:\1:p' "$S
 SKUA_PLAYER_CACHE="$SCRIPT_DIR/player/${SKUA_PLAYER_VERSION}-${SKUA_PLAYER_OS}"
 SKUA_PLAYER_ARCHIVE="Mugetsu-${SKUA_PLAYER_VERSION}-${SKUA_PLAYER_OS}.tar.gz"
 SKUA_PLAYER_URL="https://github.com/retr0gr4d3/skua-mugetsu/releases/download/v${SKUA_PLAYER_VERSION}/${SKUA_PLAYER_ARCHIVE}"
+SKUA_PLAYER_V2_LOCAL="${SKUA_PLAYER_V2_LOCAL:-}"
 SWF_SOURCE="$SCRIPT_DIR/Skua.AS3/skua/bin/skua.swf"
 APP_BIN="$SCRIPT_DIR/Skua.App.Avalonia/bin/Release/net10.0"
 MGR_BIN="$SCRIPT_DIR/Skua.Manager.Avalonia/bin/Release/net10.0"
@@ -22,7 +23,19 @@ if [[ ! -s "$SWF_SOURCE" ]]; then
 fi
 
 echo "=== Building VibeSkua (Linux Release) ==="
-dotnet build "$SCRIPT_DIR/Skua.sln" -c Release
+# The player is copied to a version-agnostic output path. Remove prior copies so an
+# incremental build cannot leave an older Mugetsu version in the package inputs.
+rm -rf "$APP_BIN/player" "$APP_BIN/player-x86-64-v2"
+dotnet_args=("$SCRIPT_DIR/Skua.sln" -c Release)
+if [[ -n "$SKUA_PLAYER_V2_LOCAL" ]]; then
+    if [[ ! -x "$SKUA_PLAYER_V2_LOCAL/Mugetsu" ]]; then
+        echo "Error: SKUA_PLAYER_V2_LOCAL must point to a folder containing an executable Mugetsu binary." >&2
+        exit 1
+    fi
+    dotnet_args+=("-p:SkuaPlayerV2Local=$SKUA_PLAYER_V2_LOCAL")
+    echo "Using local x86-64-v2 Mugetsu from $SKUA_PLAYER_V2_LOCAL"
+fi
+dotnet build "${dotnet_args[@]}"
 
 for required in \
     "$APP_BIN/VibeSkua" \
@@ -43,7 +56,8 @@ done
 echo "=== Preparing Build directory ==="
 mkdir -p "$BUILD_DIR"
 rm -rf "$BUILD_DIR/plugins" "$BUILD_DIR/player" "$BUILD_DIR/FFDec"
-mkdir -p "$BUILD_DIR/plugins" "$BUILD_DIR/player" "$BUILD_DIR/FFDec"
+rm -rf "$BUILD_DIR/player-x86-64-v2"
+mkdir -p "$BUILD_DIR/plugins" "$BUILD_DIR/player" "$BUILD_DIR/player-x86-64-v2" "$BUILD_DIR/FFDec"
 
 # 1. Copy Application output
 shopt -s nullglob
@@ -121,5 +135,9 @@ cp -a "$SCRIPT_DIR/FFDec/." "$BUILD_DIR/FFDec/"
 
 # 7. Set executable permissions
 chmod +x "$BUILD_DIR/VibeSkua" "$BUILD_DIR/VibeSkua.Manager" "$BUILD_DIR/Mugetsu"
+if [[ -s "$APP_BIN/player-x86-64-v2/Mugetsu" ]]; then
+    cp -a "$APP_BIN/player-x86-64-v2/." "$BUILD_DIR/player-x86-64-v2/"
+    chmod +x "$BUILD_DIR/player-x86-64-v2/Mugetsu"
+fi
 
 echo "=== Build complete! Artifacts are in: $BUILD_DIR ==="

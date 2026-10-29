@@ -89,6 +89,12 @@ public class FlashUtil : IFlashUtil, IRestartableGamePlayer
                 return envBin;
 
             const string playerExe = "Mugetsu";
+            bool needsV2 = !System.Runtime.Intrinsics.X86.Avx2.IsSupported;
+
+            // The regular player is built for x86-64-v3; use the bundled v2 build on older CPUs.
+            string playerV2Subdir = Path.Combine(AppContext.BaseDirectory, "player-x86-64-v2", playerExe);
+            if (needsV2 && File.Exists(playerV2Subdir))
+                return playerV2Subdir;
 
             // Check player subdirectory
             string playerSubdir = Path.Combine(AppContext.BaseDirectory, "player", playerExe);
