@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-set -e
+set -Eeuo pipefail
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
 BUILD_DIR="$SCRIPT_DIR/Build"
 WATCHDOG_VERSION="$(sed -n 's:.*<WatchDogVersion>\([^<]*\)</WatchDogVersion>.*:\1:p' "$SCRIPT_DIR/SkuaPlayerVersion.props")"
 WATCHDOG_CACHE="$BUILD_DIR/.cache/watchdog/v${WATCHDOG_VERSION}/WatchDog.dll"
@@ -11,30 +11,61 @@ SKUA_PLAYER_OS="$(sed -n 's:.*<SkuaPlayerOs>\([^<]*\)</SkuaPlayerOs>.*:\1:p' "$S
 SKUA_PLAYER_CACHE="$SCRIPT_DIR/player/${SKUA_PLAYER_VERSION}-${SKUA_PLAYER_OS}"
 SKUA_PLAYER_ARCHIVE="Mugetsu-${SKUA_PLAYER_VERSION}-${SKUA_PLAYER_OS}.tar.gz"
 SKUA_PLAYER_URL="https://github.com/retr0gr4d3/skua-mugetsu/releases/download/v${SKUA_PLAYER_VERSION}/${SKUA_PLAYER_ARCHIVE}"
+SWF_SOURCE="$SCRIPT_DIR/Skua.AS3/skua/bin/skua.swf"
+APP_BIN="$SCRIPT_DIR/Skua.App.Avalonia/bin/Release/net10.0"
+MGR_BIN="$SCRIPT_DIR/Skua.Manager.Avalonia/bin/Release/net10.0"
+
+if [[ ! -s "$SWF_SOURCE" ]]; then
+    echo "Error: Required game client was not found: $SWF_SOURCE" >&2
+    echo "Run Skua.AS3/compile-as3.sh after installing Apache Flex mxmlc, then retry." >&2
+    exit 1
+fi
 
 echo "=== Building VibeSkua (Linux Release) ==="
 dotnet build "$SCRIPT_DIR/Skua.sln" -c Release
 
+for required in \
+    "$APP_BIN/VibeSkua" \
+    "$APP_BIN/VibeSkua.dll" \
+    "$APP_BIN/VibeSkua.runtimeconfig.json" \
+    "$MGR_BIN/VibeSkua.Manager" \
+    "$MGR_BIN/VibeSkua.Manager.dll" \
+    "$MGR_BIN/VibeSkua.Manager.runtimeconfig.json" \
+    "$SCRIPT_DIR/Skua.Plugin.DailyTracker/bin/Release/net10.0/Skua.Plugin.DailyTracker.dll" \
+    "$SCRIPT_DIR/Skua.Plugin.ButlerV5/bin/Release/net10.0/ButlerV5.dll" \
+    "$SCRIPT_DIR/Skua.Plugin.Cosmetics/bin/Release/net10.0/Skua.Plugin.Cosmetics.dll"; do
+    if [[ ! -s "$required" ]]; then
+        echo "Error: Required build output is missing or empty: $required" >&2
+        exit 1
+    fi
+done
+
 echo "=== Preparing Build directory ==="
 mkdir -p "$BUILD_DIR"
-mkdir -p "$BUILD_DIR/plugins"
+rm -rf "$BUILD_DIR/plugins" "$BUILD_DIR/player" "$BUILD_DIR/FFDec"
+mkdir -p "$BUILD_DIR/plugins" "$BUILD_DIR/player" "$BUILD_DIR/FFDec"
 
 # 1. Copy Application output
-APP_BIN="$SCRIPT_DIR/Skua.App.Avalonia/bin/Release/net10.0"
-cp -f "$APP_BIN"/VibeSkua* "$BUILD_DIR/" 2>/dev/null || true
-cp -f "$APP_BIN"/*.dll "$BUILD_DIR/" 2>/dev/null || true
-cp -f "$APP_BIN"/*.json "$BUILD_DIR/" 2>/dev/null || true
-cp -rf "$APP_BIN/runtimes" "$BUILD_DIR/" 2>/dev/null || true
+shopt -s nullglob
+app_files=("$APP_BIN"/VibeSkua* "$APP_BIN"/*.dll "$APP_BIN"/*.json)
+if ((${#app_files[@]} == 0)); then
+    echo "Error: No application outputs were found in $APP_BIN" >&2
+    exit 1
+fi
+cp -f "${app_files[@]}" "$BUILD_DIR/"
+if [[ -d "$APP_BIN/runtimes" ]]; then
+    cp -a "$APP_BIN/runtimes" "$BUILD_DIR/"
+fi
 
 # 2. Copy Manager output
-MGR_BIN="$SCRIPT_DIR/Skua.Manager.Avalonia/bin/Release/net10.0"
-cp -f "$MGR_BIN"/VibeSkua.Manager* "$BUILD_DIR/" 2>/dev/null || true
+manager_files=("$MGR_BIN"/VibeSkua.Manager*)
+cp -f "${manager_files[@]}" "$BUILD_DIR/"
 
 # 3. Copy Plugins
-cp -f "$SCRIPT_DIR/Skua.Plugin.DailyTracker/bin/Release/net10.0"/Skua.Plugin.*.dll "$BUILD_DIR/plugins/" 2>/dev/null || true
-cp -f "$SCRIPT_DIR/Skua.Plugin.ButlerV5/bin/Release/net10.0"/ButlerV5.dll "$BUILD_DIR/plugins/" 2>/dev/null || true
-cp -f "$SCRIPT_DIR/Skua.Plugin.Cosmetics/bin/Release/net10.0"/Skua.Plugin.Cosmetics.dll "$BUILD_DIR/plugins/" 2>/dev/null || true
-if [ ! -f "$WATCHDOG_CACHE" ]; then
+cp -f "$SCRIPT_DIR/Skua.Plugin.DailyTracker/bin/Release/net10.0/Skua.Plugin.DailyTracker.dll" "$BUILD_DIR/plugins/"
+cp -f "$SCRIPT_DIR/Skua.Plugin.ButlerV5/bin/Release/net10.0/ButlerV5.dll" "$BUILD_DIR/plugins/"
+cp -f "$SCRIPT_DIR/Skua.Plugin.Cosmetics/bin/Release/net10.0/Skua.Plugin.Cosmetics.dll" "$BUILD_DIR/plugins/"
+if [[ ! -s "$WATCHDOG_CACHE" ]]; then
     mkdir -p "$(dirname "$WATCHDOG_CACHE")"
     tmp_watchdog="$WATCHDOG_CACHE.tmp"
     echo "Fetching Watch Dog v${WATCHDOG_VERSION} from GitHub Releases..."
@@ -49,20 +80,17 @@ fi
 cp -f "$WATCHDOG_CACHE" "$BUILD_DIR/plugins/WatchDog.dll"
 
 # 4. Copy SWF client
-if [ -f "$SCRIPT_DIR/Skua.AS3/skua/bin/skua.swf" ]; then
-    cp -f "$SCRIPT_DIR/Skua.AS3/skua/bin/skua.swf" "$BUILD_DIR/skua.swf"
-fi
+cp -f "$SWF_SOURCE" "$BUILD_DIR/skua.swf"
 
 # 5. Copy official skua-mugetsu Flash runner (https://github.com/retr0gr4d3/skua-mugetsu)
-mkdir -p "$BUILD_DIR/player"
-if [ -d "$APP_BIN/player" ] && [ -f "$APP_BIN/player/Mugetsu" ]; then
+if [[ -s "$APP_BIN/player/Mugetsu" ]]; then
     echo "Using bundled skua-mugetsu from $APP_BIN/player..."
-    cp -rf "$APP_BIN/player"/* "$BUILD_DIR/player/"
+    cp -a "$APP_BIN/player/." "$BUILD_DIR/player/"
     cp -f "$BUILD_DIR/player/Mugetsu" "$BUILD_DIR/Mugetsu"
     chmod +x "$BUILD_DIR/player/Mugetsu" "$BUILD_DIR/Mugetsu"
-elif [ -f "$SKUA_PLAYER_CACHE/Mugetsu/Mugetsu" ]; then
+elif [[ -s "$SKUA_PLAYER_CACHE/Mugetsu/Mugetsu" ]]; then
     echo "Using cached skua-mugetsu from player/..."
-    cp -f "$SKUA_PLAYER_CACHE/Mugetsu/Mugetsu" "$BUILD_DIR/player/Mugetsu"
+    cp -a "$SKUA_PLAYER_CACHE/Mugetsu/." "$BUILD_DIR/player/"
     cp -f "$BUILD_DIR/player/Mugetsu" "$BUILD_DIR/Mugetsu"
     chmod +x "$BUILD_DIR/player/Mugetsu" "$BUILD_DIR/Mugetsu"
 else
@@ -71,6 +99,10 @@ else
     if curl -sSL --fail "$SKUA_PLAYER_URL" -o "$TMP_ARCHIVE" && [ -s "$TMP_ARCHIVE" ]; then
         tar -xzf "$TMP_ARCHIVE" -C "$BUILD_DIR/player/" --strip-components=1
         rm -f "$TMP_ARCHIVE"
+        if [[ ! -s "$BUILD_DIR/player/Mugetsu" ]]; then
+            echo "Error: Mugetsu archive did not contain the expected executable." >&2
+            exit 1
+        fi
         cp -f "$BUILD_DIR/player/Mugetsu" "$BUILD_DIR/Mugetsu"
         chmod +x "$BUILD_DIR/player/Mugetsu" "$BUILD_DIR/Mugetsu"
     else
@@ -80,9 +112,14 @@ else
     fi
 fi
 
-# 6. Set executable permissions
-chmod +x "$BUILD_DIR/VibeSkua" 2>/dev/null || true
-chmod +x "$BUILD_DIR/VibeSkua.Manager" 2>/dev/null || true
-chmod +x "$BUILD_DIR/Mugetsu" 2>/dev/null || true
+# 6. Copy FFDec runtime required by Linux map decompilation
+if [[ ! -s "$SCRIPT_DIR/FFDec/ffdec.jar" || ! -x "$SCRIPT_DIR/FFDec/ffdec.sh" || ! -d "$SCRIPT_DIR/FFDec/lib" ]]; then
+    echo "Error: Linux FFDec runtime is incomplete under $SCRIPT_DIR/FFDec" >&2
+    exit 1
+fi
+cp -a "$SCRIPT_DIR/FFDec/." "$BUILD_DIR/FFDec/"
+
+# 7. Set executable permissions
+chmod +x "$BUILD_DIR/VibeSkua" "$BUILD_DIR/VibeSkua.Manager" "$BUILD_DIR/Mugetsu"
 
 echo "=== Build complete! Artifacts are in: $BUILD_DIR ==="

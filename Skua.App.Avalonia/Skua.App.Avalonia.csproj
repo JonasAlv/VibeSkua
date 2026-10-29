@@ -24,6 +24,8 @@
         <PackageReference Include="Velopack" />
         <PackageReference Include="Avalonia" />
         <PackageReference Include="Avalonia.Desktop" />
+        <PackageReference Include="Avalonia.Skia" />
+        <PackageReference Include="Avalonia.X11" Condition="'$(OS)' != 'Windows_NT'" />
         <PackageReference Include="Avalonia.Controls.ColorPicker" />
         <PackageReference Include="Avalonia.Themes.Fluent" />
         <PackageReference Include="AvaloniaUI.DiagnosticsSupport" />

@@ -23,6 +23,15 @@ if ! command -v "${MXMLC_CMD}" &>/dev/null; then
     fi
 fi
 
+# Prefer the checked-in PlayerGlobal SWC unless the caller chose another SDK.
+if [ -z "${PLAYERGLOBAL_HOME:-}" ] && [ -s "${SCRIPT_DIR}/playerglobal/28.0/playerglobal.swc" ]; then
+    export PLAYERGLOBAL_HOME="${SCRIPT_DIR}/playerglobal"
+fi
+if [ -z "${PLAYERGLOBAL_HOME:-}" ] || [ ! -s "${PLAYERGLOBAL_HOME}/28.0/playerglobal.swc" ]; then
+    echo "PlayerGlobal 28.0 was not found. Set PLAYERGLOBAL_HOME or restore ${SCRIPT_DIR}/playerglobal/28.0/playerglobal.swc." >&2
+    exit 1
+fi
+
 mkdir -p "${OUTPUT_DIR}"
 
 "${MXMLC_CMD}" \

@@ -63,6 +63,7 @@ echo "--- Ensuring Release binaries are built ---"
 
 # 2. Assemble the portable payload in current/ (used by both Portable and AppImage)
 echo "--- Assembling application payload ---"
+rm -rf "$CURRENT_DIR"
 mkdir -p "$CURRENT_DIR"
 mkdir -p "$CURRENT_DIR/Assemblies/Skills"
 mkdir -p "$CURRENT_DIR/Assemblies/runtimes/linux-x64/native"
@@ -76,13 +77,13 @@ MGR_BIN="$SCRIPT_DIR/Skua.Manager.Avalonia/bin/Release/net10.0"
 cp -f "$APP_BIN"/VibeSkua "$CURRENT_DIR/"
 cp -f "$APP_BIN"/VibeSkua.dll "$CURRENT_DIR/"
 cp -f "$APP_BIN"/VibeSkua.runtimeconfig.json "$CURRENT_DIR/"
-cp -f "$APP_BIN"/VibeSkua.deps.json "$CURRENT_DIR/" 2>/dev/null || true
+cp -f "$APP_BIN"/VibeSkua.deps.json "$CURRENT_DIR/"
 cp -f "$APP_BIN"/*.pdb "$CURRENT_DIR/" 2>/dev/null || true
 
 cp -f "$MGR_BIN"/VibeSkua.Manager "$CURRENT_DIR/"
 cp -f "$MGR_BIN"/VibeSkua.Manager.dll "$CURRENT_DIR/"
 cp -f "$MGR_BIN"/VibeSkua.Manager.runtimeconfig.json "$CURRENT_DIR/"
-cp -f "$MGR_BIN"/VibeSkua.Manager.deps.json "$CURRENT_DIR/" 2>/dev/null || true
+cp -f "$MGR_BIN"/VibeSkua.Manager.deps.json "$CURRENT_DIR/"
 cp -f "$MGR_BIN"/*.pdb "$CURRENT_DIR/" 2>/dev/null || true
 
 # Copy JSON data assets
@@ -91,10 +92,10 @@ cp -f "$MGR_BIN"/*.pdb "$CURRENT_DIR/" 2>/dev/null || true
 [ -f "$SCRIPT_DIR/Skua.Core/ScriptDates.json" ] && cp -f "$SCRIPT_DIR/Skua.Core/ScriptDates.json" "$CURRENT_DIR/"
 
 # Copy all dependent DLLs to Assemblies/ and current/
-cp -f "$APP_BIN"/*.dll "$CURRENT_DIR/Assemblies/" 2>/dev/null || true
-cp -f "$MGR_BIN"/*.dll "$CURRENT_DIR/Assemblies/" 2>/dev/null || true
+cp -f "$APP_BIN"/*.dll "$CURRENT_DIR/Assemblies/"
+cp -f "$MGR_BIN"/*.dll "$CURRENT_DIR/Assemblies/"
 rm -f "$CURRENT_DIR/Assemblies/VibeSkua.dll" "$CURRENT_DIR/Assemblies/VibeSkua.Manager.dll"
-cp -f "$CURRENT_DIR/Assemblies/"*.dll "$CURRENT_DIR/" 2>/dev/null || true
+cp -f "$CURRENT_DIR/Assemblies/"*.dll "$CURRENT_DIR/"
 
 # Copy runtimes native libraries
 if [ -d "$APP_BIN/runtimes" ]; then
@@ -103,33 +104,41 @@ if [ -d "$APP_BIN/runtimes" ]; then
 fi
 
 # Copy plugins
-cp -f "$SCRIPT_DIR/Skua.Plugin.DailyTracker/bin/Release/net10.0"/Skua.Plugin.*.dll "$CURRENT_DIR/plugins/" 2>/dev/null || true
-cp -f "$SCRIPT_DIR/Skua.Plugin.ButlerV5/bin/Release/net10.0"/ButlerV5.dll "$CURRENT_DIR/plugins/" 2>/dev/null || true
-cp -f "$SCRIPT_DIR/Skua.Plugin.Cosmetics/bin/Release/net10.0"/Skua.Plugin.Cosmetics.dll "$CURRENT_DIR/plugins/" 2>/dev/null || true
-if [ -f "$BUILD_DIR/plugins/WatchDog.dll" ]; then
-    cp -f "$BUILD_DIR/plugins/WatchDog.dll" "$CURRENT_DIR/plugins/WatchDog.dll"
-fi
+cp -f "$SCRIPT_DIR/Skua.Plugin.DailyTracker/bin/Release/net10.0"/Skua.Plugin.*.dll "$CURRENT_DIR/plugins/"
+cp -f "$SCRIPT_DIR/Skua.Plugin.ButlerV5/bin/Release/net10.0"/ButlerV5.dll "$CURRENT_DIR/plugins/"
+cp -f "$SCRIPT_DIR/Skua.Plugin.Cosmetics/bin/Release/net10.0"/Skua.Plugin.Cosmetics.dll "$CURRENT_DIR/plugins/"
+cp -f "$BUILD_DIR/plugins/WatchDog.dll" "$CURRENT_DIR/plugins/WatchDog.dll"
 
 # Copy skua.swf (Essential AS3 game client & bot API bridge)
-if [ -f "$SCRIPT_DIR/Skua.AS3/skua/bin/skua.swf" ]; then
+if [[ -s "$SCRIPT_DIR/Skua.AS3/skua/bin/skua.swf" ]]; then
     cp -f "$SCRIPT_DIR/Skua.AS3/skua/bin/skua.swf" "$CURRENT_DIR/skua.swf"
-elif [ -f "$BUILD_DIR/skua.swf" ]; then
+elif [[ -s "$BUILD_DIR/skua.swf" ]]; then
     cp -f "$BUILD_DIR/skua.swf" "$CURRENT_DIR/skua.swf"
+else
+    echo "Error: Required skua.swf is missing. Run Skua.AS3/compile-as3.sh first." >&2
+    exit 1
 fi
+
+# FFDec is used by Linux map decompilation; ship its launcher and Java libraries.
+if [[ ! -s "$SCRIPT_DIR/FFDec/ffdec.jar" || ! -x "$SCRIPT_DIR/FFDec/ffdec.sh" || ! -d "$SCRIPT_DIR/FFDec/lib" ]]; then
+    echo "Error: Linux FFDec runtime is incomplete under $SCRIPT_DIR/FFDec" >&2
+    exit 1
+fi
+cp -a "$SCRIPT_DIR/FFDec/." "$CURRENT_DIR/FFDec/"
 
 # Copy or download official Skua Mugetsu Flash runner (https://github.com/retr0gr4d3/skua-mugetsu)
 mkdir -p "$CURRENT_DIR/player"
-if [ -d "$APP_BIN/player" ] && [ -f "$APP_BIN/player/Mugetsu" ]; then
-    cp -rf "$APP_BIN/player"/* "$CURRENT_DIR/player/"
+if [ -s "$APP_BIN/player/Mugetsu" ]; then
+    cp -a "$APP_BIN/player/." "$CURRENT_DIR/player/"
     cp -f "$CURRENT_DIR/player/Mugetsu" "$CURRENT_DIR/Mugetsu"
     chmod +x "$CURRENT_DIR/player/Mugetsu" "$CURRENT_DIR/Mugetsu"
-elif [ -f "$SKUA_PLAYER_CACHE/Mugetsu/Mugetsu" ]; then
-    cp -f "$SKUA_PLAYER_CACHE/Mugetsu/Mugetsu" "$CURRENT_DIR/player/Mugetsu"
+elif [ -s "$SKUA_PLAYER_CACHE/Mugetsu/Mugetsu" ]; then
+    cp -a "$SKUA_PLAYER_CACHE/Mugetsu/." "$CURRENT_DIR/player/"
     cp -f "$CURRENT_DIR/player/Mugetsu" "$CURRENT_DIR/Mugetsu"
     chmod +x "$CURRENT_DIR/player/Mugetsu" "$CURRENT_DIR/Mugetsu"
-elif [ -f "$BUILD_DIR/Mugetsu" ]; then
-    cp -f "$BUILD_DIR/Mugetsu" "$CURRENT_DIR/player/Mugetsu"
-    cp -f "$BUILD_DIR/Mugetsu" "$CURRENT_DIR/Mugetsu"
+elif [ -s "$BUILD_DIR/player/Mugetsu" ]; then
+    cp -a "$BUILD_DIR/player/." "$CURRENT_DIR/player/"
+    cp -f "$CURRENT_DIR/player/Mugetsu" "$CURRENT_DIR/Mugetsu"
     chmod +x "$CURRENT_DIR/player/Mugetsu" "$CURRENT_DIR/Mugetsu"
 else
     echo "Mugetsu binary not found locally. Fetching official skua-mugetsu v${SKUA_PLAYER_VERSION} from GitHub Releases..."
@@ -147,7 +156,7 @@ else
     fi
 fi
 
-chmod +x "$CURRENT_DIR/VibeSkua" "$CURRENT_DIR/VibeSkua.Manager" 2>/dev/null || true
+chmod +x "$CURRENT_DIR/VibeSkua" "$CURRENT_DIR/VibeSkua.Manager"
 
 # ==============================================================================
 # 3. Build Direct Binary Distribution (if requested)
@@ -274,7 +283,8 @@ build_appimage() {
         else
             echo "appimagetool not found in PATH. Downloading standalone appimagetool..."
             mkdir -p "$BUILD_DIR/tools"
-            curl -sSL "https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-x86_64.AppImage" -o "$BUILD_DIR/tools/appimagetool"
+            curl -fsSL "https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-x86_64.AppImage" -o "$BUILD_DIR/tools/appimagetool"
+            test -s "$BUILD_DIR/tools/appimagetool"
             chmod +x "$BUILD_DIR/tools/appimagetool"
             appimagetool_cmd="$BUILD_DIR/tools/appimagetool"
         fi

@@ -1293,7 +1293,7 @@ public partial class ScriptManager : ObservableObject, IScriptManager, IDisposab
         if (!OperatingSystem.IsLinux() || string.IsNullOrEmpty(source))
             return source;
 
-        return source
+        source = source
             .Replace("using System.Windows.Forms;\r\n", "", StringComparison.Ordinal)
             .Replace("using System.Windows.Forms;\n", "", StringComparison.Ordinal)
             .Replace("using System.Windows.Forms;", "", StringComparison.Ordinal)

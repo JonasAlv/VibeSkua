@@ -1,4 +1,8 @@
 using Avalonia;
+using Avalonia.Skia;
+#if IS_LINUX
+using Avalonia.X11;
+#endif
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -15,9 +19,17 @@ namespace Skua.App.Avalonia;
 
 internal static class Program
 {
+#if IS_LINUX
+    [DllImport("libX11.so.6")]
+    private static extern int XInitThreads();
+#endif
+
     [STAThread]
     public static void Main(string[] args)
     {
+#if IS_LINUX
+        XInitThreads();
+#endif
         InitializeAssemblyResolvers();
         RunApp(args);
     }
@@ -150,8 +162,12 @@ internal static class Program
 
     public static AppBuilder BuildAvaloniaApp()
     {
-        AppBuilder builder = AppBuilder.Configure<App>()
-            .UsePlatformDetect();
+        AppBuilder builder = AppBuilder.Configure<App>();
+#if IS_LINUX
+        builder = builder.UseX11().UseSkia();
+#else
+        builder = builder.UsePlatformDetect();
+#endif
 
 #if !IS_LINUX
         if (OperatingSystem.IsWindows())

@@ -2,7 +2,7 @@
 <Project>
   <!-- Update this value when a new Skua-Mugetsu Linux release is published. -->
   <PropertyGroup>
-    <SkuaPlayerVersion>1.5.1-skua.4</SkuaPlayerVersion>
+    <SkuaPlayerVersion>1.6.0-skua.1</SkuaPlayerVersion>
     <SkuaPlayerOs>linux</SkuaPlayerOs>
     <WatchDogVersion>1.0.0</WatchDogVersion>
   </PropertyGroup>
