@@ -4,6 +4,9 @@ namespace Skua.Core.Interfaces;
 
 public interface ILogService
 {
+    /// <summary>Sets the account name used for persistent log files.</summary>
+    void SetAccountName(string? accountName);
+
     /// <summary>
     /// Writes a debug-level log message for diagnostic purposes.
     /// </summary>

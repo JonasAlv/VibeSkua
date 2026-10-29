@@ -67,6 +67,7 @@ internal class Options
         List<DisplayOptionItemViewModelBase> appOptions = new()
         {
             CreateSettingOptionItem<bool>("Show Username in Title", "Whether to display logged-in character name in window title", "ShowUsernameInTitle"),
+            CreateSettingOptionItem<bool>("Save Logs to File", "Append Script and Debug logs to Bonxie's logs folder in the background", "SaveLogsToFile"),
             CreateSettingOptionItem<bool>("Auto Update Scripts", "Whether to auto update scripts when launching the Manager, needs \"Check for Scripts Updates\" to be true", "AutoUpdateBotScripts"),
             CreateSettingOptionItem<bool>("Check for Script Updates", "Whether to check for scripts updates when launching the Manager", "CheckBotScriptsUpdates"),
             CreateSettingOptionItem<bool>("Auto Update AdvanceSkill Sets", "Whether to auto update advance skill sets when launching the Manager, needs \"Check for AdvanceSkill Sets updates\" to be true", "AutoUpdateAdvanceSkillSetsUpdates"),

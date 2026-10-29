@@ -226,6 +226,9 @@ public class SharedSettings
 
 public class ClientSettings
 {
+    [JsonPropertyName("SaveLogsToFile")]
+    public bool SaveLogsToFile { get; set; } = true;
+
     [JsonPropertyName("AnimationFrameRate")]
     public int AnimationFrameRate { get; set; } = 60;
 

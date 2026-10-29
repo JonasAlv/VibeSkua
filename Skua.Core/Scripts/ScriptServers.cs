@@ -106,6 +106,7 @@ public partial class ScriptServers : ObservableRecipient, IScriptServers
     [MethodCallBinding("login", RunMethodPre = true, GameFunction = true)]
     private void _login(string username, string password)
     {
+        Logger.SetAccountName(username);
         IsIntentionalLogout = false;
         UserLoggedOut = false;
     }

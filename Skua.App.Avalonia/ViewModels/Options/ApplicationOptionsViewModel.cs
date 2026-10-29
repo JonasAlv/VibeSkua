@@ -80,6 +80,7 @@ public partial class ApplicationOptionsViewModel : BotControlViewModelBase
     {
         var generalItems = ApplicationOptions.Where(i =>
             i.Content.Contains("Username", StringComparison.OrdinalIgnoreCase) ||
+            i.Content.Contains("Logs", StringComparison.OrdinalIgnoreCase) ||
             i.Content.Contains("Frame-rate", StringComparison.OrdinalIgnoreCase) ||
             i.Content.Contains("Relogin", StringComparison.OrdinalIgnoreCase) ||
             i.Content.Contains("Flash Cache", StringComparison.OrdinalIgnoreCase)
