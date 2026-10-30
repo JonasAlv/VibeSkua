@@ -198,6 +198,7 @@ public class HotKeyService : IHotKeyService, IDisposable
             hotkeys.Add("OpenConsole|Ctrl+Shift+C");
             hotkeys.Add("SearchScripts|Ctrl+Shift+F");
             hotkeys.Add("OpenCommandPalette|Ctrl+K");
+            hotkeys.Add("ToggleFullscreen|F11");
             return;
         }
 
@@ -205,6 +206,8 @@ public class HotKeyService : IHotKeyService, IDisposable
             hotkeys.Add("OpenBank|F2");
         if (!HasBinding("OpenCommandPalette"))
             hotkeys.Add("OpenCommandPalette|Ctrl+K");
+        if (!HasBinding("ToggleFullscreen"))
+            hotkeys.Add("ToggleFullscreen|F11");
     }
 
     private void AttachMainWindow()

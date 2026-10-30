@@ -100,7 +100,8 @@ public class HotKeys
         "PlayerRest",
         "RejectAllDrops",
         // Keep new actions at the end so existing inter-process action ids remain stable.
-        "OpenCommandPalette"
+        "OpenCommandPalette",
+        "ToggleFullscreen"
     };
 
     public static int GetActionId(string actionName) => _actionList.IndexOf(actionName);
@@ -224,6 +225,7 @@ public class HotKeys
 
     /// <summary>Set by the client window to show the searchable main-menu palette.</summary>
     public static Action? OpenCommandPaletteRequested { get; set; }
+    public static Action? ToggleFullscreenRequested { get; set; }
 
     private static readonly HashSet<uint> _skuaPids = new() { (uint)Environment.ProcessId };
 
@@ -325,6 +327,8 @@ public class HotKeys
 
         // Custom Vast Actions
         _hotkeyRegistry["OpenCommandPalette"] = new RelayCommand(() => ExecuteOrForward("OpenCommandPalette", () => OpenCommandPaletteRequested?.Invoke()));
+        // Fullscreen belongs to the outer desktop window, so do not forward it to an embedded child.
+        _hotkeyRegistry["ToggleFullscreen"] = new RelayCommand(() => ToggleFullscreenRequested?.Invoke());
         _hotkeyRegistry["ToggleHeadlessMode"] = new RelayCommand(() => ExecuteOrForward("ToggleHeadlessMode", () => Ioc.Default.GetRequiredService<IScriptOption>().HeadlessMode ^= true));
         _hotkeyRegistry["ToggleStreamerMode"] = new RelayCommand(() => ExecuteOrForward("ToggleStreamerMode", () => Ioc.Default.GetRequiredService<IScriptOption>().StreamerMode ^= true));
         _hotkeyRegistry["ToggleHidePlayers"] = new RelayCommand(() => ExecuteOrForward("ToggleHidePlayers", () => Ioc.Default.GetRequiredService<IScriptOption>().HidePlayers ^= true));

@@ -211,6 +211,12 @@ public partial class MainWindow : Window
             }
             catch { }
         });
+        HotKeys.ToggleFullscreenRequested = () => Dispatcher.UIThread.Post(() =>
+        {
+            WindowState = WindowState == WindowState.FullScreen
+                ? WindowState.Normal
+                : WindowState.FullScreen;
+        });
         _flash.FlashCall += OnFlashCall;
 
         try
