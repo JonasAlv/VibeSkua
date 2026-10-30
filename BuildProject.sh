@@ -6,6 +6,7 @@ set -Eeuo pipefail
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
 BUILD_DIR="$SCRIPT_DIR/Build"
 WATCHDOG_LOCAL="${WATCHDOG_LOCAL:-}"
+SKUA_PLAYER_LOCAL="${SKUA_PLAYER_LOCAL:-}"
 SKUA_PLAYER_V2_LOCAL="${SKUA_PLAYER_V2_LOCAL:-}"
 source "$SCRIPT_DIR/build-config.sh"
 SWF_SOURCE="$SCRIPT_DIR/Skua.AS3/skua/bin/skua.swf"
@@ -23,6 +24,14 @@ echo "=== Building VibeSkua (Linux Release) ==="
 # incremental build cannot leave an older Mugetsu version in the package inputs.
 rm -rf "$APP_BIN/player" "$APP_BIN/player-x86-64-v2"
 dotnet_args=("$SCRIPT_DIR/Skua.sln" -c Release)
+if [[ -n "$SKUA_PLAYER_LOCAL" ]]; then
+    if [[ ! -d "$SKUA_PLAYER_LOCAL" || ! -x "$SKUA_PLAYER_LOCAL/Mugetsu" ]]; then
+        echo "Error: SKUA_PLAYER_LOCAL must point to a folder containing an executable Mugetsu binary." >&2
+        exit 1
+    fi
+    dotnet_args+=("-p:SkuaPlayerLocal=$SKUA_PLAYER_LOCAL")
+    echo "Using local Mugetsu from $SKUA_PLAYER_LOCAL"
+fi
 if [[ -n "$SKUA_PLAYER_V2_LOCAL" ]]; then
     if [[ ! -x "$SKUA_PLAYER_V2_LOCAL/Mugetsu" ]]; then
         echo "Error: SKUA_PLAYER_V2_LOCAL must point to a folder containing an executable Mugetsu binary." >&2

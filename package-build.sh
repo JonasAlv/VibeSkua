@@ -9,7 +9,7 @@
 #   --binary,   -b  : Build direct binary portable distribution
 #   --appimage, -i  : Build standalone AppImages (explicit)
 #   --all,      -a  : Build both AppImage and direct binary distributions
-# Optional: SKUA_PLAYER_V2_LOCAL=<folder> supplies a local x86-64-v2 Mugetsu binary.
+# Optional local player overrides are also available as command-line options below.
 # ==============================================================================
 set -Eeuo pipefail
 
@@ -20,29 +20,27 @@ CURRENT_DIR="$BUILD_DIR/payload/current"
 OUTPUT_DIR="$BUILD_DIR"
 source "$SCRIPT_DIR/build-config.sh"
 
-MODE="appimage"
+LOCAL_MUGETSU="${SKUA_PLAYER_LOCAL:-}"
+LOCAL_MUGETSU_V2="${SKUA_PLAYER_V2_LOCAL:-}"
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
-        --appimage|-i)
-            MODE="appimage"
-            shift
+        --local-mugetsu)
+            [[ $# -ge 2 ]] || { echo "Error: --local-mugetsu requires a path." >&2; exit 1; }
+            LOCAL_MUGETSU="$2"
+            shift 2
             ;;
-        --binary|-b|--bin|--portable|-p)
-            MODE="binary"
-            shift
-            ;;
-        --all|-a)
-            MODE="all"
-            shift
+        --local-mugetsu-v2)
+            [[ $# -ge 2 ]] || { echo "Error: --local-mugetsu-v2 requires a path." >&2; exit 1; }
+            LOCAL_MUGETSU_V2="$2"
+            shift 2
             ;;
         --help|-h)
-            echo "Usage: $0 [--binary | --appimage | --all]"
-            echo "  (default)       Build standalone AppImages"
-            echo "  --binary,   -b  Build direct binary portable distribution"
-            echo "  --appimage, -i  Build standalone AppImages"
-            echo "  --all,      -a  Build both AppImage and direct binary distributions"
-            echo "  SKUA_PLAYER_V2_LOCAL=<folder>  Bundle local x86-64-v2 Mugetsu (folder contains Mugetsu)"
+            echo "Usage: $0 [--local-mugetsu PATH] [--local-mugetsu-v2 PATH]"
+            echo "  --local-mugetsu PATH     Use a local standard Mugetsu binary or its folder."
+            echo "  --local-mugetsu-v2 PATH  Use a local x86-64-v2 Mugetsu binary or its folder."
+            echo "  SKUA_PLAYER_LOCAL=PATH   Equivalent environment override for the standard player."
+            echo "  SKUA_PLAYER_V2_LOCAL=PATH Equivalent environment override for x86-64-v2."
             exit 0
             ;;
         *)
@@ -53,7 +51,14 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-echo "=== VibeSkua Packaging (Mode: $MODE) ==="
+if [[ -n "$LOCAL_MUGETSU" ]]; then
+    export SKUA_PLAYER_LOCAL="$LOCAL_MUGETSU"
+fi
+if [[ -n "$LOCAL_MUGETSU_V2" ]]; then
+    export SKUA_PLAYER_V2_LOCAL="$LOCAL_MUGETSU_V2"
+fi
+
+echo "=== VibeSkua AppImage Packaging ==="
 
 # 1. Ensure solution is built
 echo "--- Ensuring Release binaries are built ---"
@@ -173,7 +178,7 @@ fi
 chmod +x "$CURRENT_DIR/VibeSkua" "$CURRENT_DIR/VibeSkua.Manager"
 
 # ==============================================================================
-# 3. Build Direct Binary Distribution (if requested)
+# 3. Build Direct Binary Distribution (legacy; retained for compatibility)
 # ==============================================================================
 build_binary() {
     echo "--- Building Direct Binary Distribution ---"
@@ -428,29 +433,13 @@ EOF
     )
 }
 
-# Execute based on MODE
-case "$MODE" in
-    appimage)
-        build_appimage
-        ;;
-    binary)
-        build_binary
-        ;;
-    all)
-        build_binary
-        build_appimage
-        ;;
-esac
+# The release packager intentionally produces AppImages only. BuildProject.sh
+# remains the standalone binary build entry point.
+build_appimage
 
 echo "=== Packaging Complete! ==="
-if [ "$MODE" = "appimage" ] || [ "$MODE" = "all" ]; then
-    echo "AppImage Client:  $OUTPUT_DIR/VibeSkua-x86_64.AppImage ($(du -h "$OUTPUT_DIR/VibeSkua-x86_64.AppImage" | cut -f1))"
-    echo "AppImage Manager: $OUTPUT_DIR/VibeSkua-Manager-x86_64.AppImage ($(du -h "$OUTPUT_DIR/VibeSkua-Manager-x86_64.AppImage" | cut -f1))"
-    echo "AppImage ZIP:     $BUILD_DIR/VibeSkua-linux-AppImage.zip ($(du -h "$BUILD_DIR/VibeSkua-linux-AppImage.zip" | cut -f1))"
-    echo "AppImage Tarball: $BUILD_DIR/VibeSkua-linux-AppImage.tar.gz ($(du -h "$BUILD_DIR/VibeSkua-linux-AppImage.tar.gz" | cut -f1))"
-fi
-if [ "$MODE" = "binary" ] || [ "$MODE" = "all" ]; then
-    echo "Binary Folder:    $BINARY_DIR"
-    echo "Binary ZIP:       $BUILD_DIR/VibeSkua-linux-Binary.zip ($(du -h "$BUILD_DIR/VibeSkua-linux-Binary.zip" | cut -f1))"
-    echo "Binary Tarball:   $BUILD_DIR/VibeSkua-linux-Binary.tar.gz ($(du -h "$BUILD_DIR/VibeSkua-linux-Binary.tar.gz" | cut -f1))"
-fi
+echo "AppImage Client:  $OUTPUT_DIR/VibeSkua-x86_64.AppImage ($(du -h "$OUTPUT_DIR/VibeSkua-x86_64.AppImage" | cut -f1))"
+echo "AppImage Manager: $OUTPUT_DIR/VibeSkua-Manager-x86_64.AppImage ($(du -h "$OUTPUT_DIR/VibeSkua-Manager-x86_64.AppImage" | cut -f1))"
+echo "AppImage Folder:  $BUILD_DIR/VibeSkua-linux-AppImage"
+echo "AppImage ZIP:     $BUILD_DIR/VibeSkua-linux-AppImage.zip ($(du -h "$BUILD_DIR/VibeSkua-linux-AppImage.zip" | cut -f1))"
+echo "AppImage Tarball: $BUILD_DIR/VibeSkua-linux-AppImage.tar.gz ($(du -h "$BUILD_DIR/VibeSkua-linux-AppImage.tar.gz" | cut -f1))"
