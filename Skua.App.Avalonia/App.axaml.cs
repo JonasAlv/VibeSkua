@@ -96,6 +96,7 @@ public partial class App : Application
         {
             NullValueHandling = NullValueHandling.Ignore,
             MissingMemberHandling = MissingMemberHandling.Ignore,
+            Converters = { new Skua.Core.Models.Converters.WholeNumberConverter() },
             Error = (sender, args) =>
             {
                 System.Diagnostics.Trace.WriteLine($"[JSON Warning] {args.ErrorContext.Path}: {args.ErrorContext.Error.Message}");
