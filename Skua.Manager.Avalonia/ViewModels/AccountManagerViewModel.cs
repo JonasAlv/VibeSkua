@@ -58,6 +58,8 @@ public sealed partial class AccountManagerViewModel : BotControlViewModelBase
         _startWithScript = _settingsService.Get("AutoStartScript", false);
         _showTags = _settingsService.Get("ShowAccountTags", true);
         _showGridView = _settingsService.Get("ShowGridView", false);
+        _startInGridView = _settingsService.Get("StartInGridView", false);
+        _launchDelaySeconds = Math.Clamp(_settingsService.Get("LaunchDelaySeconds", 1), 0, 60);
         SetupSettingsWatcher();
     }
 
@@ -100,6 +102,26 @@ public sealed partial class AccountManagerViewModel : BotControlViewModelBase
     {
         PerformInternalSettingsChange(() => _settingsService.Set("ShowGridView", value));
     }
+
+    [ObservableProperty]
+    private bool _startInGridView;
+
+    partial void OnStartInGridViewChanged(bool value) => PerformInternalSettingsChange(() => _settingsService.Set("StartInGridView", value));
+
+    [ObservableProperty]
+    private int _launchDelaySeconds = 1;
+
+    partial void OnLaunchDelaySecondsChanged(int value)
+    {
+        int clamped = Math.Clamp(value, 0, 60);
+        if (clamped != value) { LaunchDelaySeconds = clamped; return; }
+        PerformInternalSettingsChange(() => _settingsService.Set("LaunchDelaySeconds", value));
+    }
+
+    private CancellationTokenSource? _launchCancellation;
+
+    [RelayCommand]
+    private void CancelLaunch() => _launchCancellation?.Cancel();
 
     [ObservableProperty]
     private int _columns = 3;
@@ -258,13 +280,17 @@ public sealed partial class AccountManagerViewModel : BotControlViewModelBase
         try
         {
             _isLaunching = true;
+            _launchCancellation?.Dispose();
+            _launchCancellation = new CancellationTokenSource();
             _syncThemes = _settingsService.Get("syncTheme", false);
             string? hostInstanceId = newWindow ? Guid.NewGuid().ToString("N") : null;
+            string batchId = Guid.NewGuid().ToString("N");
 
             foreach (IAccountItemViewModel account in accounts)
             {
-                _LaunchAcc(account.Username, account.Password, account.DisplayName, runScript, hostInstanceId);
-                await Task.Delay(1000);
+                _launchCancellation.Token.ThrowIfCancellationRequested();
+                _LaunchAcc(account.Username, account.Password, account.DisplayName, runScript, hostInstanceId, _startInGridView ? batchId : null);
+                await Task.Delay(TimeSpan.FromSeconds(LaunchDelaySeconds), _launchCancellation.Token);
             }
         }
         catch (Exception ex)
@@ -274,6 +300,8 @@ public sealed partial class AccountManagerViewModel : BotControlViewModelBase
         finally
         {
             _isLaunching = false;
+            _launchCancellation?.Dispose();
+            _launchCancellation = null;
             if (_pendingReload)
             {
                 _pendingReload = false;
@@ -436,7 +464,7 @@ public sealed partial class AccountManagerViewModel : BotControlViewModelBase
         await StartAccountBatch(group.Accounts.ToList(), $"group '{group.Name}'", runScript, newWindow);
     }
 
-    private void _LaunchAcc(string username, string password, string? displayName = null, bool? withScript = null, string? hostInstanceId = null)
+    private void _LaunchAcc(string username, string password, string? displayName = null, bool? withScript = null, string? hostInstanceId = null, string? gridBatchId = null)
     {
         try
         {
@@ -458,6 +486,11 @@ public sealed partial class AccountManagerViewModel : BotControlViewModelBase
             {
                 psi.ArgumentList.Add("--host-instance");
                 psi.ArgumentList.Add(hostInstanceId);
+            }
+            if (!string.IsNullOrWhiteSpace(gridBatchId))
+            {
+                psi.ArgumentList.Add("--grid-view");
+                psi.ArgumentList.Add(gridBatchId);
             }
             if (_syncThemes)
             {

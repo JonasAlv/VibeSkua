@@ -1539,6 +1539,15 @@ public partial class TabbedHostWindow : Window
         }
     }
 
+    private void RequestGridViewForBatch(string[] clientArgs)
+    {
+        int at = Array.FindIndex(clientArgs, a => string.Equals(a, "--grid-view", StringComparison.OrdinalIgnoreCase));
+        if (at < 0 || at + 1 >= clientArgs.Length || _tabs.Count < 2)
+            return;
+        if (!_isGridViewEnabled)
+            Dispatcher.UIThread.Post(EnterGridView, DispatcherPriority.Background);
+    }
+
     // Keep the 960x550 game aspect ratio in Grid View instead of stretching the embedded player.
     private static (int X, int Y, int W, int H) GridTileRect(int index, int count, int cols, int rows, int areaW, int areaH)
     {
@@ -1803,6 +1812,7 @@ public partial class TabbedHostWindow : Window
         }, DispatcherPriority.Background);
         
         _tabs[newTab] = info;
+        RequestGridViewForBatch(clientArgs);
 
         EnqueueSpawn(() =>
         {
