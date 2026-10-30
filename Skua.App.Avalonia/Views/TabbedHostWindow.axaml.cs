@@ -288,6 +288,15 @@ public partial class TabbedHostWindow : Window
     {
         _hostHwnd = this.TryGetPlatformHandle()?.Handle ?? IntPtr.Zero;
 
+        // F11 is grabbed by the host while an embedded Mugetsu child owns focus.
+        // Toggle the host window here; the child process must not be fullscreened.
+        HotKeys.ToggleFullscreenRequested = () => Dispatcher.UIThread.Post(() =>
+        {
+            WindowState = WindowState == WindowState.FullScreen
+                ? WindowState.Normal
+                : WindowState.FullScreen;
+        });
+
         HotKeys.RegisterSkuaPid((uint)Environment.ProcessId);
         HotKeys.GetChildHwndForPid = (pid) =>
         {
