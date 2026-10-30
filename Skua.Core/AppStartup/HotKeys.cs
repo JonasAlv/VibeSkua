@@ -98,7 +98,9 @@ public class HotKeys
         "ToggleUntargetDead",
         "ToggleUntargetSelf",
         "PlayerRest",
-        "RejectAllDrops"
+        "RejectAllDrops",
+        // Keep new actions at the end so existing inter-process action ids remain stable.
+        "OpenCommandPalette"
     };
 
     public static int GetActionId(string actionName) => _actionList.IndexOf(actionName);
@@ -218,6 +220,10 @@ public class HotKeys
     public const int WM_SKUA_LOAD_SCRIPT_ALL = 0x0400 + 463;
     public const int WM_SKUA_FOCUS = 0x0400 + 464;
     public const int WM_SKUA_JUMP_HOUSE = 0x0400 + 465;
+    public const int WM_SKUA_VISIBILITY = 0x0400 + 466;
+
+    /// <summary>Set by the client window to show the searchable main-menu palette.</summary>
+    public static Action? OpenCommandPaletteRequested { get; set; }
 
     private static readonly HashSet<uint> _skuaPids = new() { (uint)Environment.ProcessId };
 
@@ -318,6 +324,7 @@ public class HotKeys
         _hotkeyRegistry["ToggleLagKiller"] = new RelayCommand(() => ExecuteOrForward("ToggleLagKiller", ToggleLagKillerLocal));
 
         // Custom Vast Actions
+        _hotkeyRegistry["OpenCommandPalette"] = new RelayCommand(() => ExecuteOrForward("OpenCommandPalette", () => OpenCommandPaletteRequested?.Invoke()));
         _hotkeyRegistry["ToggleHeadlessMode"] = new RelayCommand(() => ExecuteOrForward("ToggleHeadlessMode", () => Ioc.Default.GetRequiredService<IScriptOption>().HeadlessMode ^= true));
         _hotkeyRegistry["ToggleStreamerMode"] = new RelayCommand(() => ExecuteOrForward("ToggleStreamerMode", () => Ioc.Default.GetRequiredService<IScriptOption>().StreamerMode ^= true));
         _hotkeyRegistry["ToggleHidePlayers"] = new RelayCommand(() => ExecuteOrForward("ToggleHidePlayers", () => Ioc.Default.GetRequiredService<IScriptOption>().HidePlayers ^= true));

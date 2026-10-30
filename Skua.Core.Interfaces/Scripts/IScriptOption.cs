@@ -161,6 +161,14 @@ public interface IScriptOption : INotifyPropertyChanged
     /// </summary>
     bool HeadlessMode { get; set; }
 
+    bool AutoHeadless { get; set; }
+    bool AutoHeadlessBackgroundTabs { get; set; }
+    bool AutoHeadlessGridView { get; set; }
+    bool AutoHeadlessWhenMinimized { get; set; }
+    bool AutoHeadlessLiftOnFocus { get; set; }
+    bool IsHeadlessNow();
+    void SetAutoHeadless(bool active);
+
     /// <summary>
     /// Anonymizes player avatar names and guilds client-side for streaming.
     /// </summary>

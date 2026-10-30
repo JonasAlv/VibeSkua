@@ -10,6 +10,7 @@ using Skua.Core.Interfaces;
 using Skua.Core.Interfaces.ViewModels;
 using Skua.Core.Models;
 using Skua.Manager.Avalonia.ViewModels;
+using Skua.Manager.Avalonia.Controls;
 using Skua.Shared.Avalonia.Controls.Options;
 using Skua.Shared.Avalonia.Controls.Shell;
 using Skua.Shared.Avalonia.ViewModels.Options;
@@ -75,8 +76,15 @@ public class DialogService : IDialogService
             Dispatcher.UIThread.Invoke(() => ShowMessageBox(message, caption));
             return;
         }
+        if (message.Length <= 140 && !message.Contains('\n') && ToastHost.Current is { } toasts && IsManagerVisible())
+        {
+            toasts.Push(message);
+            return;
+        }
         _ = ShowButtonsDialog(caption, message, ["OK"]);
     }
+
+    private static bool IsManagerVisible() => Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime { MainWindow: { IsVisible: true, WindowState: not WindowState.Minimized } };
 
     public bool? ShowMessageBox(string message, string caption, bool yesAndNo)
     {

@@ -1346,7 +1346,10 @@ public partial class TabbedHostWindow : Window
                 foreach (var info in _tabs.Values)
                 {
                     if (info.ChildHwnd != IntPtr.Zero)
+                    {
                         PlatformHideChild(info.ChildHwnd);
+                        PostChildMessage(info.ChildHwnd, HotKeys.WM_SKUA_VISIBILITY, new IntPtr(4), IntPtr.Zero);
+                    }
                 }
                 return;
             }
@@ -1377,6 +1380,8 @@ public partial class TabbedHostWindow : Window
                 .Select(t => _tabs[t])
                 .Where(v => v.ChildHwnd != IntPtr.Zero)
                 .ToList();
+
+            PublishChildVisibility(selectedTab, activeWindows);
             
             bool isLoading = false;
             if (_isGridViewEnabled)
@@ -1410,26 +1415,20 @@ public partial class TabbedHostWindow : Window
                 int n = activeWindows.Count;
                 int cols = (int)Math.Ceiling(Math.Sqrt(n));
                 int rows = (int)Math.Ceiling((double)n / cols);
-                int cellW = w / cols;
-                int cellH = h / rows;
-
                 _gridTiles.Clear();
                 for (int i = 0; i < n; i++)
                 {
-                    int r = i / cols;
-                    int c = i % cols;
+                    var (tileX, tileY, tileW, tileH) = GridTileRect(i, n, cols, rows, w, h);
                     _gridTiles.Add(new GridTile
                     {
                         Hwnd = activeWindows[i].ChildHwnd,
-                        OffsetX = _childOffsetX + (c * cellW),
-                        OffsetY = _childOffsetY + (r * cellH),
-                        Width = cellW,
-                        Height = cellH
+                        OffsetX = _childOffsetX + tileX,
+                        OffsetY = _childOffsetY + tileY,
+                        Width = tileW,
+                        Height = tileH
                     });
-                    int tileX = x + (c * cellW);
-                    int tileY = y + (r * cellH);
 #if IS_LINUX || !IS_WINDOWS
-                    PlatformMoveResizeChild(activeWindows[i].ChildHwnd, tileX, tileY, cellW, cellH);
+                    PlatformMoveResizeChild(activeWindows[i].ChildHwnd, x + tileX, y + tileY, tileW, tileH);
 #endif
 
                     if (activeWindows[i].IsThrottled)
@@ -1523,6 +1522,38 @@ public partial class TabbedHostWindow : Window
                 Dispatcher.UIThread.Post(DoReposition, DispatcherPriority.Render);
             }
         }
+    }
+
+    private void PublishChildVisibility(TabItem? selectedTab, List<TabInfo> activeWindows)
+    {
+        int selectedGridIndex = -1;
+        if (_isGridViewEnabled && selectedTab != null && _tabs.TryGetValue(selectedTab, out TabInfo? selectedInfo))
+            selectedGridIndex = activeWindows.IndexOf(selectedInfo);
+
+        for (int i = 0; i < activeWindows.Count; i++)
+        {
+            TabInfo info = activeWindows[i];
+            int visibility = _isGridViewEnabled ? (i == selectedGridIndex ? 2 : 3) :
+                (selectedTab != null && _tabs.TryGetValue(selectedTab, out TabInfo? activeInfo) && ReferenceEquals(info, activeInfo) ? 0 : 1);
+            PostChildMessage(info.ChildHwnd, HotKeys.WM_SKUA_VISIBILITY, new IntPtr(visibility), IntPtr.Zero);
+        }
+    }
+
+    // Keep the 960x550 game aspect ratio in Grid View instead of stretching the embedded player.
+    private static (int X, int Y, int W, int H) GridTileRect(int index, int count, int cols, int rows, int areaW, int areaH)
+    {
+        int row = index / cols, col = index % cols;
+        int inRow = row == rows - 1 ? count - row * cols : cols;
+        int cellW = areaW / cols, cellH = areaH / rows;
+        int rowShift = (cols - inRow) * cellW / 2;
+        int tileW = cellW, tileH = tileW * 550 / 960;
+        if (tileH > cellH)
+        {
+            tileH = cellH;
+            tileW = tileH * 960 / 550;
+        }
+        return (col * cellW + rowShift + (cellW - tileW) / 2,
+            row * cellH + (cellH - tileH) / 2, Math.Max(tileW, 1), Math.Max(tileH, 1));
     }
     #endregion
 

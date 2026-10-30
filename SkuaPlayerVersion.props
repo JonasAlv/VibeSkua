@@ -4,6 +4,6 @@
   <PropertyGroup>
     <SkuaPlayerVersion>1.6.0-skua.3</SkuaPlayerVersion>
     <SkuaPlayerOs>linux</SkuaPlayerOs>
-    <WatchDogVersion>1.0.0</WatchDogVersion>
+    <WatchDogVersion>1.0.1</WatchDogVersion>
   </PropertyGroup>
 </Project>

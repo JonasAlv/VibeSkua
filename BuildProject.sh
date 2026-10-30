@@ -64,7 +64,7 @@ mkdir -p "$BUILD_DIR/plugins" "$BUILD_DIR/player" "$BUILD_DIR/player-x86-64-v2" 
 
 # 1. Copy Application output
 shopt -s nullglob
-app_files=("$APP_BIN"/VibeSkua* "$APP_BIN"/*.dll "$APP_BIN"/*.json)
+app_files=("$APP_BIN/VibeSkua" "$APP_BIN"/*.dll "$APP_BIN"/*.json)
 if ((${#app_files[@]} == 0)); then
     echo "Error: No application outputs were found in $APP_BIN" >&2
     exit 1

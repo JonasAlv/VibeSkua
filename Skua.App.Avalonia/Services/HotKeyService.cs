@@ -197,11 +197,14 @@ public class HotKeyService : IHotKeyService, IDisposable
             hotkeys.Add("ToggleLagKiller|F6");
             hotkeys.Add("OpenConsole|Ctrl+Shift+C");
             hotkeys.Add("SearchScripts|Ctrl+Shift+F");
+            hotkeys.Add("OpenCommandPalette|Ctrl+K");
             return;
         }
 
         if (!HasBinding("OpenBank"))
             hotkeys.Add("OpenBank|F2");
+        if (!HasBinding("OpenCommandPalette"))
+            hotkeys.Add("OpenCommandPalette|Ctrl+K");
     }
 
     private void AttachMainWindow()

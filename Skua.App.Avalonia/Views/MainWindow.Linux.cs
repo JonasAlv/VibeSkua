@@ -46,6 +46,8 @@ public partial class MainWindow : Window
     private int _preThrottleFPS = -1;
     private string? _preThrottleQuality = null;
     private bool _isInGridView = false;
+    private int _tabVisibility;
+    private bool _autoHeadlessHeld;
 
     private readonly HashSet<Key> _pressedKeys = new();
 
@@ -105,7 +107,7 @@ public partial class MainWindow : Window
         try
         {
             var options = Ioc.Default.GetRequiredService<IScriptOption>();
-            if (options.HeadlessMode) return;
+            if (options.IsHeadlessNow()) return;
 
             var bot = Ioc.Default.GetRequiredService<IScriptInterface>();
             int currentFPS = bot.Flash?.GetGameObject<int>("stage.frameRate") ?? -1;
@@ -326,7 +328,7 @@ public partial class MainWindow : Window
                     try
                     {
                         var options = Ioc.Default.GetRequiredService<IScriptOption>();
-                        if (!options.HeadlessMode)
+                        if (!options.IsHeadlessNow())
                         {
                             var bot = Ioc.Default.GetRequiredService<IScriptInterface>();
                             int currentFPS = bot.Flash?.GetGameObject<int>("stage.frameRate") ?? -1;
@@ -346,6 +348,12 @@ public partial class MainWindow : Window
                     catch { }
                 }
             });
+            return IntPtr.Zero;
+        }
+        else if (uMsg == HotKeys.WM_SKUA_VISIBILITY)
+        {
+            _tabVisibility = wParam.ToInt32();
+            Dispatcher.UIThread.Post(EvaluateAutoHeadless);
             return IntPtr.Zero;
         }
         else if (uMsg == WM_SKUA_LOGIN)
@@ -587,7 +595,7 @@ public partial class MainWindow : Window
             }
 
             var options = Ioc.Default.GetRequiredService<IScriptOption>();
-            if (!options.HeadlessMode)
+            if (!options.IsHeadlessNow())
             {
                 var bot = Ioc.Default.GetRequiredService<IScriptInterface>();
                 try
@@ -677,6 +685,30 @@ public partial class MainWindow : Window
         }
 
         return IntPtr.Zero;
+    }
+
+    private void EvaluateAutoHeadless()
+    {
+        IScriptOption options = Ioc.Default.GetRequiredService<IScriptOption>();
+        bool want = false;
+        if (options.AutoHeadless)
+        {
+            want = _tabVisibility switch
+            {
+                1 => options.AutoHeadlessBackgroundTabs,
+                3 => !options.AutoHeadlessGridView && options.AutoHeadlessBackgroundTabs,
+                4 => options.AutoHeadlessWhenMinimized,
+                _ => false
+            };
+            if (want) _autoHeadlessHeld = true;
+            else if (_tabVisibility is 0 or 2 && _autoHeadlessHeld && !options.AutoHeadlessLiftOnFocus) want = true;
+            else _autoHeadlessHeld = false;
+        }
+        else
+        {
+            _autoHeadlessHeld = false;
+        }
+        options.SetAutoHeadless(want);
     }
 
 }

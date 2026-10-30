@@ -257,7 +257,32 @@ public partial class ScriptOption : ObservableRecipient, IScriptOption, IOptionD
     [ObservableProperty]
     private bool _headlessMode;
 
-    partial void OnHeadlessModeChanged(bool value)
+    [ObservableProperty]
+    private bool _autoHeadless;
+    [ObservableProperty]
+    private bool _autoHeadlessBackgroundTabs = true;
+    [ObservableProperty]
+    private bool _autoHeadlessGridView = true;
+    [ObservableProperty]
+    private bool _autoHeadlessWhenMinimized = true;
+    [ObservableProperty]
+    private bool _autoHeadlessLiftOnFocus = true;
+
+    public const string AutoHeadlessActiveChanged = "AutoHeadlessActive";
+    private bool _autoHeadlessActive;
+    public bool IsHeadlessNow() => _headlessMode || _autoHeadlessActive;
+    public void SetAutoHeadless(bool active)
+    {
+        if (_autoHeadlessActive == active) return;
+        bool before = IsHeadlessNow();
+        _autoHeadlessActive = active;
+        if (before != IsHeadlessNow()) ApplyHeadless(IsHeadlessNow());
+        OnPropertyChanged(AutoHeadlessActiveChanged);
+    }
+
+    partial void OnHeadlessModeChanged(bool value) => ApplyHeadless(value || _autoHeadlessActive);
+
+    private void ApplyHeadless(bool value)
     {
         try
         {

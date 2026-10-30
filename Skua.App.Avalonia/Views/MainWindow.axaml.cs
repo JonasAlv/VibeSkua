@@ -187,11 +187,11 @@ public partial class MainWindow : Window
         {
             notifyOptions.PropertyChanged += (s, e) =>
             {
-                if (e.PropertyName == nameof(IScriptOption.HeadlessMode))
+                if (e.PropertyName is nameof(IScriptOption.HeadlessMode) or Skua.Core.Scripts.ScriptOption.AutoHeadlessActiveChanged)
                 {
                     Dispatcher.UIThread.Post(() =>
                     {
-                        bool isHeadless = _options.HeadlessMode;
+                        bool isHeadless = _options.IsHeadlessNow();
                         if (HeadlessOverlay != null) HeadlessOverlay.IsVisible = isHeadless;
                         if (FlashHost != null) FlashHost.IsVisible = !isHeadless && _isFlashLoaded;
                     });
@@ -203,6 +203,14 @@ public partial class MainWindow : Window
     private void MainWindow_Opened(object? sender, EventArgs e)
     {
         _startup.Execute();
+        HotKeys.OpenCommandPaletteRequested = () => Dispatcher.UIThread.Post(() =>
+        {
+            try
+            {
+                new CommandPaletteWindow(_mainMenuVm.MainMenuItems).ShowDialog(this);
+            }
+            catch { }
+        });
         _flash.FlashCall += OnFlashCall;
 
         try
@@ -219,7 +227,7 @@ public partial class MainWindow : Window
 
         if (FlashHost != null)
         {
-            FlashHost.IsVisible = !_options.HeadlessMode;
+            FlashHost.IsVisible = !_options.IsHeadlessNow();
             Dispatcher.UIThread.RunJobs();
             FlashHost.Focus();
         }
@@ -283,8 +291,8 @@ public partial class MainWindow : Window
             Dispatcher.UIThread.Post(() =>
             {
                 LoadingBar.IsVisible = false;
-                FlashHost.IsVisible = !_options.HeadlessMode;
-                HeadlessOverlay.IsVisible = _options.HeadlessMode;
+                FlashHost.IsVisible = !_options.IsHeadlessNow();
+                HeadlessOverlay.IsVisible = _options.IsHeadlessNow();
                 try
                 {
                     FlashHost?.SetScaleMode(false);

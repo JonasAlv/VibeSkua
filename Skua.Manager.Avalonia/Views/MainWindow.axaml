@@ -3,6 +3,7 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:sharedShell="clr-namespace:Skua.Shared.Avalonia.Controls.Shell;assembly=Skua.Shared.Avalonia"
+        xmlns:managerControls="clr-namespace:Skua.Manager.Avalonia.Controls"
         x:Class="Skua.Manager.Avalonia.Views.MainWindow"
         Classes="skua"
         d:DesignWidth="850"
@@ -63,6 +64,7 @@
                         Content="{Binding SelectedTab.Content}"
                         HorizontalAlignment="Stretch"
                         VerticalAlignment="Stretch" />
+        <managerControls:ToastHost Grid.RowSpan="3" />
     </Grid>
 
 </Window>
