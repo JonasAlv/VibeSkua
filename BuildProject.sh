@@ -1,11 +1,14 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
+# Optional: WATCHDOG_LOCAL may point to a locally built WatchDog.dll or its containing folder.
+
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
 BUILD_DIR="$SCRIPT_DIR/Build"
 WATCHDOG_VERSION="$(sed -n 's:.*<WatchDogVersion>\([^<]*\)</WatchDogVersion>.*:\1:p' "$SCRIPT_DIR/SkuaPlayerVersion.props")"
 WATCHDOG_CACHE="$BUILD_DIR/.cache/watchdog/v${WATCHDOG_VERSION}/WatchDog.dll"
 WATCHDOG_URL="https://github.com/JonasAlv/Watch-Dog-linux/releases/download/v${WATCHDOG_VERSION}/WatchDog.dll"
+WATCHDOG_LOCAL="${WATCHDOG_LOCAL:-}"
 SKUA_PLAYER_VERSION="$(sed -n 's:.*<SkuaPlayerVersion>\([^<]*\)</SkuaPlayerVersion>.*:\1:p' "$SCRIPT_DIR/SkuaPlayerVersion.props")"
 SKUA_PLAYER_OS="$(sed -n 's:.*<SkuaPlayerOs>\([^<]*\)</SkuaPlayerOs>.*:\1:p' "$SCRIPT_DIR/SkuaPlayerVersion.props")"
 SKUA_PLAYER_CACHE="$SCRIPT_DIR/player/${SKUA_PLAYER_VERSION}-${SKUA_PLAYER_OS}"
@@ -79,7 +82,17 @@ cp -f "${manager_files[@]}" "$BUILD_DIR/"
 cp -f "$SCRIPT_DIR/Skua.Plugin.DailyTracker/bin/Release/net10.0/Skua.Plugin.DailyTracker.dll" "$BUILD_DIR/plugins/"
 cp -f "$SCRIPT_DIR/Skua.Plugin.ButlerV5/bin/Release/net10.0/ButlerV5.dll" "$BUILD_DIR/plugins/"
 cp -f "$SCRIPT_DIR/Skua.Plugin.Cosmetics/bin/Release/net10.0/Skua.Plugin.Cosmetics.dll" "$BUILD_DIR/plugins/"
-if [[ ! -s "$WATCHDOG_CACHE" ]]; then
+if [[ -n "$WATCHDOG_LOCAL" ]]; then
+    if [[ -d "$WATCHDOG_LOCAL" ]]; then
+        WATCHDOG_LOCAL="$WATCHDOG_LOCAL/WatchDog.dll"
+    fi
+    if [[ ! -s "$WATCHDOG_LOCAL" ]]; then
+        echo "Error: WATCHDOG_LOCAL must point to a built WatchDog.dll or its containing folder." >&2
+        exit 1
+    fi
+    echo "Using local Watch Dog: $WATCHDOG_LOCAL"
+    cp -f "$WATCHDOG_LOCAL" "$BUILD_DIR/plugins/WatchDog.dll"
+elif [[ ! -s "$WATCHDOG_CACHE" ]]; then
     mkdir -p "$(dirname "$WATCHDOG_CACHE")"
     tmp_watchdog="$WATCHDOG_CACHE.tmp"
     echo "Fetching Watch Dog v${WATCHDOG_VERSION} from GitHub Releases..."
@@ -91,7 +104,9 @@ if [[ ! -s "$WATCHDOG_CACHE" ]]; then
         exit 1
     fi
 fi
-cp -f "$WATCHDOG_CACHE" "$BUILD_DIR/plugins/WatchDog.dll"
+if [[ -z "$WATCHDOG_LOCAL" ]]; then
+    cp -f "$WATCHDOG_CACHE" "$BUILD_DIR/plugins/WatchDog.dll"
+fi
 
 # 4. Copy SWF client
 cp -f "$SWF_SOURCE" "$BUILD_DIR/skua.swf"
