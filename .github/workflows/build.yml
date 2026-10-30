@@ -35,5 +35,5 @@ jobs:
 
       - name: Build Project
         run: |
-          chmod +x ./BuildProject.sh
+          chmod +x ./BuildProject.sh ./build-config.sh
           ./BuildProject.sh

@@ -32,7 +32,7 @@ jobs:
       - name: Install System Dependencies & appimagetool
         run: |
           sudo apt-get update
-          sudo apt-get install -y libfuse2 file curl tar gzip python3-pil
+          sudo apt-get install -y file curl tar gzip zip python3-pil
           sudo curl -sSL https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-x86_64.AppImage -o /usr/local/bin/appimagetool
           sudo chmod +x /usr/local/bin/appimagetool
 
@@ -51,8 +51,12 @@ jobs:
           echo "Building release for tag: $TAG"
 
       - name: Package Linux AppImages
+        env:
+          # appimagetool is itself an AppImage; extraction avoids depending on
+          # FUSE package names that differ between GitHub Ubuntu images.
+          APPIMAGE_EXTRACT_AND_RUN: '1'
         run: |
-          chmod +x ./BuildProject.sh ./package-linux.sh
+          chmod +x ./BuildProject.sh ./package-linux.sh ./build-config.sh
           ./package-linux.sh
 
       - name: Publish GitHub Release
