@@ -406,6 +406,12 @@ EOF
     chmod +x "$mgr_appdir/AppRun"
     ln -sf "../current/VibeSkua.Manager" "$mgr_appdir/usr/bin/VibeSkua-Manager"
 
+    # Files copied from dotnet output can retain owner-only execute bits (0744).
+    # appimagetool rejects those files because an AppImage must be runnable by
+    # users other than the packager. Normalize the complete AppDir tree before
+    # squashfs generation.
+    chmod -R a+rX "$skua_appdir" "$mgr_appdir"
+
     # Build AppImages
     echo "Running appimagetool for VibeSkua..."
     ARCH=x86_64 "$appimagetool_cmd" -n "$skua_appdir" "$OUTPUT_DIR/VibeSkua-x86_64.AppImage"
