@@ -1,1 +1,0 @@
-BuildProject.sh
