@@ -33,7 +33,17 @@ jobs:
         with:
           dotnet-version: 10.0.x
 
-      - name: Build Project
+      - name: Build portable Linux binaries
         run: |
-          chmod +x ./BuildProject.sh ./build-config.sh
-          ./BuildProject.sh
+          sudo apt-get update
+          sudo apt-get install -y curl file gcc gzip tar zip
+          chmod +x ./build-binaries.sh ./build-config.sh
+          ./build-binaries.sh
+
+      - name: Upload Linux build
+        uses: actions/upload-artifact@v4
+        with:
+          name: VibeSkua-linux-binary
+          path: |
+            Build/VibeSkua-linux-Binary.tar.gz
+            Build/VibeSkua-linux-Binary.zip

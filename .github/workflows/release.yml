@@ -56,8 +56,9 @@ jobs:
           # FUSE package names that differ between GitHub Ubuntu images.
           APPIMAGE_EXTRACT_AND_RUN: '1'
         run: |
-          chmod +x ./BuildProject.sh ./package-linux.sh ./build-config.sh
-          ./package-linux.sh
+          sudo apt-get install -y gcc
+          chmod +x ./build-appimages.sh ./build-config.sh
+          ./build-appimages.sh
 
       - name: Publish GitHub Release
         env:
