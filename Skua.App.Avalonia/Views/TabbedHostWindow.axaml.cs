@@ -158,7 +158,24 @@ public partial class TabbedHostWindow : Window
         ScalingChanged += (s, e) => Dispatcher.UIThread.Post(RepositionWithFreshCache, DispatcherPriority.Loaded);
 #endif
         
-        PropertyChanged += (s, e) => { if (e.Property == WindowStateProperty || e.Property == IsVisibleProperty) DoReposition(); };
+        PropertyChanged += (s, e) =>
+        {
+            if (e.Property != WindowStateProperty && e.Property != IsVisibleProperty)
+                return;
+
+            // Minimize/hidden handling unmaps X11 children. Invalidate the cache on restore so
+            // DoReposition calls XMapWindow again instead of returning on unchanged geometry.
+            if (WindowState != WindowState.Minimized && IsVisible)
+            {
+                _lastX = int.MinValue;
+                _lastY = int.MinValue;
+                _lastW = int.MinValue;
+                _lastH = int.MinValue;
+                _lastActiveHwnd = IntPtr.Zero;
+            }
+
+            DoReposition();
+        };
         Activated += (s, e) =>
         {
             DoReposition();

@@ -274,9 +274,11 @@ public partial class MainWindow : Window
             Dispatcher.UIThread.Post(() =>
             {
                 LoadingBar.IsVisible = false;
-                FlashHost.IsVisible = !_options.HeadlessMode;
-                HeadlessOverlay.IsVisible = _options.HeadlessMode;
-                if (FlashHost != null && FlashHost.IsVisible && FocusManager?.GetFocusedElement() is not TextBox)
+                bool isHeadless = _options.IsHeadlessNow();
+                FlashHost.Opacity = isHeadless ? 0 : 1;
+                FlashHost.IsVisible = true;
+                HeadlessOverlay.IsVisible = isHeadless;
+                if (FlashHost != null && !isHeadless && FocusManager?.GetFocusedElement() is not TextBox)
                     FlashHost.Focus();
                 try
                 {

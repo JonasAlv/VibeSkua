@@ -193,7 +193,16 @@ public partial class MainWindow : Window
                     {
                         bool isHeadless = _options.IsHeadlessNow();
                         if (HeadlessOverlay != null) HeadlessOverlay.IsVisible = isHeadless;
-                        if (FlashHost != null) FlashHost.IsVisible = !isHeadless && _isFlashLoaded;
+                        if (FlashHost != null)
+                        {
+#if IS_LINUX
+                            // Keep the X11 holder alive while the embedded Mugetsu process is running.
+                            FlashHost.Opacity = isHeadless ? 0 : 1;
+                            FlashHost.IsVisible = _isFlashLoaded;
+#else
+                            FlashHost.IsVisible = !isHeadless && _isFlashLoaded;
+#endif
+                        }
                     });
                 }
             };
@@ -233,9 +242,12 @@ public partial class MainWindow : Window
 
         if (FlashHost != null)
         {
-            FlashHost.IsVisible = !_options.IsHeadlessNow();
+            bool isHeadless = _options.IsHeadlessNow();
+            FlashHost.Opacity = isHeadless ? 0 : 1;
+            FlashHost.IsVisible = true;
             Dispatcher.UIThread.RunJobs();
-            FlashHost.Focus();
+            if (!isHeadless)
+                FlashHost.Focus();
         }
         if (_flash is Flash.FlashUtil player)
             player.ParentWindow = FlashHost?.WindowHandle ?? 0;
@@ -297,8 +309,10 @@ public partial class MainWindow : Window
             Dispatcher.UIThread.Post(() =>
             {
                 LoadingBar.IsVisible = false;
-                FlashHost.IsVisible = !_options.IsHeadlessNow();
-                HeadlessOverlay.IsVisible = _options.IsHeadlessNow();
+                bool isHeadless = _options.IsHeadlessNow();
+                FlashHost.Opacity = isHeadless ? 0 : 1;
+                FlashHost.IsVisible = true;
+                HeadlessOverlay.IsVisible = isHeadless;
                 try
                 {
                     FlashHost?.SetScaleMode(false);
