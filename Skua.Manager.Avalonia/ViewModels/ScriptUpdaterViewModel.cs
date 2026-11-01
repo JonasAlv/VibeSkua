@@ -19,12 +19,12 @@ public partial class ScriptUpdaterViewModel : BotControlViewModelBase
     {
         _scriptsService = scriptsService;
         _progress = new Progress<string>(p => ProgressStatus = p);
-        
-        StrongReferenceMessenger.Default.Register<ScriptUpdaterViewModel, UpdateScriptsMessage>(this, ReceiveUpdateScriptsMessage);
+        RegisterMessageHandler();
     }
 
     private readonly IGetScriptsService _scriptsService;
     private readonly IProgress<string> _progress;
+    private bool _messageRegistered;
 
     [ObservableProperty]
     private string _status = "Ready to update scripts.";
@@ -38,7 +38,23 @@ public partial class ScriptUpdaterViewModel : BotControlViewModelBase
     protected override void OnDeactivated()
     {
         StrongReferenceMessenger.Default.UnregisterAll(this);
+        _messageRegistered = false;
         base.OnDeactivated();
+    }
+
+    protected override void OnActivated()
+    {
+        RegisterMessageHandler();
+        base.OnActivated();
+    }
+
+    private void RegisterMessageHandler()
+    {
+        if (_messageRegistered)
+            return;
+
+        StrongReferenceMessenger.Default.Register<ScriptUpdaterViewModel, UpdateScriptsMessage>(this, ReceiveUpdateScriptsMessage);
+        _messageRegistered = true;
     }
 
     private async void ReceiveUpdateScriptsMessage(ScriptUpdaterViewModel recipient, UpdateScriptsMessage message)
@@ -122,7 +138,7 @@ public partial class ScriptUpdaterViewModel : BotControlViewModelBase
         {
             await _scriptsService.RefreshScriptsAsync(_progress, token);
 
-            int count = await Task.Run(async () => await _scriptsService.DownloadAllWhereAsync(s => !s.Downloaded || s.Outdated));
+            int count = await _scriptsService.DownloadAllWhereAsync(s => !s.Downloaded || s.Outdated, token: token);
             ProgressStatus = $"Downloaded {count} scripts.";
             Status = "Scripts are up to date.";
         }

@@ -19,8 +19,7 @@ public partial class ClientUpdatesViewModel : BotControlViewModelBase
     public ClientUpdatesViewModel(IClientUpdateService updateService, IGetScriptsService scriptsService, IDialogService dialogService, ISettingsService settingsService)
         : base("Client Updates")
     {
-        StrongReferenceMessenger.Default.Register<ClientUpdatesViewModel, UpdateScriptsMessage>(this, ReceiveUpdateScriptsMessage);
-        StrongReferenceMessenger.Default.Register<ClientUpdatesViewModel, CheckClientUpdateMessage>(this, CheckUpdate);
+        RegisterMessageHandlers();
 
         _updateService = updateService;
         _scriptsService = scriptsService;
@@ -51,6 +50,7 @@ public partial class ClientUpdatesViewModel : BotControlViewModelBase
 
     protected override void OnActivated()
     {
+        RegisterMessageHandlers();
         if (Latest is null)
             Refresh();
     }
@@ -58,7 +58,20 @@ public partial class ClientUpdatesViewModel : BotControlViewModelBase
     protected override void OnDeactivated()
     {
         StrongReferenceMessenger.Default.UnregisterAll(this);
+        _messageRegistered = false;
         base.OnDeactivated();
+    }
+
+    private bool _messageRegistered;
+
+    private void RegisterMessageHandlers()
+    {
+        if (_messageRegistered)
+            return;
+
+        StrongReferenceMessenger.Default.Register<ClientUpdatesViewModel, UpdateScriptsMessage>(this, ReceiveUpdateScriptsMessage);
+        StrongReferenceMessenger.Default.Register<ClientUpdatesViewModel, CheckClientUpdateMessage>(this, CheckUpdate);
+        _messageRegistered = true;
     }
 
     private readonly IGetScriptsService _scriptsService;
@@ -199,7 +212,7 @@ public partial class ClientUpdatesViewModel : BotControlViewModelBase
         try
         {
             await _scriptsService.RefreshScriptsAsync(_progress, token);
-            int count = await Task.Run(async () => await _scriptsService.DownloadAllWhereAsync(s => !s.Downloaded || s.Outdated));
+            int count = await _scriptsService.DownloadAllWhereAsync(s => !s.Downloaded || s.Outdated, token: token);
             ProgressStatus = $"Downloaded {count} scripts.";
             Status = "Scripts are up to date.";
         }
