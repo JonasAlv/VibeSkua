@@ -258,7 +258,7 @@ public partial class ScriptOption : ObservableRecipient, IScriptOption, IOptionD
     private bool _headlessMode;
 
     [ObservableProperty]
-    private bool _autoHeadless = true;
+    private bool _autoHeadless;
     [ObservableProperty]
     private bool _autoHeadlessBackgroundTabs = true;
     [ObservableProperty]
