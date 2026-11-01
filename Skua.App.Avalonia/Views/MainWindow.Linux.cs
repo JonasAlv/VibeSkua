@@ -1,5 +1,6 @@
 #if IS_LINUX
 using Avalonia.Controls;
+using Avalonia.Controls.Primitives;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Threading;
@@ -51,6 +52,13 @@ public partial class MainWindow : Window
 
     private readonly HashSet<Key> _pressedKeys = new();
 
+    private void CloseDropdowns()
+    {
+        AutoToggle?.SetCurrentValue(ToggleButton.IsCheckedProperty, false);
+        JumpToggle?.SetCurrentValue(ToggleButton.IsCheckedProperty, false);
+        MainMenuControl?.Close();
+    }
+
     private void InitializeLinuxInput()
     {
         AddHandler(InputElement.KeyDownEvent, OnLinuxKeyDown, RoutingStrategies.Tunnel);
@@ -64,6 +72,13 @@ public partial class MainWindow : Window
             MainMenuControl.AddHandler(InputElement.PointerEnteredEvent, (s, e) => Skua.Shared.Avalonia.Services.X11WindowPositionTracker.SyncPosition(this), RoutingStrategies.Tunnel);
             MainMenuControl.AddHandler(InputElement.PointerPressedEvent, (s, e) => Skua.Shared.Avalonia.Services.X11WindowPositionTracker.SyncPosition(this), RoutingStrategies.Tunnel);
         }
+
+        PropertyChanged += (s, e) =>
+        {
+            if ((e.Property == WindowStateProperty && WindowState == WindowState.Minimized) ||
+                (e.Property == IsVisibleProperty && !IsVisible))
+                CloseDropdowns();
+        };
 
         AddHandler(PointerPressedEvent, (s, e) =>
         {
@@ -355,6 +370,8 @@ public partial class MainWindow : Window
         else if (uMsg == HotKeys.WM_SKUA_VISIBILITY)
         {
             _tabVisibility = wParam.ToInt32();
+            if (_tabVisibility is not 0 and not 2)
+                CloseDropdowns();
             Dispatcher.UIThread.Post(EvaluateAutoHeadless);
             return IntPtr.Zero;
         }

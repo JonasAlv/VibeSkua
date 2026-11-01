@@ -173,6 +173,7 @@ public partial class MainWindow : Window
 #if IS_LINUX
         Deactivated += (s, e) =>
         {
+            CloseDropdowns();
             ReleaseAllPressedKeys();
             Skua.App.Avalonia.Controls.GameHost.ForwardFocus(false);
         };
