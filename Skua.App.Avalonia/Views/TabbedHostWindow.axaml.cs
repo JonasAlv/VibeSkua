@@ -163,6 +163,10 @@ public partial class TabbedHostWindow : Window
             if (e.Property != WindowStateProperty && e.Property != IsVisibleProperty)
                 return;
 
+            if ((e.Property == WindowStateProperty && WindowState == WindowState.Minimized) ||
+                (e.Property == IsVisibleProperty && !IsVisible))
+                CloseHostDropdowns();
+
             // Minimize/hidden handling unmaps X11 children. Invalidate the cache on restore so
             // DoReposition calls XMapWindow again instead of returning on unchanged geometry.
             if (WindowState != WindowState.Minimized && IsVisible)
@@ -197,6 +201,7 @@ public partial class TabbedHostWindow : Window
         };
         Deactivated += (s, e) =>
         {
+            CloseHostDropdowns();
             foreach (var info in _tabs.Values)
             {
                 if (info.ChildHwnd != IntPtr.Zero)
@@ -979,6 +984,8 @@ public partial class TabbedHostWindow : Window
     {
         if (e.Source != InstancesTabControl || _ignoreSelectionChange) return;
 
+        CloseHostDropdowns();
+
         if (_isGridViewEnabled && InstancesTabControl.SelectedItem != null)
         {
             ExitGridView();
@@ -991,6 +998,11 @@ public partial class TabbedHostWindow : Window
         {
             ScrollTabIntoView(selTab);
         }
+    }
+
+    private void CloseHostDropdowns()
+    {
+        global::Avalonia.Controls.Primitives.FlyoutBase.GetAttachedFlyout(GlobeBorder)?.Hide();
     }
 
     private void GlobeBorder_PointerPressed(object? sender, PointerPressedEventArgs e)
