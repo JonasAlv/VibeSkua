@@ -290,8 +290,7 @@ public partial class MainWindow : Window
             {
                 LoadingBar.IsVisible = false;
                 bool isHeadless = _options.IsHeadlessNow();
-                FlashHost.Opacity = isHeadless ? 0 : 1;
-                FlashHost.IsVisible = true;
+                FlashHost.IsVisible = !isHeadless;
                 HeadlessOverlay.IsVisible = isHeadless;
                 if (FlashHost != null && !isHeadless && FocusManager?.GetFocusedElement() is not TextBox)
                     FlashHost.Focus();

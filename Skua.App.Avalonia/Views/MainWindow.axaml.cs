@@ -216,9 +216,7 @@ public partial class MainWindow : Window
                         if (FlashHost != null)
                         {
 #if IS_LINUX
-                            // Keep the X11 holder alive while the embedded Mugetsu process is running.
-                            FlashHost.Opacity = isHeadless ? 0 : 1;
-                            FlashHost.IsVisible = _isFlashLoaded;
+                            FlashHost.IsVisible = !isHeadless && _isFlashLoaded;
 #else
                             FlashHost.IsVisible = !isHeadless && _isFlashLoaded;
 #endif
@@ -263,8 +261,7 @@ public partial class MainWindow : Window
         if (FlashHost != null)
         {
             bool isHeadless = _options.IsHeadlessNow();
-            FlashHost.Opacity = isHeadless ? 0 : 1;
-            FlashHost.IsVisible = true;
+            FlashHost.IsVisible = !isHeadless;
             Dispatcher.UIThread.RunJobs();
             if (!isHeadless)
                 FlashHost.Focus();
