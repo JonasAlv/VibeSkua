@@ -714,7 +714,7 @@ public partial class MainWindow : Window
             want = _tabVisibility switch
             {
                 1 => options.AutoHeadlessBackgroundTabs,
-                3 => !options.AutoHeadlessGridView && options.AutoHeadlessBackgroundTabs,
+                3 => options.AutoHeadlessGridView && options.AutoHeadlessBackgroundTabs,
                 4 => options.AutoHeadlessWhenMinimized,
                 _ => false
             };

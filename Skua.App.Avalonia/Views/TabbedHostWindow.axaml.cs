@@ -199,6 +199,9 @@ public partial class TabbedHostWindow : Window
                     PostChildMessage(active, (uint)HotKeys.WM_SKUA_FOCUS, new IntPtr(1), IntPtr.Zero);
             }
         };
+#if IS_LINUX
+        StartGridFocusTracking();
+#endif
         Deactivated += (s, e) =>
         {
             CloseHostDropdowns();
@@ -804,6 +807,9 @@ public partial class TabbedHostWindow : Window
         {
             _lastGridViewToggleTime = DateTime.UtcNow;
             _isGridViewEnabled = true;
+#if IS_LINUX
+            _gridFocusedChild = IntPtr.Zero;
+#endif
             UpdateGridViewBorderColor();
 
             foreach (var info in _tabs.Values)
@@ -843,6 +849,9 @@ public partial class TabbedHostWindow : Window
         {
             _lastGridViewToggleTime = DateTime.UtcNow;
             _isGridViewEnabled = false;
+#if IS_LINUX
+            _gridFocusedChild = IntPtr.Zero;
+#endif
             UpdateGridViewBorderColor();
 
             foreach (var info in _tabs.Values)
@@ -1571,8 +1580,28 @@ public partial class TabbedHostWindow : Window
         for (int i = 0; i < activeWindows.Count; i++)
         {
             TabInfo info = activeWindows[i];
-            int visibility = _isGridViewEnabled ? (i == selectedGridIndex ? 2 : 3) :
-                (selectedTab != null && _tabs.TryGetValue(selectedTab, out TabInfo? activeInfo) && ReferenceEquals(info, activeInfo) ? 0 : 1);
+            int visibility;
+            if (_isGridViewEnabled)
+            {
+#if IS_LINUX
+                IScriptOption? options = Ioc.Default.GetService<IScriptOption>();
+                bool autoHeadlessGrid = options?.AutoHeadless == true && options.AutoHeadlessGridView;
+                bool liftFocusedGrid = autoHeadlessGrid && options!.AutoHeadlessLiftOnFocus;
+                visibility = liftFocusedGrid && _gridFocusedChild != IntPtr.Zero && info.ChildHwnd == _gridFocusedChild
+                    ? 2
+                    : autoHeadlessGrid ? 3 : (i == selectedGridIndex ? 2 : 3);
+#else
+                visibility = i == selectedGridIndex ? 2 : 3;
+#endif
+            }
+            else
+            {
+                visibility = selectedTab != null && _tabs.TryGetValue(selectedTab, out TabInfo? activeInfo) && ReferenceEquals(info, activeInfo) ? 0 : 1;
+            }
+#if IS_LINUX
+            // The grid mapping above deliberately keeps every client headless until
+            // X11 focus identifies the tile the user clicked.
+#endif
             PostChildMessage(info.ChildHwnd, HotKeys.WM_SKUA_VISIBILITY, new IntPtr(visibility), IntPtr.Zero);
         }
     }

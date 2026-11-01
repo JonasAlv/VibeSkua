@@ -1,6 +1,7 @@
 #if IS_LINUX
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Threading;
 using System;
 using System.Diagnostics;
 using System.IO;
@@ -8,6 +9,7 @@ using System.Linq;
 using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using Skua.App.Avalonia.Services;
+using Skua.Core.Interfaces;
 
 namespace Skua.App.Avalonia.Views;
 
@@ -62,6 +64,9 @@ public partial class TabbedHostWindow : Window
     private static extern int XSetInputFocus(IntPtr display, IntPtr w, int revert_to, IntPtr time);
 
     [DllImport("libX11.so.6")]
+    private static extern int XGetInputFocus(IntPtr display, out IntPtr focus_return, out int revert_to_return);
+
+    [DllImport("libX11.so.6")]
     private static extern int XChangeWindowAttributes(IntPtr display, IntPtr w, UIntPtr valuemask, ref XSetWindowAttributes attributes);
 
     [DllImport("libX11.so.6")]
@@ -81,6 +86,8 @@ public partial class TabbedHostWindow : Window
 
     private static IntPtr _xDisplay;
     private static readonly object _xLock = new();
+    private DispatcherTimer? _gridFocusTimer;
+    private IntPtr _gridFocusedChild;
 
     private static IntPtr GetDisplay()
     {
@@ -96,6 +103,42 @@ public partial class TabbedHostWindow : Window
             }
             return _xDisplay;
         }
+    }
+
+    private void StartGridFocusTracking()
+    {
+        _gridFocusTimer ??= new DispatcherTimer(
+            TimeSpan.FromMilliseconds(100),
+            DispatcherPriority.Background,
+            (_, _) => UpdateGridFocusedChild());
+        _gridFocusTimer.Start();
+    }
+
+    private void UpdateGridFocusedChild()
+    {
+        if (!_isGridViewEnabled || !IsVisible || WindowState == WindowState.Minimized)
+            return;
+
+        IScriptOption? options = CommunityToolkit.Mvvm.DependencyInjection.Ioc.Default.GetService<IScriptOption>();
+        if (options is null || !options.AutoHeadless || !options.AutoHeadlessGridView || !options.AutoHeadlessLiftOnFocus)
+            return;
+
+        IntPtr display = GetDisplay();
+        if (display == IntPtr.Zero)
+            return;
+
+        try
+        {
+            XGetInputFocus(display, out IntPtr focusedWindow, out _);
+            TabInfo? focusedTab = _tabs.Values.FirstOrDefault(t => t.ChildHwnd == focusedWindow);
+            IntPtr focusedChild = focusedTab?.ChildHwnd ?? IntPtr.Zero;
+            if (focusedChild == _gridFocusedChild)
+                return;
+
+            _gridFocusedChild = focusedChild;
+            Dispatcher.UIThread.Post(DoReposition, DispatcherPriority.Background);
+        }
+        catch { }
     }
     #endregion
 
