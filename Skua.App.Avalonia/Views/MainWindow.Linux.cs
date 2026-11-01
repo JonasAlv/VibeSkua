@@ -715,7 +715,9 @@ public partial class MainWindow : Window
             {
                 1 => options.AutoHeadlessBackgroundTabs,
                 3 => options.AutoHeadlessGridView && options.AutoHeadlessBackgroundTabs,
-                4 => options.AutoHeadlessWhenMinimized,
+                // Minimizing the host removes every client from the screen, so all
+                // clients must enter headless mode regardless of the optional UI flag.
+                4 => true,
                 _ => false
             };
             if (want) _autoHeadlessHeld = true;
