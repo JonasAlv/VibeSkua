@@ -188,10 +188,29 @@ public partial class MainWindow : Window
         {
             notifyOptions.PropertyChanged += (s, e) =>
             {
-                if (e.PropertyName is nameof(IScriptOption.HeadlessMode) or Skua.Core.Scripts.ScriptOption.AutoHeadlessActiveChanged)
+                if (e.PropertyName is nameof(IScriptOption.AutoHeadless)
+                    or nameof(IScriptOption.AutoHeadlessBackgroundTabs)
+                    or nameof(IScriptOption.AutoHeadlessGridView)
+                    or nameof(IScriptOption.AutoHeadlessWhenMinimized)
+                    or nameof(IScriptOption.AutoHeadlessLiftOnFocus))
+                {
+#if IS_LINUX
+                    Dispatcher.UIThread.Post(EvaluateAutoHeadless);
+#endif
+                }
+                else if (e.PropertyName is nameof(IScriptOption.HeadlessMode) or Skua.Core.Scripts.ScriptOption.AutoHeadlessActiveChanged)
                 {
                     Dispatcher.UIThread.Post(() =>
                     {
+                        // Turning manual headless off also releases an automatic headless hold.
+                        // Otherwise a tab can remain hidden after it becomes visible again.
+#if IS_LINUX
+                        if (e.PropertyName == nameof(IScriptOption.HeadlessMode) && !_options.HeadlessMode)
+                        {
+                            _autoHeadlessHeld = false;
+                            EvaluateAutoHeadless();
+                        }
+#endif
                         bool isHeadless = _options.IsHeadlessNow();
                         if (HeadlessOverlay != null) HeadlessOverlay.IsVisible = isHeadless;
                         if (FlashHost != null)
