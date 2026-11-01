@@ -119,7 +119,7 @@ public static class X11WindowPositionTracker
         };
         timer.Tick += (s, e) =>
         {
-            if (window.IsVisible)
+            if (window.IsVisible && window.WindowState != WindowState.Minimized)
                 SyncPosition(window);
             else
                 timer.Stop();
@@ -136,7 +136,34 @@ public static class X11WindowPositionTracker
             timer.Stop();
         };
 
-        if (window.IsVisible)
+        window.Activated += (s, e) =>
+        {
+            // The compositor can move an X11/XWayland window while it is inactive.
+            // Refresh after activation so newly opened popups use the real owner position.
+            Dispatcher.UIThread.Post(() => SyncPosition(window), DispatcherPriority.Render);
+            if (window.IsVisible && window.WindowState != WindowState.Minimized)
+                timer.Start();
+        };
+
+        window.PropertyChanged += (s, e) =>
+        {
+            if (e.Property != Window.WindowStateProperty && e.Property != Window.IsVisibleProperty)
+                return;
+
+            if (window.IsVisible && window.WindowState != WindowState.Minimized)
+            {
+                // Do not trust coordinates reported during minimization. Re-read them after
+                // the compositor has restored the native window, then keep polling while visible.
+                Dispatcher.UIThread.Post(() => SyncPosition(window), DispatcherPriority.Render);
+                timer.Start();
+            }
+            else
+            {
+                timer.Stop();
+            }
+        };
+
+        if (window.IsVisible && window.WindowState != WindowState.Minimized)
         {
             SyncPosition(window);
             timer.Start();
