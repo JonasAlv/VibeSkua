@@ -4,7 +4,9 @@ using CommunityToolkit.Mvvm.Messaging;
 using Skua.App.Avalonia.ViewModels;
 using Skua.Core.Interfaces;
 using Skua.Core.Messaging;
+using Skua.Core.Models;
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
@@ -61,8 +63,36 @@ public sealed class SkuaStartupHandler : IDisposable
 
         if (!string.IsNullOrWhiteSpace(_options.Username))
         {
-            _bot.Servers.SetLoginInfo(_options.Username!, _options.Password ?? string.Empty);
-            if (!string.IsNullOrWhiteSpace(_options.Password))
+            string? password = _options.Password;
+            if (string.IsNullOrWhiteSpace(password))
+            {
+                password = Environment.GetEnvironmentVariable("SKUA_PASSWORD")
+                    ?? Environment.GetEnvironmentVariable("VIBESKUA_PASSWORD");
+            }
+            if (string.IsNullOrWhiteSpace(password))
+            {
+                try
+                {
+                    var accounts = _settingsService.Get<Dictionary<string, AccountData>>("ManagedAccounts");
+                    if (accounts != null && accounts.TryGetValue(_options.Username!, out var acc) && !string.IsNullOrWhiteSpace(acc.Password))
+                    {
+                        password = acc.Password;
+                        if (password.StartsWith("enc:"))
+                            password = Skua.Core.Utils.CryptoUtils.Decrypt(password);
+                    }
+                }
+                catch { }
+            }
+
+            try
+            {
+                Environment.SetEnvironmentVariable("SKUA_PASSWORD", null);
+                Environment.SetEnvironmentVariable("VIBESKUA_PASSWORD", null);
+            }
+            catch { }
+
+            _bot.Servers.SetLoginInfo(_options.Username!, password ?? string.Empty);
+            if (!string.IsNullOrWhiteSpace(password))
                 _bot.Flash.FlashCall += Login;
         }
 

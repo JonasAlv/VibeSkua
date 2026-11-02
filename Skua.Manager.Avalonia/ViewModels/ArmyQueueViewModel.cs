@@ -829,12 +829,15 @@ public partial class ArmyQueueViewModel : ObservableRecipient
                 {
                     "-u",
                     acc.Username,
-                    "-p",
-                    acc.Password,
                     "-s",
                     server
                 }
             };
+
+            if (!string.IsNullOrWhiteSpace(acc.Password))
+            {
+                psi.EnvironmentVariables["SKUA_PASSWORD"] = acc.Password;
+            }
 
             if (_settingsService.Get("syncTheme", false))
             {

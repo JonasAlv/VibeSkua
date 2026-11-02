@@ -6,19 +6,25 @@ using System.ComponentModel;
 
 namespace Skua.App.Avalonia.ViewModels.Options;
 
-public class BindingOptionItemViewModel<TDisplay, TOptionBindingTarget> : CommandOptionItemViewModel, IDisposable
+public interface IBindingOptionItem
+{
+    string Binding { get; }
+}
+
+public class BindingOptionItemViewModel<TDisplay, TOptionBindingTarget> : CommandOptionItemViewModel, IBindingOptionItem, IDisposable
     where TOptionBindingTarget : class, IOptionDictionary, INotifyPropertyChanged
 {
     private readonly string _binding;
     private readonly TOptionBindingTarget _options;
     private bool _disposed;
 
+    public string Binding => _binding;
+
     public BindingOptionItemViewModel(string content, string binding, TOptionBindingTarget options, IRelayCommand command) : base(content, command, typeof(TDisplay))
     {
         _binding = binding;
         _options = options;
-        if (_options.OptionDictionary.TryGetValue(_binding, out var getter))
-            Value = getter.Invoke();
+        Value = _options.OptionDictionary[_binding].Invoke();
         _options.PropertyChanged += Option_PropertyChanged;
     }
 
@@ -26,8 +32,7 @@ public class BindingOptionItemViewModel<TDisplay, TOptionBindingTarget> : Comman
     {
         _binding = binding;
         _options = options;
-        if (_options.OptionDictionary.TryGetValue(_binding, out var getter))
-            Value = getter.Invoke();
+        Value = _options.OptionDictionary[_binding].Invoke();
         _options.PropertyChanged += Option_PropertyChanged;
     }
 
@@ -35,15 +40,14 @@ public class BindingOptionItemViewModel<TDisplay, TOptionBindingTarget> : Comman
     {
         _binding = binding;
         _options = options;
-        if (_options.OptionDictionary.TryGetValue(_binding, out var getter))
-            Value = getter.Invoke();
+        Value = _options.OptionDictionary[_binding].Invoke();
         _options.PropertyChanged += Option_PropertyChanged;
     }
 
     private void Option_PropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (e.PropertyName == _binding && _options.OptionDictionary.TryGetValue(_binding, out var getter))
-            Value = getter.Invoke();
+        if (e.PropertyName == _binding)
+            Value = _options.OptionDictionary[_binding].Invoke();
     }
 
     public void Dispose()

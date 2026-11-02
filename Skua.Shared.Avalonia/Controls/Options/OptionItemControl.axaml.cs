@@ -15,11 +15,26 @@ public partial class OptionItemControl : UserControl
 {
     private const double StandardOptionHeight = 34;
     private const double StandardOptionFontSize = 12;
+    public static readonly StyledProperty<bool> CompactTextProperty =
+        AvaloniaProperty.Register<OptionItemControl, bool>(nameof(CompactText));
+
+    public bool CompactText
+    {
+        get => GetValue(CompactTextProperty);
+        set => SetValue(CompactTextProperty, value);
+    }
 
     public OptionItemControl()
     {
         InitializeComponent();
         DataContextChanged += (_, _) => RebuildContent();
+    }
+
+    protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
+    {
+        base.OnPropertyChanged(change);
+        if (change.Property == CompactTextProperty)
+            RebuildContent();
     }
 
     private void RebuildContent()
@@ -30,10 +45,10 @@ public partial class OptionItemControl : UserControl
             return;
         }
 
-        OptionHost.Content = CreateDefaultContent(vm);
+        OptionHost.Content = CreateDefaultContent(vm, CompactText);
     }
 
-    public static Control CreateDefaultContent(DisplayOptionItemViewModelBase vm)
+    public static Control CreateDefaultContent(DisplayOptionItemViewModelBase vm, bool compactText = false)
     {
         if (vm is CBOBoolChoiceOptionItemViewModel boolChoiceVm)
             return BuildCBOBoolChoiceItem(boolChoiceVm);
@@ -47,10 +62,10 @@ public partial class OptionItemControl : UserControl
         return vm.Tag switch
         {
             "1" => BuildBooleanItem(vm),
-            "2" => BuildTextItem(vm),
+            "2" => BuildTextItem(vm, compactText),
             "3" => BuildNumberItem(vm),
             "4" => BuildActionItem(vm),
-            _ => BuildFallbackItem(vm)
+            _ => BuildFallbackItem(vm, compactText)
         };
     }
 
@@ -301,7 +316,7 @@ public partial class OptionItemControl : UserControl
         return grid;
     }
 
-    private static Control BuildTextItem(DisplayOptionItemViewModelBase vm)
+    private static Control BuildTextItem(DisplayOptionItemViewModelBase vm, bool compactText = false)
     {
         Grid grid = new()
         {
@@ -322,8 +337,8 @@ public partial class OptionItemControl : UserControl
 
         TextBox textBox = CreateBoundTextBox(vm);
         textBox.Height = 32;
-        textBox.Width = 240;
-        textBox.MaxWidth = 240;
+        textBox.Width = compactText ? 124 : 240;
+        textBox.MaxWidth = compactText ? 124 : 240;
         textBox.CornerRadius = new CornerRadius(6);
         textBox.BorderThickness = new Thickness(1);
         textBox.FontSize = StandardOptionFontSize;
@@ -432,13 +447,13 @@ public partial class OptionItemControl : UserControl
         return button;
     }
 
-    private static Control BuildFallbackItem(DisplayOptionItemViewModelBase vm)
+    private static Control BuildFallbackItem(DisplayOptionItemViewModelBase vm, bool compactText = false)
     {
         if (vm.DisplayType == typeof(bool))
             return BuildBooleanItem(vm);
 
         if (vm.DisplayType == typeof(string))
-            return BuildTextItem(vm);
+            return BuildTextItem(vm, compactText);
 
         if (IsNumericDisplayType(vm.DisplayType))
             return BuildNumberItem(vm);

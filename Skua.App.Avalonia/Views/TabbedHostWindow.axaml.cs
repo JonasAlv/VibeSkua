@@ -64,6 +64,7 @@ public partial class TabbedHostWindow : Window
     private bool _initialInstanceStarted = false;
     private readonly Dictionary<TabItem, TabInfo> _tabs = new();
     private bool _needsReposition = false;
+    private bool _repositionScheduled = false;
     private bool _isRepositioning = false;
     private bool _isTogglingGridView = false;
     private DateTime _lastGridViewToggleTime = DateTime.MinValue;
@@ -153,7 +154,7 @@ public partial class TabbedHostWindow : Window
 
         Opened += TabbedHostWindow_Opened;
         PositionChanged += (s, e) => OnWindowPositionChanged(e.Point);
-        SizeChanged += (s, e) => { DoReposition(); UpdateTabScrollButtons(); };
+        SizeChanged += (s, e) => { ScheduleReposition(); UpdateTabScrollButtons(); };
 #if IS_LINUX
         ScalingChanged += (s, e) => Dispatcher.UIThread.Post(RepositionWithFreshCache, DispatcherPriority.Loaded);
 #endif
@@ -178,26 +179,18 @@ public partial class TabbedHostWindow : Window
                 _lastActiveHwnd = IntPtr.Zero;
             }
 
-            DoReposition();
+            ScheduleReposition();
         };
         Activated += (s, e) =>
         {
-            DoReposition();
+            ScheduleReposition();
             UpdateTabScrollButtons();
             if (_isGridViewEnabled)
-            {
                 foreach (var info in _tabs.Values)
-                {
                     if (info.ChildHwnd != IntPtr.Zero)
                         PostChildMessage(info.ChildHwnd, (uint)HotKeys.WM_SKUA_FOCUS, new IntPtr(1), IntPtr.Zero);
-                }
-            }
-            else
-            {
-                IntPtr active = HotKeys.ActiveChildHwnd;
-                if (active != IntPtr.Zero)
-                    PostChildMessage(active, (uint)HotKeys.WM_SKUA_FOCUS, new IntPtr(1), IntPtr.Zero);
-            }
+            else if (HotKeys.ActiveChildHwnd != IntPtr.Zero)
+                PostChildMessage(HotKeys.ActiveChildHwnd, (uint)HotKeys.WM_SKUA_FOCUS, new IntPtr(1), IntPtr.Zero);
         };
 #if IS_LINUX
         StartGridFocusTracking();
@@ -490,7 +483,6 @@ public partial class TabbedHostWindow : Window
                     CreateNoWindow = true,
                     UseShellExecute = false
                 });
-                pkill?.WaitForExit(200);
             }
             catch { }
 #endif
@@ -498,7 +490,6 @@ public partial class TabbedHostWindow : Window
             if (!process.HasExited)
             {
                 process.Kill(entireProcessTree: true);
-                process.WaitForExit(500);
             }
         }
         catch { }
@@ -1356,6 +1347,17 @@ public partial class TabbedHostWindow : Window
     private void ScheduleReposition()
     {
         _needsReposition = true;
+        if (_repositionScheduled || _isClosing) return;
+
+        _repositionScheduled = true;
+        Dispatcher.UIThread.Post(() =>
+        {
+            _repositionScheduled = false;
+            if (_isClosing || !IsLoaded) return;
+
+            _needsReposition = false;
+            DoReposition();
+        }, DispatcherPriority.Render);
     }
 
     private void DoReposition()
@@ -1902,10 +1904,25 @@ public partial class TabbedHostWindow : Window
             p.StartInfo.ArgumentList.Add("--host-pid");
             p.StartInfo.ArgumentList.Add(Process.GetCurrentProcess().Id.ToString());
 
-            foreach (string arg in clientArgs)
+            string? embeddedPassword = null;
+            for (int i = 0; i < clientArgs.Length; i++)
             {
+                string arg = clientArgs[i];
+                if ((string.Equals(arg, "-p", StringComparison.OrdinalIgnoreCase) ||
+                     string.Equals(arg, "--password", StringComparison.OrdinalIgnoreCase)) && i + 1 < clientArgs.Length)
+                {
+                    embeddedPassword = clientArgs[i + 1];
+                    i++; // skip password value
+                    continue;
+                }
+
                 if (!string.IsNullOrEmpty(arg))
                     p.StartInfo.ArgumentList.Add(arg);
+            }
+
+            if (!string.IsNullOrWhiteSpace(embeddedPassword))
+            {
+                p.StartInfo.EnvironmentVariables["SKUA_PASSWORD"] = embeddedPassword;
             }
 
             p.EnableRaisingEvents = true;

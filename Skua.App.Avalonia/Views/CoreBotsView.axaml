@@ -6,144 +6,39 @@
              Background="{DynamicResource SkuaPageBrush}"
              x:Class="Skua.App.Avalonia.Views.CoreBotsView">
   <Grid Margin="12" RowDefinitions="Auto,Auto,*" RowSpacing="10">
-    
-    <!-- 1. Top Header Card (Player Status & Actions) -->
-    <Border Grid.Row="0"
-            Background="{DynamicResource SkuaSurfaceBrush}"
-            BorderBrush="{DynamicResource SkuaBorderBrush}"
-            BorderThickness="1"
-            CornerRadius="8"
-            Padding="12,10">
-      <Grid ColumnDefinitions="*,Auto" VerticalAlignment="Center">
-        <!-- Player Profile Strip -->
-        <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
-          <Border Width="32" Height="32"
-                  Background="{DynamicResource SkuaSurfaceAltBrush}"
-                  BorderBrush="{DynamicResource SkuaBorderBrush}"
-                  BorderThickness="1"
-                  CornerRadius="16">
-            <materialIcons:MaterialIcon Kind="AccountCircleOutline"
-                                        Width="18" Height="18"
-                                        Foreground="{DynamicResource SkuaAccentBrush}"
-                                        HorizontalAlignment="Center"
-                                        VerticalAlignment="Center" />
-          </Border>
-
-          <StackPanel VerticalAlignment="Center" Spacing="2">
-            <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
-              <TextBlock Text="Current Profile:"
-                         FontSize="11"
-                         FontWeight="SemiBold"
-                         Foreground="{DynamicResource SkuaMutedTextBrush}" />
-              <ComboBox ItemsSource="{Binding Profiles}"
-                        SelectedItem="{Binding SelectedProfile}"
-                        PlaceholderText="Not Logged In"
-                        MinWidth="160"
-                        Height="26"
-                        FontSize="12"
-                        FontWeight="Bold"
-                        DropDownOpened="ProfileComboBox_DropDownOpened"
-                        ToolTip.Tip="Edit the CoreBots options of an account logged in on any open tab" />
-            </StackPanel>
-            <TextBlock Text="CoreBots automated routine preferences"
-                       FontSize="10"
-                       Foreground="{DynamicResource SkuaMutedTextBrush}" />
-          </StackPanel>
+    <Grid Grid.Row="0" ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8">
+      <Border Grid.Column="0" Width="32" Height="32" CornerRadius="16"
+              Background="{DynamicResource SkuaSurfaceAltBrush}" BorderBrush="{DynamicResource SkuaBorderBrush}" BorderThickness="1">
+        <materialIcons:MaterialIcon Kind="AccountCircleOutline" Width="18" Height="18" Foreground="{DynamicResource SkuaAccentBrush}" />
+      </Border>
+      <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
+        <StackPanel Orientation="Horizontal" Spacing="6">
+          <TextBlock Text="Profile" FontSize="11" Foreground="{DynamicResource SkuaMutedTextBrush}" VerticalAlignment="Center" />
+          <ComboBox ItemsSource="{Binding Profiles}" SelectedItem="{Binding SelectedProfile}" PlaceholderText="Not Logged In"
+                    MinWidth="150" Height="26" FontSize="12" FontWeight="Bold" DropDownOpened="ProfileComboBox_DropDownOpened"
+                    ToolTip.Tip="Edit the CoreBots options of an account logged in on any open tab" />
         </StackPanel>
+        <TextBlock Text="CoreBots automated routine preferences" FontSize="10" Foreground="{DynamicResource SkuaMutedTextBrush}" />
+      </StackPanel>
+      <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+        <Button Classes="skua-button" Height="30" Padding="10,0" Command="{Binding LoadCommand}" ToolTip.Tip="Load saved CoreBots settings">
+          <StackPanel Orientation="Horizontal" Spacing="5"><materialIcons:MaterialIcon Kind="FolderOpenOutline" Width="14" Height="14" /><TextBlock Text="Load" FontSize="11" VerticalAlignment="Center" /></StackPanel>
+        </Button>
+        <Button Classes="skua-button skua-primary" Height="30" Padding="12,0" Command="{Binding SaveCommand}" ToolTip.Tip="Save current CoreBots options">
+          <StackPanel Orientation="Horizontal" Spacing="5"><materialIcons:MaterialIcon Kind="ContentSaveOutline" Width="14" Height="14" /><TextBlock Text="Save" FontSize="11" VerticalAlignment="Center" /></StackPanel>
+        </Button>
+        <Button Classes="skua-button" Height="30" Padding="10,0" Command="{Binding LoadCharacterCommand}" ToolTip.Tip="Load in-game character equipment and classes">
+          <StackPanel Orientation="Horizontal" Spacing="5"><materialIcons:MaterialIcon Kind="AccountSyncOutline" Width="14" Height="14" /><TextBlock Text="Load character" FontSize="11" VerticalAlignment="Center" /></StackPanel>
+        </Button>
+      </StackPanel>
+    </Grid>
 
-        <!-- Actions Button Group -->
-        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
-          <Button Classes="skua-button"
-                  Height="30"
-                  Padding="10,0"
-                  Command="{Binding LoadCommand}"
-                  ToolTip.Tip="Load saved CoreBots settings">
-            <StackPanel Orientation="Horizontal" Spacing="5">
-              <materialIcons:MaterialIcon Kind="FolderOpenOutline" Width="14" Height="14" />
-              <TextBlock Text="Load" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center" />
-            </StackPanel>
-          </Button>
-
-          <Button Classes="skua-button skua-primary"
-                  Height="30"
-                  Padding="12,0"
-                  Command="{Binding SaveCommand}"
-                  ToolTip.Tip="Save current CoreBots options">
-            <StackPanel Orientation="Horizontal" Spacing="5">
-              <materialIcons:MaterialIcon Kind="ContentSaveOutline" Width="14" Height="14" />
-              <TextBlock Text="Save" FontSize="11" FontWeight="Bold" VerticalAlignment="Center" />
-            </StackPanel>
-          </Button>
-
-          <Button Classes="skua-button"
-                  Height="30"
-                  Padding="10,0"
-                  Command="{Binding LoadCharacterCommand}"
-                  ToolTip.Tip="Load in-game character equipment and classes">
-            <StackPanel Orientation="Horizontal" Spacing="5">
-              <materialIcons:MaterialIcon Kind="AccountSyncOutline" Width="14" Height="14" />
-              <TextBlock Text="Load Character" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center" />
-            </StackPanel>
-          </Button>
-        </StackPanel>
-      </Grid>
-    </Border>
-
-    <!-- 2. Navigation Pill Tabs -->
-    <ListBox Grid.Row="1"
-             ItemsSource="{Binding CoreBotsTabs}"
-             SelectedItem="{Binding SelectedTab}"
-             HorizontalAlignment="Stretch"
-             Background="Transparent"
-             BorderThickness="0"
-             ScrollViewer.HorizontalScrollBarVisibility="Auto"
-             ScrollViewer.VerticalScrollBarVisibility="Disabled">
-      <ListBox.Styles>
-        <Style Selector="ListBoxItem">
-          <Setter Property="Padding" Value="14,6" />
-          <Setter Property="Margin" Value="0,0,6,0" />
-          <Setter Property="CornerRadius" Value="6" />
-          <Setter Property="Background" Value="{DynamicResource SkuaSurfaceBrush}" />
-          <Setter Property="BorderBrush" Value="{DynamicResource SkuaBorderBrush}" />
-          <Setter Property="BorderThickness" Value="1" />
-          <Setter Property="Foreground" Value="{DynamicResource SkuaMutedTextBrush}" />
-          <Setter Property="FontWeight" Value="SemiBold" />
-          <Setter Property="FontSize" Value="12" />
-          <Setter Property="Cursor" Value="Hand" />
-        </Style>
-        <Style Selector="ListBoxItem:pointerover /template/ ContentPresenter#PART_ContentPresenter">
-          <Setter Property="Background" Value="{DynamicResource SkuaNavHoverBrush}" />
-          <Setter Property="BorderBrush" Value="{DynamicResource SkuaBorderBrush}" />
-          <Setter Property="Foreground" Value="{DynamicResource SkuaTextBrush}" />
-        </Style>
-        <Style Selector="ListBoxItem:selected /template/ ContentPresenter#PART_ContentPresenter">
-          <Setter Property="Background" Value="{DynamicResource SkuaSelectionBrush}" />
-          <Setter Property="BorderBrush" Value="{DynamicResource SkuaAccentBrush}" />
-          <Setter Property="Foreground" Value="{DynamicResource SkuaTextBrush}" />
-          <Setter Property="FontWeight" Value="Bold" />
-        </Style>
-      </ListBox.Styles>
-      <ListBox.ItemsPanel>
-        <ItemsPanelTemplate>
-          <StackPanel Orientation="Horizontal" Spacing="2" />
-        </ItemsPanelTemplate>
-      </ListBox.ItemsPanel>
-      <ListBox.ItemTemplate>
-        <DataTemplate>
-          <TextBlock Text="{Binding Header}"
-                     VerticalAlignment="Center" />
-        </DataTemplate>
-      </ListBox.ItemTemplate>
+    <ListBox Grid.Row="1" Classes="top-tabs-client" ItemsSource="{Binding CoreBotsTabs}" SelectedItem="{Binding SelectedTab}"
+             ScrollViewer.HorizontalScrollBarVisibility="Auto" ScrollViewer.VerticalScrollBarVisibility="Disabled">
+      <ListBox.ItemsPanel><ItemsPanelTemplate><StackPanel Orientation="Horizontal" Spacing="2" /></ItemsPanelTemplate></ListBox.ItemsPanel>
+      <ListBox.ItemTemplate><DataTemplate><TextBlock Text="{Binding Header}" Classes="top-tabs-label" /></DataTemplate></ListBox.ItemTemplate>
     </ListBox>
 
-    <!-- 3. Active Tab Content Card -->
-    <Border Grid.Row="2"
-            Background="{DynamicResource SkuaSurfaceBrush}"
-            BorderBrush="{DynamicResource SkuaBorderBrush}"
-            BorderThickness="1"
-            CornerRadius="8"
-            Padding="12">
-      <ContentControl Content="{Binding SelectedTab.Content}" />
-    </Border>
+    <ContentControl Grid.Row="2" Content="{Binding SelectedTab.Content}" />
   </Grid>
 </UserControl>

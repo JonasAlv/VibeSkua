@@ -298,6 +298,15 @@ public partial class App : Application
                 for (int i = 0; i < rawClientArgs.Length; i++)
                 {
                     if (string.Equals(rawClientArgs[i], "--host-instance", StringComparison.OrdinalIgnoreCase)) { i++; continue; }
+                    if ((string.Equals(rawClientArgs[i], "-p", StringComparison.OrdinalIgnoreCase) ||
+                         string.Equals(rawClientArgs[i], "--password", StringComparison.OrdinalIgnoreCase)) && i + 1 < rawClientArgs.Length)
+                    {
+                        string psw = rawClientArgs[i + 1];
+                        i++;
+                        if (!string.IsNullOrWhiteSpace(psw))
+                            Environment.SetEnvironmentVariable("SKUA_PASSWORD", psw);
+                        continue;
+                    }
                     filteredArgs.Add(rawClientArgs[i]);
                 }
                 string[] clientArgs = filteredArgs.ToArray();

@@ -5,57 +5,28 @@
              xmlns:sharedOptions="clr-namespace:Skua.Shared.Avalonia.Controls.Options;assembly=Skua.Shared.Avalonia"
              x:Class="Skua.App.Avalonia.Views.CBOptionsView"
              x:DataType="vms:CBOptionsViewModel">
-  <Grid Margin="0" RowDefinitions="Auto,*" RowSpacing="10">
-    
-    <!-- 1. Search Bar Card -->
-    <Border Grid.Row="0"
-            Background="{DynamicResource SkuaSurfaceAltBrush}"
-            BorderBrush="{DynamicResource SkuaBorderBrush}"
-            BorderThickness="1"
-            CornerRadius="8"
-            Padding="8">
-      <Grid>
-        <TextBox Height="32"
-                 CornerRadius="6"
-                 VerticalContentAlignment="Center"
-                 Padding="32,0,10,0"
-                 Text="{Binding SearchText, Mode=TwoWay}"
-                 Watermark="Filter CoreBots settings, delays, and parameters..." />
-
-        <materialIcons:MaterialIcon Kind="Magnify"
-                                    Width="15" Height="15"
-                                    Foreground="{DynamicResource SkuaMutedTextBrush}"
-                                    HorizontalAlignment="Left"
-                                    Margin="10,0,0,0"
-                                    IsHitTestVisible="False" />
-      </Grid>
-    </Border>
-
-    <!-- 2. Options List Container -->
-    <Border Grid.Row="1"
-            Background="{DynamicResource SkuaSurfaceBrush}"
-            BorderBrush="{DynamicResource SkuaBorderBrush}"
-            BorderThickness="1"
-            CornerRadius="8"
-            Padding="14,10">
-      <ScrollViewer HorizontalScrollBarVisibility="Disabled"
-                    VerticalScrollBarVisibility="Auto">
-        <ItemsControl ItemsSource="{Binding FilteredOptions}">
-          <ItemsControl.ItemTemplate>
-            <DataTemplate>
-              <Border Margin="0,2"
-                      Padding="8,6"
-                      Background="{DynamicResource SkuaSurfaceAltBrush}"
-                      BorderBrush="{DynamicResource SkuaBorderBrush}"
-                      BorderThickness="1"
-                      CornerRadius="6">
-                <sharedOptions:OptionItemControl />
-              </Border>
-            </DataTemplate>
-          </ItemsControl.ItemTemplate>
+  <Grid RowDefinitions="Auto,*" RowSpacing="8">
+    <TextBox Grid.Row="0" Watermark="Filter CoreBots settings, delays, and parameters..." Text="{Binding SearchText, Mode=TwoWay}">
+      <TextBox.InnerLeftContent>
+        <materialIcons:MaterialIcon Kind="Magnify" Width="15" Height="15" Margin="10,0,0,0" Foreground="{DynamicResource SkuaMutedTextBrush}" />
+      </TextBox.InnerLeftContent>
+    </TextBox>
+    <Border Grid.Row="1" Classes="option-list" VerticalAlignment="Top">
+      <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto" AllowAutoHide="False">
+        <ItemsControl ItemsSource="{Binding FilteredOptions}" Margin="0,0,0,-1" VerticalAlignment="Top">
+        <ItemsControl.ItemsPanel><ItemsPanelTemplate><UniformGrid Columns="2" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+        <ItemsControl.Styles>
+          <Style Selector="ContentPresenter:nth-child(2n+1) > Border.option-row"><Setter Property="BorderThickness" Value="0,0,1,1" /></Style>
+        </ItemsControl.Styles>
+        <ItemsControl.ItemTemplate>
+          <DataTemplate>
+            <Border Classes="option-row" MinHeight="38" Padding="12,3">
+              <sharedOptions:OptionItemControl CompactText="True" />
+            </Border>
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
         </ItemsControl>
       </ScrollViewer>
     </Border>
-
   </Grid>
 </UserControl>
