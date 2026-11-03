@@ -95,8 +95,8 @@ public class AccountDataDictionaryJsonConverter : JsonConverter<Dictionary<strin
         {
             writer.WritePropertyName(kvp.Key);
             string password = kvp.Value.Password ?? string.Empty;
-            if (password.StartsWith("enc:"))
-                password = Skua.Core.Utils.CryptoUtils.Decrypt(password);
+            if (!string.IsNullOrEmpty(password) && !password.StartsWith("enc:"))
+                password = Skua.Core.Utils.CryptoUtils.Encrypt(password);
 
             AccountData plainData = new()
             {

@@ -10,6 +10,7 @@ using Skua.App.Avalonia.ViewModels;
 using Skua.Core.AppStartup;
 using Skua.Core.Interfaces;
 using Skua.Core.Messaging;
+using Skua.Core.Models;
 using System;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
@@ -280,8 +281,7 @@ public partial class MainWindow : Window
             _isFlashLoaded = true;
             try
             {
-                string dir = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "VibeSkuaTabs");
-                System.IO.Directory.CreateDirectory(dir);
+                string dir = ClientFileSources.TabsDIR;
                 System.IO.File.WriteAllText(System.IO.Path.Combine(dir, $"loaded_{Environment.ProcessId}.txt"), "1");
             }
             catch { }

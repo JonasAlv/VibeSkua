@@ -11,6 +11,7 @@ using Skua.App.Avalonia.ViewModels;
 using Skua.App.Avalonia.ViewModels.MainMenu;
 using Skua.Core.Interfaces;
 using Skua.Core.Messaging;
+using Skua.Core.Models;
 using System;
 using System.Collections.Specialized;
 using System.ComponentModel;
@@ -285,8 +286,7 @@ public partial class MainWindow : Window
                     if (username != lastWrittenUsername)
                     {
                         lastWrittenUsername = username;
-                        string dir = Path.Combine(Path.GetTempPath(), "VibeSkuaTabs");
-                        Directory.CreateDirectory(dir);
+                        string dir = ClientFileSources.TabsDIR;
                         string file = Path.Combine(dir, $"{Environment.ProcessId}.txt");
                         File.WriteAllText(file, username);
                     }
@@ -303,7 +303,7 @@ public partial class MainWindow : Window
         _tabTitleSyncTimer?.Stop();
         try
         {
-            string file = Path.Combine(Path.GetTempPath(), "VibeSkuaTabs", $"{Environment.ProcessId}.txt");
+            string file = Path.Combine(ClientFileSources.TabsDIR, $"{Environment.ProcessId}.txt");
             if (File.Exists(file))
                 File.Delete(file);
         }

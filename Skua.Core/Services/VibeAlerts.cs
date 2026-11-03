@@ -3,6 +3,7 @@ using System.Globalization;
 using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
+using Skua.Core.Models;
 
 namespace Skua.Core.Services;
 
@@ -284,7 +285,7 @@ public static class VibeAlerts
             int hour = SummaryHour;
             if (!Enabled || hour is < 0 or > 23 || DateTime.Now.Hour != hour)
                 return;
-            string dir = Path.Combine(Path.GetTempPath(), "VibeSkuaTabs");
+            string dir = ClientFileSources.TabsDIR;
             Directory.CreateDirectory(dir);
             string marker = Path.Combine(dir, "summary-sent.txt");
             string today = DateTime.Now.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);

@@ -1025,7 +1025,7 @@ public sealed partial class AccountManagerViewModel : BotControlViewModelBase
         try
         {
             string response = await ValidatedHttpExtensions.GetStringAsync(HttpClients.GetGHClient()
-, $"http://content.aq.com/game/api/data/servers");
+, $"https://content.aq.com/game/api/data/servers");
 
             List<Server>? servers = JsonConvert.DeserializeObject<List<Server>>(response);
             if (servers == null || servers.Count == 0)

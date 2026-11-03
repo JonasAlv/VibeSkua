@@ -390,7 +390,14 @@ public partial class ScriptOption : ObservableRecipient, IScriptOption, IOptionD
                         }
                     }
                     catch { }
-                    await Task.Delay(500, token);
+                    try
+                    {
+                        await Task.Delay(500, token);
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        break;
+                    }
                 }
             }, token);
         }
@@ -400,8 +407,8 @@ public partial class ScriptOption : ObservableRecipient, IScriptOption, IOptionD
             _streamerModeCts?.Dispose();
             _streamerModeCts = null;
 
-            CustomName = _originalName;
-            CustomGuild = _originalGuild;
+            CustomName = (_originalName == "VibeSkuaUser" || _originalName == "Hidden") ? string.Empty : _originalName;
+            CustomGuild = (_originalGuild == "Hidden") ? string.Empty : _originalGuild;
             HidePlayers = _originalHidePlayers;
 
             try
@@ -503,7 +510,7 @@ public partial class ScriptOption : ObservableRecipient, IScriptOption, IOptionD
         StringCollection saveOptions = new();
         foreach (PropertyInfo pi in GetType().GetProperties())
         {
-            if (pi.Name is nameof(OptionDictionary))
+            if (pi.Name is nameof(OptionDictionary) or nameof(CustomName) or nameof(CustomGuild))
                 continue;
             string key = pi.Name;
             object? value = pi.GetValue(this);
@@ -522,7 +529,7 @@ public partial class ScriptOption : ObservableRecipient, IScriptOption, IOptionD
 
         foreach (PropertyInfo pi in GetType().GetProperties())
         {
-            if (pi.Name is nameof(OptionDictionary))
+            if (pi.Name is nameof(OptionDictionary) or nameof(CustomName) or nameof(CustomGuild))
                 continue;
             if (_userOptions.ContainsKey(pi.Name))
             {
@@ -541,7 +548,7 @@ public partial class ScriptOption : ObservableRecipient, IScriptOption, IOptionD
         ScriptOption defaults = new(_lazyFlash);
         foreach (PropertyInfo pi in GetType().GetProperties())
         {
-            if (pi.Name is nameof(OptionDictionary))
+            if (pi.Name is nameof(OptionDictionary) or nameof(CustomName) or nameof(CustomGuild))
                 continue;
 
             pi.SetValue(this, pi.GetValue(defaults), null);

@@ -90,12 +90,6 @@ public partial class LauncherViewModel : BotControlViewModelBase, IDisposable
                 args.Add(server);
             }
 
-            string token = _settingsService.Get("UserGitHubToken", string.Empty);
-            if (!string.IsNullOrEmpty(token))
-            {
-                args.Add("--gh-token");
-                args.Add(token);
-            }
 
             try
             {

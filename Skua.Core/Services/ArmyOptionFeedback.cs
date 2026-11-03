@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Skua.Core.Interfaces;
+using Skua.Core.Models;
 
 namespace Skua.Core.Services;
 
@@ -11,7 +12,7 @@ public static class ArmyOptionFeedback
         ("LagKiller", 1), ("HeadlessMode", 2), ("HidePlayers", 3), ("DisableFX", 4),
         ("InfiniteRange", 5), ("StreamerMode", 9), ("AggroMonsters", 10)
     ];
-    public static string StatePath(int processId) => Path.Combine(Path.GetTempPath(), "VibeSkuaTabs", $"{processId}.army-options.json");
+    public static string StatePath(int processId) => Path.Combine(ClientFileSources.TabsDIR, $"{processId}.army-options.json");
     public static void ReportAppliedOption(IScriptOption options, int command, int processId, Action notifyHost)
     {
         if (!Options.Any(option => option.Command == command)) return;

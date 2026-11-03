@@ -41,7 +41,7 @@ public partial class TabbedHostWindow : Window
             int pid = info.Process?.Id ?? 0;
             if (pid != 0)
             {
-                string file = Path.Combine(Path.GetTempPath(), "VibeSkuaTabs", $"{pid}.txt");
+                string file = Path.Combine(ClientFileSources.TabsDIR, $"{pid}.txt");
                 if (File.Exists(file) && !string.IsNullOrWhiteSpace(File.ReadAllText(file)))
                     return new IntPtr(1);
             }
@@ -252,7 +252,7 @@ public partial class TabbedHostWindow : Window
         
         Task.Run(() =>
         {
-            string dir = Path.Combine(Path.GetTempPath(), "VibeSkuaTabs");
+            string dir = ClientFileSources.TabsDIR;
             if (!Directory.Exists(dir)) return;
 
             var updates = new List<(TabItem Tab, string Username)>();
@@ -443,7 +443,7 @@ public partial class TabbedHostWindow : Window
         if (info.Process != null && !info.IsLoaded)
         {
             int childPid = info.Process.Id;
-            string lFile = Path.Combine(Path.GetTempPath(), "VibeSkuaTabs", $"loaded_{childPid}.txt");
+            string lFile = Path.Combine(ClientFileSources.TabsDIR, $"loaded_{childPid}.txt");
             Task.Run(async () =>
             {
                 for (int i = 0; i < 600; i++)
@@ -516,9 +516,9 @@ public partial class TabbedHostWindow : Window
                 if (info.Process != null)
                 {
                     TabIpc.CleanUp(info.Process.Id);
-                    try { File.Delete(Path.Combine(Path.GetTempPath(), "VibeSkuaTabs", $"{info.Process.Id}.txt")); } catch { }
-                    try { File.Delete(Path.Combine(Path.GetTempPath(), "VibeSkuaTabs", $"ready_{info.Process.Id}.txt")); } catch { }
-                    try { File.Delete(Path.Combine(Path.GetTempPath(), "VibeSkuaTabs", $"loaded_{info.Process.Id}.txt")); } catch { }
+                    try { File.Delete(Path.Combine(ClientFileSources.TabsDIR, $"{info.Process.Id}.txt")); } catch { }
+                    try { File.Delete(Path.Combine(ClientFileSources.TabsDIR, $"ready_{info.Process.Id}.txt")); } catch { }
+                    try { File.Delete(Path.Combine(ClientFileSources.TabsDIR, $"loaded_{info.Process.Id}.txt")); } catch { }
                 }
             }
             catch { }
@@ -1443,7 +1443,7 @@ public partial class TabbedHostWindow : Window
                 {
                     if (!activeInfo.IsLoaded && activeInfo.Process != null)
                     {
-                        string lFile = Path.Combine(Path.GetTempPath(), "VibeSkuaTabs", $"loaded_{activeInfo.Process.Id}.txt");
+                        string lFile = Path.Combine(ClientFileSources.TabsDIR, $"loaded_{activeInfo.Process.Id}.txt");
                         if (File.Exists(lFile))
                             activeInfo.IsLoaded = true;
                     }
@@ -1656,9 +1656,9 @@ public partial class TabbedHostWindow : Window
                     if (info.Process != null)
                     {
                         TabIpc.CleanUp(info.Process.Id);
-                        try { File.Delete(Path.Combine(Path.GetTempPath(), "VibeSkuaTabs", $"{info.Process.Id}.txt")); } catch { }
-                        try { File.Delete(Path.Combine(Path.GetTempPath(), "VibeSkuaTabs", $"ready_{info.Process.Id}.txt")); } catch { }
-                        try { File.Delete(Path.Combine(Path.GetTempPath(), "VibeSkuaTabs", $"loaded_{info.Process.Id}.txt")); } catch { }
+                        try { File.Delete(Path.Combine(ClientFileSources.TabsDIR, $"{info.Process.Id}.txt")); } catch { }
+                        try { File.Delete(Path.Combine(ClientFileSources.TabsDIR, $"ready_{info.Process.Id}.txt")); } catch { }
+                        try { File.Delete(Path.Combine(ClientFileSources.TabsDIR, $"loaded_{info.Process.Id}.txt")); } catch { }
                     }
                 }
                 catch { }
@@ -1961,7 +1961,7 @@ public partial class TabbedHostWindow : Window
             Task.Run(async () =>
             {
                 bool attached = false;
-                string readyFile = Path.Combine(Path.GetTempPath(), "VibeSkuaTabs", $"ready_{pid}.txt");
+                string readyFile = Path.Combine(ClientFileSources.TabsDIR, $"ready_{pid}.txt");
                 for (int attempt = 0; attempt < 300 && !p.HasExited && info.ChildHwnd == IntPtr.Zero && !_isClosing; attempt++)
                 {
                     await Task.Delay(50);
@@ -2138,7 +2138,7 @@ public partial class TabbedHostWindow : Window
         {
             try
             {
-                string file = Path.Combine(Path.GetTempPath(), "VibeSkuaTabs", $"{info.Process.Id}.txt");
+                string file = Path.Combine(ClientFileSources.TabsDIR, $"{info.Process.Id}.txt");
                 if (File.Exists(file))
                 {
                     string name = File.ReadAllText(file).Trim();

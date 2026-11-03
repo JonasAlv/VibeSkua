@@ -16,6 +16,7 @@ using Skua.Shared.Avalonia.Services;
 using Skua.Shared.Avalonia.Controls.Theming;
 using Skua.Core.AppStartup;
 using Skua.Core.Interfaces;
+using Skua.Core.Models;
 using Skua.Core.Utils;
 using System;
 using System.Collections.Generic;
@@ -260,8 +261,7 @@ public partial class App : Application
 
                         try
                         {
-                            string dir = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "VibeSkuaTabs");
-                            System.IO.Directory.CreateDirectory(dir);
+                            string dir = ClientFileSources.TabsDIR;
                             string file = System.IO.Path.Combine(dir, $"ready_{Environment.ProcessId}.txt");
                             System.IO.File.WriteAllText(file, childHwnd.ToInt64().ToString());
                         }

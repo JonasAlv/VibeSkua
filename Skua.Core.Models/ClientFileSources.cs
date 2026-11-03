@@ -28,6 +28,38 @@ public static class ClientFileSources
     public static string SkuaScriptsCacheFile { get; } = Path.Combine(SkuaDIR, "scripts_cache.json");
     public static string SkuaJunkItemsFile { get; } = Path.Combine(SkuaScriptsDIR, "JunkItems.json");
 
+    public static string TabsDIR
+    {
+        get
+        {
+            if (OperatingSystem.IsLinux())
+            {
+                string? xdgRuntime = Environment.GetEnvironmentVariable("XDG_RUNTIME_DIR");
+                if (!string.IsNullOrWhiteSpace(xdgRuntime) && Directory.Exists(xdgRuntime))
+                {
+                    string dir = Path.Combine(xdgRuntime, "VibeSkuaTabs");
+                    if (!Directory.Exists(dir))
+                    {
+                        Directory.CreateDirectory(dir);
+                        try { File.SetUnixFileMode(dir, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute); } catch { }
+                    }
+                    return dir;
+                }
+                string userTemp = Path.Combine(Path.GetTempPath(), $"VibeSkuaTabs-{Environment.UserName}");
+                if (!Directory.Exists(userTemp))
+                {
+                    Directory.CreateDirectory(userTemp);
+                    try { File.SetUnixFileMode(userTemp, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute); } catch { }
+                }
+                return userTemp;
+            }
+            string winTemp = Path.Combine(Path.GetTempPath(), "VibeSkuaTabs");
+            if (!Directory.Exists(winTemp))
+                Directory.CreateDirectory(winTemp);
+            return winTemp;
+        }
+    }
+
     private static bool _migrationAttempted;
     private static readonly object _migrationLock = new();
 

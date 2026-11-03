@@ -11,7 +11,7 @@ public static class ConnectedAccounts
     public static List<string> Get(string? self)
     {
         List<string> others = new();
-        string dir = Path.Combine(Path.GetTempPath(), "VibeSkuaTabs");
+        string dir = ClientFileSources.TabsDIR;
         if (Directory.Exists(dir))
         {
             foreach (string file in Directory.GetFiles(dir, "*.txt"))
@@ -41,7 +41,7 @@ public static class ConnectedAccounts
     /// <returns>Pid of the other open tab logged in to <paramref name="account"/>, or null if none.</returns>
     public static int? FindTab(string account)
     {
-        string dir = Path.Combine(Path.GetTempPath(), "VibeSkuaTabs");
+        string dir = ClientFileSources.TabsDIR;
         if (!Directory.Exists(dir))
             return null;
 

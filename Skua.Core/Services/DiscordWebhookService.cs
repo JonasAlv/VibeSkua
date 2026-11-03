@@ -531,7 +531,7 @@ public class DiscordWebhookService : IDiscordWebhookService, IDisposable
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Trace.WriteLine($"Webhook PostJsonToUrlAsync failed for {url}: {ex.Message}");
+            System.Diagnostics.Trace.WriteLine($"Webhook PostJsonToUrlAsync failed for {MaskWebhookUrl(url)}: {ex.Message}");
         }
     }
 
@@ -580,8 +580,22 @@ public class DiscordWebhookService : IDiscordWebhookService, IDisposable
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Trace.WriteLine($"Webhook PostMultipartToUrlAsync failed for {url}: {ex.Message}");
+            System.Diagnostics.Trace.WriteLine($"Webhook PostMultipartToUrlAsync failed for {MaskWebhookUrl(url)}: {ex.Message}");
         }
+    }
+
+    private static string MaskWebhookUrl(string url)
+    {
+        if (string.IsNullOrEmpty(url)) return string.Empty;
+        try
+        {
+            var uri = new Uri(url);
+            var segments = uri.AbsolutePath.Trim('/').Split('/');
+            if (segments.Length >= 3 && segments[^2].Length > 0)
+                return $"{uri.Scheme}://{uri.Host}/api/webhooks/{segments[^2]}/******";
+        }
+        catch { }
+        return "(webhook url redacted)";
     }
 
     private void OnItemDropped(ItemDroppedMessage msg)
