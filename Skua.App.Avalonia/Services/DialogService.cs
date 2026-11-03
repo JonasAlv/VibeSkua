@@ -439,6 +439,12 @@ public class DialogService : IDialogService
             if (bot?.Servers != null && !string.IsNullOrWhiteSpace(bot.Servers.CachedUsername))
                 return bot.Servers.CachedUsername.Trim();
 
+            string? envUser = Environment.GetEnvironmentVariable("SKUA_USERNAME")
+                ?? Environment.GetEnvironmentVariable("VIBESKUA_USERNAME")
+                ?? Environment.GetEnvironmentVariable("BONXIE_USERNAME");
+            if (!string.IsNullOrWhiteSpace(envUser))
+                return envUser.Trim();
+
             string[] args = Environment.GetCommandLineArgs();
             for (int i = 0; i < args.Length - 1; i++)
             {

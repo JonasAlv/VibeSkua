@@ -827,12 +827,15 @@ public partial class ArmyQueueViewModel : ObservableRecipient
                 WorkingDirectory = SkuaExecutableLocator.WorkingDirectory,
                 ArgumentList =
                 {
-                    "-u",
-                    acc.Username,
                     "-s",
                     server
                 }
             };
+
+            if (!string.IsNullOrWhiteSpace(acc.Username))
+            {
+                psi.EnvironmentVariables["SKUA_USERNAME"] = acc.Username;
+            }
 
             if (!string.IsNullOrWhiteSpace(acc.Password))
             {

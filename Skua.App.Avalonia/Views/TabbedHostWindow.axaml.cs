@@ -1904,10 +1904,18 @@ public partial class TabbedHostWindow : Window
             p.StartInfo.ArgumentList.Add("--host-pid");
             p.StartInfo.ArgumentList.Add(Process.GetCurrentProcess().Id.ToString());
 
+            string? embeddedUsername = null;
             string? embeddedPassword = null;
             for (int i = 0; i < clientArgs.Length; i++)
             {
                 string arg = clientArgs[i];
+                if ((string.Equals(arg, "-u", StringComparison.OrdinalIgnoreCase) ||
+                     string.Equals(arg, "--user", StringComparison.OrdinalIgnoreCase)) && i + 1 < clientArgs.Length)
+                {
+                    embeddedUsername = clientArgs[i + 1];
+                    i++; // skip username value
+                    continue;
+                }
                 if ((string.Equals(arg, "-p", StringComparison.OrdinalIgnoreCase) ||
                      string.Equals(arg, "--password", StringComparison.OrdinalIgnoreCase)) && i + 1 < clientArgs.Length)
                 {
@@ -1920,6 +1928,10 @@ public partial class TabbedHostWindow : Window
                     p.StartInfo.ArgumentList.Add(arg);
             }
 
+            if (!string.IsNullOrWhiteSpace(embeddedUsername))
+            {
+                p.StartInfo.EnvironmentVariables["SKUA_USERNAME"] = embeddedUsername;
+            }
             if (!string.IsNullOrWhiteSpace(embeddedPassword))
             {
                 p.StartInfo.EnvironmentVariables["SKUA_PASSWORD"] = embeddedPassword;

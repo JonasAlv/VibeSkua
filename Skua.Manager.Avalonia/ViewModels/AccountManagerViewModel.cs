@@ -472,13 +472,16 @@ public sealed partial class AccountManagerViewModel : BotControlViewModelBase
             {
                 ArgumentList =
                 {
-                    "-u",
-                    username,
                     "-s",
                     SelectedServer?.Name ?? "Twilly"
                 },
                 WorkingDirectory = SkuaExecutableLocator.WorkingDirectory
             };
+
+            if (!string.IsNullOrWhiteSpace(username))
+            {
+                psi.EnvironmentVariables["SKUA_USERNAME"] = username;
+            }
 
             if (!string.IsNullOrWhiteSpace(password))
             {

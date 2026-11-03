@@ -295,20 +295,46 @@ public partial class App : Application
             {
                 string[] rawClientArgs = System.Linq.Enumerable.ToArray(System.Linq.Enumerable.Skip(args, 1));
                 List<string> filteredArgs = new();
+                string? envUser = Environment.GetEnvironmentVariable("SKUA_USERNAME")
+                    ?? Environment.GetEnvironmentVariable("VIBESKUA_USERNAME");
+                string? envPass = Environment.GetEnvironmentVariable("SKUA_PASSWORD")
+                    ?? Environment.GetEnvironmentVariable("VIBESKUA_PASSWORD");
+
                 for (int i = 0; i < rawClientArgs.Length; i++)
                 {
                     if (string.Equals(rawClientArgs[i], "--host-instance", StringComparison.OrdinalIgnoreCase)) { i++; continue; }
+                    if ((string.Equals(rawClientArgs[i], "-u", StringComparison.OrdinalIgnoreCase) ||
+                         string.Equals(rawClientArgs[i], "--user", StringComparison.OrdinalIgnoreCase)) && i + 1 < rawClientArgs.Length)
+                    {
+                        string usr = rawClientArgs[i + 1];
+                        i++;
+                        if (!string.IsNullOrWhiteSpace(usr))
+                            envUser = usr;
+                        continue;
+                    }
                     if ((string.Equals(rawClientArgs[i], "-p", StringComparison.OrdinalIgnoreCase) ||
                          string.Equals(rawClientArgs[i], "--password", StringComparison.OrdinalIgnoreCase)) && i + 1 < rawClientArgs.Length)
                     {
                         string psw = rawClientArgs[i + 1];
                         i++;
                         if (!string.IsNullOrWhiteSpace(psw))
-                            Environment.SetEnvironmentVariable("SKUA_PASSWORD", psw);
+                            envPass = psw;
                         continue;
                     }
                     filteredArgs.Add(rawClientArgs[i]);
                 }
+
+                if (!string.IsNullOrWhiteSpace(envUser))
+                {
+                    filteredArgs.Add("-u");
+                    filteredArgs.Add(envUser);
+                }
+                if (!string.IsNullOrWhiteSpace(envPass))
+                {
+                    filteredArgs.Add("-p");
+                    filteredArgs.Add(envPass);
+                }
+
                 string[] clientArgs = filteredArgs.ToArray();
                 string payload = System.Text.Json.JsonSerializer.Serialize(clientArgs);
                 bool createdNew;

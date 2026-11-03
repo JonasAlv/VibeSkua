@@ -86,8 +86,12 @@ public sealed class SkuaStartupHandler : IDisposable
 
             try
             {
+                Environment.SetEnvironmentVariable("SKUA_USERNAME", null);
+                Environment.SetEnvironmentVariable("VIBESKUA_USERNAME", null);
+                Environment.SetEnvironmentVariable("BONXIE_USERNAME", null);
                 Environment.SetEnvironmentVariable("SKUA_PASSWORD", null);
                 Environment.SetEnvironmentVariable("VIBESKUA_PASSWORD", null);
+                Environment.SetEnvironmentVariable("BONXIE_PASSWORD", null);
             }
             catch { }
 
@@ -209,61 +213,76 @@ public sealed class SkuaStartupHandler : IDisposable
         public static (bool Parsed, StartupOptions Options) Parse(string[] args)
         {
             StartupOptions options = new();
-            if (args.Length <= 1)
-                return (true, options);
 
-            for (int i = 1; i < args.Length; i++)
+            if (args.Length > 1)
             {
-                string arg = args[i];
-                if (!arg.StartsWith("-"))
-                    continue;
-
-                string? NextValue()
+                for (int i = 1; i < args.Length; i++)
                 {
-                    if (i + 1 >= args.Length)
-                        return null;
-                    i++;
-                    return args[i];
-                }
+                    string arg = args[i];
+                    if (!arg.StartsWith("-"))
+                        continue;
 
-                switch (arg)
-                {
-                    case "-u":
-                    case "--user":
-                        options.Username = NextValue();
-                        break;
-                    case "-p":
-                    case "--password":
-                        options.Password = NextValue();
-                        break;
-                    case "-s":
-                    case "--server":
-                        options.Server = NextValue() ?? options.Server;
-                        break;
-                    case "--run-script":
-                        options.Script = NextValue();
-                        break;
-                    case "--script-options-storage":
-                        options.ScriptOptionsStorage = NextValue();
-                        break;
-                    case "--load-script":
-                        options.LoadScript = NextValue();
-                        break;
-                    case "--use-theme":
-                        options.UseTheme = NextValue();
-                        break;
-                    case "--gh-token":
-                        options.GitHubToken = NextValue();
-                        break;
-                    case "--exit-on-script-stop":
-                    case "--exit-on-finish":
-                        options.ExitOnScriptStop = true;
-                        break;
-                    case "--embed":
-                    case "--host-pid":
-                        NextValue();
-                        break;
+                    string? NextValue()
+                    {
+                        if (i + 1 >= args.Length)
+                            return null;
+                        i++;
+                        return args[i];
+                    }
+
+                    switch (arg)
+                    {
+                        case "-u":
+                        case "--user":
+                            options.Username = NextValue();
+                            break;
+                        case "-p":
+                        case "--password":
+                            options.Password = NextValue();
+                            break;
+                        case "-s":
+                        case "--server":
+                            options.Server = NextValue() ?? options.Server;
+                            break;
+                        case "--run-script":
+                            options.Script = NextValue();
+                            break;
+                        case "--script-options-storage":
+                            options.ScriptOptionsStorage = NextValue();
+                            break;
+                        case "--load-script":
+                            options.LoadScript = NextValue();
+                            break;
+                        case "--use-theme":
+                            options.UseTheme = NextValue();
+                            break;
+                        case "--gh-token":
+                            options.GitHubToken = NextValue();
+                            break;
+                        case "--exit-on-script-stop":
+                        case "--exit-on-finish":
+                            options.ExitOnScriptStop = true;
+                            break;
+                        case "--embed":
+                        case "--host-pid":
+                            NextValue();
+                            break;
+                    }
                 }
+            }
+
+            if (string.IsNullOrWhiteSpace(options.Username))
+            {
+                options.Username = Environment.GetEnvironmentVariable("SKUA_USERNAME")
+                    ?? Environment.GetEnvironmentVariable("VIBESKUA_USERNAME")
+                    ?? Environment.GetEnvironmentVariable("BONXIE_USERNAME");
+            }
+
+            if (string.IsNullOrWhiteSpace(options.Password))
+            {
+                options.Password = Environment.GetEnvironmentVariable("SKUA_PASSWORD")
+                    ?? Environment.GetEnvironmentVariable("VIBESKUA_PASSWORD")
+                    ?? Environment.GetEnvironmentVariable("BONXIE_PASSWORD");
             }
 
             return (true, options);
