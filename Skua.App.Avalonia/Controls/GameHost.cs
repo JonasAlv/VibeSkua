@@ -8,7 +8,7 @@ namespace Skua.App.Avalonia.Controls;
 
 /// <summary>
 /// Hosts the game player's window on X11 (Linux). The player (another process) is started as a child of
-/// <see cref="WindowHandle"/>, an X11 window created once on VibeSkua's own display connection. Avalonia places that
+/// <see cref="WindowHandle"/>, an X11 window created once on BonxieMux's own display connection. Avalonia places that
 /// window in the game area and, when it recreates the native control, parks it instead of destroying it, so the game
 /// keeps running.
 /// </summary>

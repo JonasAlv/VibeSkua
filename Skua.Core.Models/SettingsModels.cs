@@ -274,38 +274,6 @@ public class ClientSettings
     [JsonPropertyName("UserPinnedScripts")]
     public StringCollection UserPinnedScripts { get; set; } = new();
 
-    [JsonPropertyName("DiscordWebhookUrl")]
-    [JsonConverter(typeof(EncryptedStringJsonConverter))]
-    public string DiscordWebhookUrl { get; set; } = string.Empty;
-
-    [JsonPropertyName("NexusWebhookUrl")]
-    [JsonConverter(typeof(EncryptedStringJsonConverter))]
-    public string NexusWebhookUrl { get; set; } = string.Empty;
-
-    [JsonPropertyName("WebhookNotifyStarted")]
-    public bool WebhookNotifyStarted { get; set; } = true;
-
-    [JsonPropertyName("WebhookNotifyStopped")]
-    public bool WebhookNotifyStopped { get; set; } = true;
-
-    [JsonPropertyName("WebhookNotifyCrashed")]
-    public bool WebhookNotifyCrashed { get; set; } = true;
-
-    [JsonPropertyName("WebhookNotifyRelogged")]
-    public bool WebhookNotifyRelogged { get; set; } = true;
-
-    [JsonPropertyName("WebhookNotifyItemDrops")]
-    public bool WebhookNotifyItemDrops { get; set; } = false;
-
-    [JsonPropertyName("WebhookNotifyItemDropsList")]
-    public string WebhookNotifyItemDropsList { get; set; } = "Unidentified 34, Void Aura";
-
-    [JsonPropertyName("WebhookNotifyHealthPing")]
-    public bool WebhookNotifyHealthPing { get; set; } = false;
-
-    [JsonPropertyName("WebhookPingInterval")]
-    public int WebhookPingInterval { get; set; } = 10;
-
     [JsonPropertyName("CheckAdvanceSkillSetsUpdates")]
     public bool CheckAdvanceSkillSetsUpdates { get; set; } = true;
 
@@ -443,8 +411,7 @@ public class ManagerSettings
 
     public void InitializeDefaults()
     {
-        if (string.IsNullOrEmpty(ClientDownloadPath) ||
-            ClientDownloadPath.Equals(ClientFileSources.LegacySkuaDIR, StringComparison.OrdinalIgnoreCase))
+        if (string.IsNullOrEmpty(ClientDownloadPath))
         {
             ClientDownloadPath = ClientFileSources.SkuaDIR;
         }

@@ -56,7 +56,7 @@ public class ApplicationThemesViewModel : BotControlViewModelBase
     }
 
     /// <summary>
-    /// Controls whether the main VibeSkua title bar uses the active theme's accent color.
+    /// Controls whether the main BonxieMux title bar uses the active theme's accent color.
     /// </summary>
     public bool UseAccentOnMainTitleBar
     {

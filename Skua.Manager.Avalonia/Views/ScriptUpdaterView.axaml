@@ -18,7 +18,7 @@
                                         Foreground="{DynamicResource SkuaAccentBrush}"
                                         Margin="0,0,0,24" />
 
-            <TextBlock Text="VibeSkua Scripts Updater"
+            <TextBlock Text="BonxieMux Scripts Updater"
                        FontSize="26"
                        FontWeight="Light"
                        HorizontalAlignment="Center"

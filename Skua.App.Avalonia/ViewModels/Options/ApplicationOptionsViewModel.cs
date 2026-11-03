@@ -46,7 +46,7 @@ public class OptionGroupViewModel
 
 public partial class ApplicationOptionsViewModel : BotControlViewModelBase
 {
-    private static readonly string[] GeneralKeys = { "ShowUsernameInTitle", "ClientAnim", "ReloginTryDelay", "ReloginWatchdog", "ClearFlashCache" };
+    private static readonly string[] GeneralKeys = { "ShowUsernameInTitle", "SaveLogsToFile", "ClientAnim", "ReloginTryDelay", "ReloginWatchdog", "ClearFlashCache" };
     private static readonly string[] UpdateKeys =
     {
         "CheckBotScriptsUpdates", "AutoUpdateBotScripts", "CheckAdvanceSkillSetsUpdates", "AutoUpdateAdvanceSkillSetsUpdates",
@@ -102,9 +102,8 @@ public partial class ApplicationOptionsViewModel : BotControlViewModelBase
     {
         List<DisplayOptionItemViewModelBase> InSection(string[] keys) =>
             keys.Select(k => ApplicationOptions.FirstOrDefault(i => i.Tag == k)).OfType<DisplayOptionItemViewModelBase>().ToList();
-        List<DisplayOptionItemViewModelBase> generalItems = InSection(GeneralKeys);
         List<DisplayOptionItemViewModelBase> updateItems = InSection(UpdateKeys);
-        List<DisplayOptionItemViewModelBase> webhookItems = ApplicationOptions.Except(generalItems).Except(updateItems).ToList();
+        List<DisplayOptionItemViewModelBase> generalItems = ApplicationOptions.Except(updateItems).ToList();
 
         OptionGroups = new List<OptionGroupViewModel>
         {
@@ -123,14 +122,6 @@ public partial class ApplicationOptionsViewModel : BotControlViewModelBase
                 Description = "Automatic synchronization for bot scripts, skill sets, and item database",
                 ShortTitle = "Updates",
                 Items = updateItems
-            },
-            new()
-            {
-                Title = "Webhooks & Alerts",
-                Icon = "Webhook",
-                Description = "Remote script notifications, crash alerts, relog pings, and rare drop alerts for Discord & Skua Nexus",
-                ShortTitle = "Webhooks",
-                Items = webhookItems
             }
         };
     }

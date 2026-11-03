@@ -7,8 +7,8 @@
     <Nullable>enable</Nullable>
     <LangVersion>latest</LangVersion>
     <DefaultItemExcludes>$(DefaultItemExcludes);obj_run\**</DefaultItemExcludes>
-    <AssemblyName>VibeSkua.Manager</AssemblyName>
-    <AssemblyTitle>VibeSkua Manager</AssemblyTitle>
+    <AssemblyName>BonxieMux.Manager</AssemblyName>
+    <AssemblyTitle>BonxieMux Manager</AssemblyTitle>
     <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
   </PropertyGroup>
 

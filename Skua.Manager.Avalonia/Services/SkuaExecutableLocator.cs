@@ -12,14 +12,14 @@ internal static class SkuaExecutableLocator
 
     private static string Resolve()
     {
-        // If running inside an AppImage, check if a VibeSkua AppImage exists next to this manager AppImage
+        // If running inside an AppImage, check if a BonxieMux AppImage exists next to this manager AppImage
         string? appImageEnv = Environment.GetEnvironmentVariable("APPIMAGE");
         if (!string.IsNullOrEmpty(appImageEnv))
         {
             string? hostDir = Path.GetDirectoryName(appImageEnv);
             if (!string.IsNullOrEmpty(hostDir))
             {
-                string[] appImageCandidates = [ "VibeSkua-x86_64.AppImage", "VibeSkua.AppImage", "VibeSkua" ];
+                string[] appImageCandidates = [ "BonxieMux-x86_64.AppImage", "BonxieMux.AppImage", "BonxieMux" ];
                 foreach (string name in appImageCandidates)
                 {
                     string p = Path.Combine(hostDir, name);
@@ -29,7 +29,7 @@ internal static class SkuaExecutableLocator
             }
         }
 
-        string[] directCandidates = [ "VibeSkua-x86_64.AppImage", "VibeSkua.AppImage", "VibeSkua", "Skua" ];
+        string[] directCandidates = [ "BonxieMux-x86_64.AppImage", "BonxieMux.AppImage", "BonxieMux" ];
 
         foreach (string name in directCandidates)
         {
@@ -42,13 +42,13 @@ internal static class SkuaExecutableLocator
         string userHome = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
         string[] searchDirs =
         [
-            Path.Combine(userHome, "Games", "VibeSkua-linux-AppImage"),
+            Path.Combine(userHome, "Games", "BonxieMux-x86_64"),
             Path.Combine(userHome, "Applications"),
             Path.Combine(userHome, "Desktop"),
             Path.Combine(userHome, "Downloads"),
             Path.Combine(userHome, ".local", "bin"),
-            Path.Combine(userHome, ".local", "share", "VibeSkua"),
-            "/opt/VibeSkua"
+            Path.Combine(userHome, ".local", "share", "BonxieMux"),
+            "/opt/BonxieMux"
         ];
 
         foreach (string dir in searchDirs)
@@ -83,11 +83,10 @@ internal static class SkuaExecutableLocator
         string repositoryRoot = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", ".."));
         string[] candidates =
         [
-            Path.Combine(repositoryRoot, "Build", "VibeSkua-x86_64.AppImage"),
-            Path.Combine(repositoryRoot, "Build", "VibeSkua"),
-            Path.Combine(repositoryRoot, "Build", "Skua"),
-            Path.Combine(repositoryRoot, "Skua.App.Avalonia", "bin", "Release", "net10.0", "VibeSkua"),
-            Path.Combine(repositoryRoot, "Skua.App.Avalonia", "bin", "Debug", "net10.0", "VibeSkua")
+            Path.Combine(repositoryRoot, "Build", "BonxieMux-x86_64.AppImage"),
+            Path.Combine(repositoryRoot, "Build", "BonxieMux"),
+            Path.Combine(repositoryRoot, "Skua.App.Avalonia", "bin", "Release", "net10.0", "BonxieMux"),
+            Path.Combine(repositoryRoot, "Skua.App.Avalonia", "bin", "Debug", "net10.0", "BonxieMux")
         ];
 
         foreach (string candidate in candidates)
@@ -96,6 +95,6 @@ internal static class SkuaExecutableLocator
                 return candidate;
         }
 
-        return Path.Combine(AppContext.BaseDirectory, "VibeSkua");
+        return Path.Combine(AppContext.BaseDirectory, "BonxieMux");
     }
 }

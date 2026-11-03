@@ -37,7 +37,7 @@ internal class SkuaManager
     {
         List<DisplayOptionItemViewModelBase> options = new()
         {
-            CreateSettingOptionItem<bool>("Use Manager theme on VibeSkua", "Whether to use, when launching from the Launcher tab, the same theme as the Manager in any launched App", "syncTheme")
+            CreateSettingOptionItem<bool>("Use Manager theme on BonxieMux", "Whether to use, when launching from the Launcher tab, the same theme as the Manager in any launched App", "syncTheme")
         };
 
         return new(options, s.GetRequiredService<ISettingsService>(), s.GetRequiredService<IFileDialogService>());

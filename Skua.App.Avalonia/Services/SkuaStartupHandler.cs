@@ -66,8 +66,7 @@ public sealed class SkuaStartupHandler : IDisposable
             string? password = _options.Password;
             if (string.IsNullOrWhiteSpace(password))
             {
-                password = Environment.GetEnvironmentVariable("SKUA_PASSWORD")
-                    ?? Environment.GetEnvironmentVariable("VIBESKUA_PASSWORD");
+                password = Environment.GetEnvironmentVariable("BONXIEMUX_PASSWORD");
             }
             if (string.IsNullOrWhiteSpace(password))
             {
@@ -86,10 +85,8 @@ public sealed class SkuaStartupHandler : IDisposable
 
             try
             {
-                Environment.SetEnvironmentVariable("SKUA_USERNAME", null);
-                Environment.SetEnvironmentVariable("VIBESKUA_USERNAME", null);
-                Environment.SetEnvironmentVariable("SKUA_PASSWORD", null);
-                Environment.SetEnvironmentVariable("VIBESKUA_PASSWORD", null);
+                Environment.SetEnvironmentVariable("BONXIEMUX_USERNAME", null);
+                Environment.SetEnvironmentVariable("BONXIEMUX_PASSWORD", null);
             }
             catch { }
 
@@ -271,14 +268,12 @@ public sealed class SkuaStartupHandler : IDisposable
 
             if (string.IsNullOrWhiteSpace(options.Username))
             {
-                options.Username = Environment.GetEnvironmentVariable("SKUA_USERNAME")
-                    ?? Environment.GetEnvironmentVariable("VIBESKUA_USERNAME");
+                options.Username = Environment.GetEnvironmentVariable("BONXIEMUX_USERNAME");
             }
 
             if (string.IsNullOrWhiteSpace(options.Password))
             {
-                options.Password = Environment.GetEnvironmentVariable("SKUA_PASSWORD")
-                    ?? Environment.GetEnvironmentVariable("VIBESKUA_PASSWORD");
+                options.Password = Environment.GetEnvironmentVariable("BONXIEMUX_PASSWORD");
             }
 
             return (true, options);

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # ==============================================================================
 # build-appimages.sh
-# Builds VibeSkua Standalone AppImages + .zip + .tar.gz
+# Builds BonxieMux Standalone AppImages + .zip + .tar.gz
 # Usage: ./build-appimages.sh [--local-mugetsu /path/to/mugetsu] [--local-mugetsu-v2 /path] [--local-watchdog /path]
 # ==============================================================================
 set -Eeuo pipefail
@@ -67,8 +67,8 @@ if ! command -v appimagetool &>/dev/null; then
     fi
 fi
 
-skua_appdir="$BUILD_DIR/VibeSkua.AppDir"
-mgr_appdir="$BUILD_DIR/VibeSkua-Manager.AppDir"
+skua_appdir="$BUILD_DIR/BonxieMux.AppDir"
+mgr_appdir="$BUILD_DIR/BonxieMux-Manager.AppDir"
 rm -rf "$skua_appdir" "$mgr_appdir"
 mkdir -p "$skua_appdir/usr/bin" "$skua_appdir/usr/share/applications" "$skua_appdir/current"
 mkdir -p "$mgr_appdir/usr/bin" "$mgr_appdir/usr/share/applications" "$mgr_appdir/current"
@@ -96,12 +96,12 @@ def gen(src, appdir, name):
         os.makedirs(p, exist_ok=True)
         img.resize((s, s), Image.Resampling.LANCZOS).save(os.path.join(p, f"{name}.png"))
 
-gen("$skua_icon", "$skua_appdir", "vibeskua")
-gen("$mgr_icon", "$mgr_appdir", "vibeskua-manager")
+gen("$skua_icon", "$skua_appdir", "bonxiemux")
+gen("$mgr_icon", "$mgr_appdir", "bonxiemux-manager")
 EOF
 else
     echo "Note: python3 PIL not found, copying raw icon assets..."
-    for target in "$skua_appdir:vibeskua" "$mgr_appdir:vibeskua-manager"; do
+    for target in "$skua_appdir:bonxiemux" "$mgr_appdir:bonxiemux-manager"; do
         appdir="${target%%:*}"
         name="${target##*:}"
         cp -f "$skua_icon" "$appdir/${name}.png"
@@ -111,33 +111,33 @@ else
     done
 fi
 
-cat << 'EOF' > "$skua_appdir/vibeskua.desktop"
+cat << 'EOF' > "$skua_appdir/bonxiemux.desktop"
 [Desktop Entry]
 Type=Application
-Name=VibeSkua
+Name=BonxieMux
 GenericName=AQW Bot & Game Client
-Comment=Cross-platform AQW client with advanced scripting and multi-account tabs
+Comment=Linux AQW client with advanced scripting and multi-account tabs
 Exec=AppRun %U
-Icon=vibeskua
+Icon=bonxiemux
 Terminal=false
 Categories=Game;Utility;
-StartupWMClass=VibeSkua
+StartupWMClass=BonxieMux
 EOF
-cp "$skua_appdir/vibeskua.desktop" "$skua_appdir/usr/share/applications/vibeskua.desktop"
+cp "$skua_appdir/bonxiemux.desktop" "$skua_appdir/usr/share/applications/bonxiemux.desktop"
 
-cat << 'EOF' > "$mgr_appdir/vibeskua-manager.desktop"
+cat << 'EOF' > "$mgr_appdir/bonxiemux-manager.desktop"
 [Desktop Entry]
 Type=Application
-Name=VibeSkua Manager
-GenericName=VibeSkua Account & Script Manager
-Comment=Account manager, script updater, and launcher for VibeSkua
+Name=BonxieMux Manager
+GenericName=BonxieMux Account & Script Manager
+Comment=Account manager, script updater, and launcher for BonxieMux
 Exec=AppRun %U
-Icon=vibeskua-manager
+Icon=bonxiemux-manager
 Terminal=false
 Categories=Game;Utility;Settings;
-StartupWMClass=VibeSkua-Manager
+StartupWMClass=BonxieMux-Manager
 EOF
-cp "$mgr_appdir/vibeskua-manager.desktop" "$mgr_appdir/usr/share/applications/vibeskua-manager.desktop"
+cp "$mgr_appdir/bonxiemux-manager.desktop" "$mgr_appdir/usr/share/applications/bonxiemux-manager.desktop"
 
 cat << 'EOF' > "$skua_appdir/AppRun"
 #!/usr/bin/env bash
@@ -145,10 +145,10 @@ set -e
 APPDIR="$(dirname "$(readlink -f "${0}")")"
 export PATH="$APPDIR/usr/bin:$APPDIR/current:$PATH"
 export LD_LIBRARY_PATH="$APPDIR/usr/lib:$APPDIR/current:$APPDIR/current/runtimes/linux-x64/native:${LD_LIBRARY_PATH:-}"
-exec "$APPDIR/current/VibeSkua" "$@"
+exec "$APPDIR/current/BonxieMux" "$@"
 EOF
 chmod +x "$skua_appdir/AppRun"
-ln -sf "../current/VibeSkua" "$skua_appdir/usr/bin/VibeSkua"
+ln -sf "../current/BonxieMux" "$skua_appdir/usr/bin/BonxieMux"
 
 cat << 'EOF' > "$mgr_appdir/AppRun"
 #!/usr/bin/env bash
@@ -156,36 +156,36 @@ set -e
 APPDIR="$(dirname "$(readlink -f "${0}")")"
 export PATH="$APPDIR/usr/bin:$APPDIR/current:$PATH"
 export LD_LIBRARY_PATH="$APPDIR/usr/lib:$APPDIR/current:$APPDIR/current/runtimes/linux-x64/native:${LD_LIBRARY_PATH:-}"
-exec "$APPDIR/current/VibeSkua.Manager" "$@"
+exec "$APPDIR/current/BonxieMux.Manager" "$@"
 EOF
 chmod +x "$mgr_appdir/AppRun"
-ln -sf "../current/VibeSkua.Manager" "$mgr_appdir/usr/bin/VibeSkua-Manager"
+ln -sf "../current/BonxieMux.Manager" "$mgr_appdir/usr/bin/BonxieMux-Manager"
 
 # Files copied from dotnet output can retain owner-only execute bits (0744).
 chmod -R a+rX "$skua_appdir" "$mgr_appdir"
 
 export APPIMAGE_EXTRACT_AND_RUN=1
-ARCH=x86_64 "$appimagetool_cmd" -n "$skua_appdir" "$BUILD_DIR/VibeSkua-x86_64.AppImage"
-ARCH=x86_64 "$appimagetool_cmd" -n "$mgr_appdir" "$BUILD_DIR/VibeSkua-Manager-x86_64.AppImage"
-chmod +x "$BUILD_DIR/VibeSkua-x86_64.AppImage" "$BUILD_DIR/VibeSkua-Manager-x86_64.AppImage"
+ARCH=x86_64 "$appimagetool_cmd" -n "$skua_appdir" "$BUILD_DIR/BonxieMux-x86_64.AppImage"
+ARCH=x86_64 "$appimagetool_cmd" -n "$mgr_appdir" "$BUILD_DIR/BonxieMux-Manager-x86_64.AppImage"
+chmod +x "$BUILD_DIR/BonxieMux-x86_64.AppImage" "$BUILD_DIR/BonxieMux-Manager-x86_64.AppImage"
 
 rm -rf "$skua_appdir" "$mgr_appdir"
 
 rm -rf "$APPIMAGE_BUNDLE_DIR"
 mkdir -p "$APPIMAGE_BUNDLE_DIR"
-cp -f "$BUILD_DIR/VibeSkua-x86_64.AppImage" "$APPIMAGE_BUNDLE_DIR/"
-cp -f "$BUILD_DIR/VibeSkua-Manager-x86_64.AppImage" "$APPIMAGE_BUNDLE_DIR/"
+cp -f "$BUILD_DIR/BonxieMux-x86_64.AppImage" "$APPIMAGE_BUNDLE_DIR/"
+cp -f "$BUILD_DIR/BonxieMux-Manager-x86_64.AppImage" "$APPIMAGE_BUNDLE_DIR/"
 
 echo "Compressing AppImage release archives..."
 (
     cd "$BUILD_DIR"
-    rm -f "VibeSkua-linux-AppImage.zip" "VibeSkua-linux-AppImage.tar.gz"
+    rm -f "BonxieMux-x86_64.zip" "BonxieMux-x86_64.tar.gz"
     if command -v zip &>/dev/null; then
-        zip -q -r "VibeSkua-linux-AppImage.zip" "VibeSkua-linux-AppImage"
+        zip -q -r "BonxieMux-x86_64.zip" "BonxieMux-x86_64"
     elif command -v bsdtar &>/dev/null; then
-        bsdtar -a -cf "VibeSkua-linux-AppImage.zip" "VibeSkua-linux-AppImage"
+        bsdtar -a -cf "BonxieMux-x86_64.zip" "BonxieMux-x86_64"
     fi
-    tar -czf "VibeSkua-linux-AppImage.tar.gz" "VibeSkua-linux-AppImage"
+    tar -czf "BonxieMux-x86_64.tar.gz" "BonxieMux-x86_64"
 )
 
 echo "=== AppImage Packaging Complete! ==="

@@ -18,18 +18,16 @@ public partial class ScriptSchedulerViewModel : BotControlViewModelBase
 {
     private readonly IScriptManager _manager;
     private readonly IFileDialogService _fileDialog;
-    private readonly IDiscordWebhookService _discord;
     private readonly ISettingsService _settingsService;
     private readonly IWindowService _windowService;
     private readonly IDialogService _dialogService;
     private Stopwatch _scriptStopwatch = new();
     private System.Threading.CancellationTokenSource? _queueCts;
     
-    public ScriptSchedulerViewModel(IScriptManager manager, IFileDialogService fileDialog, IDiscordWebhookService discord, ISettingsService settingsService, IWindowService windowService, IDialogService dialogService) : base("Scheduler")
+    public ScriptSchedulerViewModel(IScriptManager manager, IFileDialogService fileDialog, ISettingsService settingsService, IWindowService windowService, IDialogService dialogService) : base("Scheduler")
     {
         _manager = manager;
         _fileDialog = fileDialog;
-        _discord = discord;
         _settingsService = settingsService;
         _windowService = windowService;
         _dialogService = dialogService;
@@ -212,7 +210,6 @@ public partial class ScriptSchedulerViewModel : BotControlViewModelBase
         IsRunningQueue = true;
         QueueStartedTime = $"Started at {DateTime.Now:HH:mm:ss}";
         _queueCts = new System.Threading.CancellationTokenSource();
-        _discord.SuppressDefaultNotifications = true;
         CurrentIndex = 0;
         
         foreach (var item in ScriptQueue)
@@ -231,7 +228,6 @@ public partial class ScriptSchedulerViewModel : BotControlViewModelBase
         IsRunningQueue = false;
         QueueStartedTime = string.Empty;
         _queueCts?.Cancel();
-        _discord.SuppressDefaultNotifications = false;
         if (CurrentIndex < ScriptQueue.Count)
         {
             ScriptQueue[CurrentIndex].Status = "Stopped";
@@ -251,8 +247,6 @@ public partial class ScriptSchedulerViewModel : BotControlViewModelBase
             _queueCts?.Dispose();
             _queueCts = null;
         }
-
-        _ = _discord.SendEmbedAsync("Scheduler Stopped", "**Scheduler** playlist execution manually halted.", 0xFF0000);
     }
 
     public class SavedScriptItem
@@ -335,11 +329,9 @@ public partial class ScriptSchedulerViewModel : BotControlViewModelBase
         if (!IsRunningQueue || _queueCts?.IsCancellationRequested == true) return;
 
         IScriptPlayer? player = CommunityToolkit.Mvvm.DependencyInjection.Ioc.Default.GetService<IScriptPlayer>();
-        string botName = GetBotUsername(player);
 
         if (player != null && !player.LoggedIn)
         {
-            _ = _discord.SendEmbedAsync("Scheduler Paused", "**Scheduler** is waiting for account to reconnect before running next script...", 0xFFD700);
             while (!player.LoggedIn && IsRunningQueue && _queueCts?.IsCancellationRequested != true)
             {
                 await Task.Delay(1500);
@@ -347,17 +339,14 @@ public partial class ScriptSchedulerViewModel : BotControlViewModelBase
             if (!IsRunningQueue || _queueCts?.IsCancellationRequested == true)
                 return;
             await Task.Delay(3000);
-            botName = GetBotUsername(player);
         }
 
         if (CurrentIndex >= ScriptQueue.Count)
         {
             IsRunningQueue = false;
             QueueStartedTime = string.Empty;
-            _discord.SuppressDefaultNotifications = false;
             _queueCts?.Dispose();
             _queueCts = null;
-            _ = _discord.SendEmbedAsync("Scheduler Finished", "All scripts in the **Scheduler** playlist have completed!", 0x00FF00);
             return;
         }
 
@@ -387,7 +376,6 @@ public partial class ScriptSchedulerViewModel : BotControlViewModelBase
                 {
                     nextScript.Status = "Running";
                     _scriptStopwatch.Restart();
-                    _ = _discord.SendEmbedAsync($"Script Resumed [{CurrentIndex + 1}/{ScriptQueue.Count}]", $"**{botName}** has resumed execution of **{nextScript.Name}** after reconnection.", 0x00FF00);
                     return;
                 }
                 else
@@ -400,8 +388,6 @@ public partial class ScriptSchedulerViewModel : BotControlViewModelBase
 
             nextScript.Status = "Running";
             _scriptStopwatch.Restart();
-            
-            _ = _discord.SendEmbedAsync($"Script Started [{CurrentIndex + 1}/{ScriptQueue.Count}]", $"**{botName}** has begun execution of **{nextScript.Name}**.", 0x00FF00);
             
             try
             {
@@ -419,8 +405,6 @@ public partial class ScriptSchedulerViewModel : BotControlViewModelBase
                     nextScript.Duration = GetFormattedDuration();
                     var actualStartEx = startEx is System.Reflection.TargetInvocationException && startEx.InnerException != null ? startEx.InnerException : startEx;
                     System.Diagnostics.Trace.WriteLine($"Scheduler script failed to start: {actualStartEx.Message}");
-                    var fields = new List<object> { new { name = "Error", value = $"```{actualStartEx.Message}```", inline = false } };
-                    _ = _discord.SendEmbedAsync($"Script Error [{CurrentIndex + 1}/{ScriptQueue.Count}]", $"**{botName}** failed to start **{nextScript.Name}**.", 0xFF0000, fields);
                     CurrentIndex++;
                     if (!IsRunningQueue || _queueCts?.IsCancellationRequested == true) return;
                     await Task.Delay(3000);
@@ -434,8 +418,6 @@ public partial class ScriptSchedulerViewModel : BotControlViewModelBase
                 nextScript.Duration = GetFormattedDuration();
                 var actualEx = ex is System.Reflection.TargetInvocationException && ex.InnerException != null ? ex.InnerException : ex;
                 System.Diagnostics.Trace.WriteLine($"Scheduler script crash: {actualEx.Message}");
-                var fields = new List<object> { new { name = "Error", value = $"```{actualEx.Message}```", inline = false } };
-                _ = _discord.SendEmbedAsync($"Script Error [{CurrentIndex + 1}/{ScriptQueue.Count}]", $"**{botName}** crashed while starting **{nextScript.Name}**.", 0xFF0000, fields);
                 CurrentIndex++;
                 if (!IsRunningQueue || _queueCts?.IsCancellationRequested == true) return;
                 await Task.Delay(3000);
@@ -462,7 +444,6 @@ public partial class ScriptSchedulerViewModel : BotControlViewModelBase
         {
             _scriptStopwatch.Stop();
             IScriptPlayer? player = CommunityToolkit.Mvvm.DependencyInjection.Ioc.Default.GetService<IScriptPlayer>();
-            string botName = GetBotUsername(player);
 
             if (player != null && !player.LoggedIn)
             {
@@ -472,13 +453,6 @@ public partial class ScriptSchedulerViewModel : BotControlViewModelBase
             {
                 ScriptQueue[CurrentIndex].Status = "Completed";
                 ScriptQueue[CurrentIndex].Duration = GetFormattedDuration();
-                
-                var fields = new List<object>
-                {
-                    new { name = "Duration", value = ScriptQueue[CurrentIndex].Duration, inline = true }
-                };
-                _ = _discord.SendEmbedAsync($"Farming Session Concluded [{CurrentIndex + 1}/{ScriptQueue.Count}]", $"**{botName}** has finished execution of **{ScriptQueue[CurrentIndex].Name}**.", 0xFF0000, fields);
-
                 CurrentIndex++;
             }
         }
@@ -496,19 +470,5 @@ public partial class ScriptSchedulerViewModel : BotControlViewModelBase
                 // The queue was stopped while waiting to start the next script.
             }
         });
-    }
-
-    private string GetBotUsername(IScriptPlayer? player)
-    {
-        if (player != null && !string.IsNullOrWhiteSpace(player.Username) && player.Username != "loginInfo.strUsername")
-            return player.Username;
-        try
-        {
-            var servers = CommunityToolkit.Mvvm.DependencyInjection.Ioc.Default.GetService<IScriptServers>();
-            if (servers != null && !string.IsNullOrWhiteSpace(servers.CachedUsername))
-                return servers.CachedUsername!;
-        }
-        catch { }
-        return "VibeSkua Bot";
     }
 }

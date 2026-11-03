@@ -1,4 +1,4 @@
-name: Build VibeSkua
+name: Build BonxieMux
 
 on:
   push:
@@ -40,10 +40,10 @@ jobs:
           chmod +x ./build-binaries.sh ./build-config.sh
           ./build-binaries.sh
 
-      - name: Upload Linux build
+      - name: Upload build
         uses: actions/upload-artifact@v4
         with:
-          name: VibeSkua-linux-binary
+          name: BonxieMux-x86_64
           path: |
-            Build/VibeSkua-linux-Binary.tar.gz
-            Build/VibeSkua-linux-Binary.zip
+            Build/BonxieMux-x86_64.tar.gz
+            Build/BonxieMux-x86_64.zip

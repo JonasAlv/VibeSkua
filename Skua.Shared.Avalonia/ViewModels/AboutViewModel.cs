@@ -52,17 +52,14 @@ public class AboutViewModel : BotControlViewModelBase
 
     private async Task GetAboutContent()
     {
-        MarkdownDoc = @"# VibeSkua
-> **Note:** This project is **Vibe Coded**—built entirely through AI-assisted development, and pure momentum.
-
-A feature-rich, high-performance derivative of auqw/skua, engineered for advanced automation, stability, and streamlined multi-client management.
+        MarkdownDoc = @"# BonxieMux
+A Linux-native, tabbed multi-client derivative of Skua, engineered for advanced automation, stability, and streamlined multi-account management.
 
 ### Key Features
-* **Discord Integration:** Native support for automated alerts, rare drops, and live-pings.
-* **Headless Mode:** Hidden 1x1 pixel viewport for drastically reduced CPU/GPU usage per instance.
+* **Headless Mode:** Reduced framerate and quality viewport for minimal CPU/GPU usage per instance.
 * **Autonomous Scheduling:** Built-in queue to schedule scripts at specific dates and times.
-* **Unified UI:** Embedded WPF interface with tabbed, multi-client management.
-* **Engine Optimizations:** SWF Memory Caching, background connection stability, and automatic memory trimming for long sessions.
+* **Unified Tabbed UI:** Embedded X11 interface with tabbed, multi-client management and Army controls.
+* **Engine Optimizations:** Powered by Mugetsu (custom Ruffle build) with background connection stability.
 
 ### Disclaimer
 **Educational & Personal Use Only.** This project is provided ""as-is"" under the MIT License. Use of this software may violate the Terms of Service of the associated game. By using this tool, you acknowledge that you do so entirely at your own risk.";

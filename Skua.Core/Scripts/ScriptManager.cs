@@ -1306,10 +1306,19 @@ public partial class ScriptManager : ObservableObject, IScriptManager, IDisposab
             .Replace("Process.Start(\"explorer\",", "Process.Start(\"xdg-open\",", StringComparison.Ordinal)
             .Replace("Process.Start(\"explorer.exe\",", "Process.Start(\"xdg-open\",", StringComparison.Ordinal)
             .Replace("Process.Start(\"notepad.exe\",", "Process.Start(\"xdg-open\",", StringComparison.Ordinal)
-            .Replace("\"Skua\", \"Options\"", "\"VibeSkua\", \"options\"", StringComparison.Ordinal)
-            .Replace("\"Skua\",\n                \"Options\"", "\"VibeSkua\",\n                \"options\"", StringComparison.Ordinal)
-            .Replace("\"Skua\",\r\n                \"Options\"", "\"VibeSkua\",\r\n                \"options\"", StringComparison.Ordinal)
-            .Replace("\"Skua\", \"Scripts\"", "\"VibeSkua\", \"Scripts\"", StringComparison.Ordinal);
+            .Replace("\"Skua\", \"Options\"", "\"BonxieMux\", \"options\"", StringComparison.Ordinal)
+            .Replace("\"Skua\",\n                \"Options\"", "\"BonxieMux\",\n                \"options\"", StringComparison.Ordinal)
+            .Replace("\"Skua\",\r\n                \"Options\"", "\"BonxieMux\",\r\n                \"options\"", StringComparison.Ordinal)
+            .Replace("\"Skua\", \"Scripts\"", "\"BonxieMux\", \"Scripts\"", StringComparison.Ordinal)
+            .Replace("attribute.Value == \"VibeSkuaAvalonia\"", "(attribute.Value == \"BonxieMuxAvalonia\" || attribute.Value == \"VibeSkuaAvalonia\")", StringComparison.Ordinal)
+            .Replace("RunSync(() => SkuaVersionCheckerAsync());", "// RunSync(() => SkuaVersionCheckerAsync());", StringComparison.Ordinal)
+            .Replace("CollectData(changeTo);", "// CollectData(changeTo);", StringComparison.Ordinal)
+            .Replace("if (OTM_Contains(internalName))", "if (internalName.StartsWith(\"discord\", StringComparison.OrdinalIgnoreCase) || OTM_Contains(internalName))", StringComparison.Ordinal)
+            .Replace("+ \"Please join the Skua Discord to report this.\\n\"", "", StringComparison.Ordinal)
+            .Replace("+ \"Do you wish to be brought to the Discord?\"", "", StringComparison.Ordinal)
+            .Replace("if (Bot.ShowMessageBox(message, \"Skua Report\", true) == true)", "if (false)", StringComparison.Ordinal)
+            .Replace("AprilFools();", "// AprilFools();", StringComparison.Ordinal)
+            .Replace("UserSpecificMessages();", "// UserSpecificMessages();", StringComparison.Ordinal);
 
         const string progressBlockStart = "// Create a new thread for the progress bar to avoid blocking the main thread";
         int blockStart = source.IndexOf(progressBlockStart, StringComparison.Ordinal);

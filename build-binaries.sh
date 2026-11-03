@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # ==============================================================================
 # build-binaries.sh
-# Builds VibeSkua Linux Portable Binaries + .zip + .tar.gz
+# Builds BonxieMux Linux Portable Binaries + .zip + .tar.gz
 # Usage: ./build-binaries.sh [--local-mugetsu /path/to/mugetsu] [--local-mugetsu-v2 /path] [--local-watchdog /path]
 # ==============================================================================
 set -Eeuo pipefail
@@ -116,53 +116,49 @@ int main(int argc, char *argv[]) {
 }
 EOF
 
-gcc -O2 -DTARGET_BIN=\"VibeSkua\" "$BUILD_DIR/launcher.c" -o "$BINARY_DIR/VibeSkua"
-gcc -O2 -DTARGET_BIN=\"VibeSkua.Manager\" "$BUILD_DIR/launcher.c" -o "$BINARY_DIR/VibeSkua.Manager"
+gcc -O2 -DTARGET_BIN=\"BonxieMux\" "$BUILD_DIR/launcher.c" -o "$BINARY_DIR/BonxieMux"
+gcc -O2 -DTARGET_BIN=\"BonxieMux.Manager\" "$BUILD_DIR/launcher.c" -o "$BINARY_DIR/BonxieMux.Manager"
 rm -f "$BUILD_DIR/launcher.c"
 
 # Shell script launcher fallbacks
-cat << 'EOF' > "$BINARY_DIR/VibeSkua.sh"
+cat << 'EOF' > "$BINARY_DIR/BonxieMux.sh"
 #!/usr/bin/env bash
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CURRENT_DIR="$SCRIPT_DIR/current"
 cd "$CURRENT_DIR"
 export LD_LIBRARY_PATH="$CURRENT_DIR:$CURRENT_DIR/runtimes/linux-x64/native:${LD_LIBRARY_PATH:-}"
 export PATH="$CURRENT_DIR:$PATH"
-exec "$CURRENT_DIR/VibeSkua" "$@"
+exec "$CURRENT_DIR/BonxieMux" "$@"
 EOF
-chmod +x "$BINARY_DIR/VibeSkua.sh"
+chmod +x "$BINARY_DIR/BonxieMux.sh"
 
-cat << 'EOF' > "$BINARY_DIR/VibeSkua.Manager.sh"
+cat << 'EOF' > "$BINARY_DIR/BonxieMux.Manager.sh"
 #!/usr/bin/env bash
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CURRENT_DIR="$SCRIPT_DIR/current"
 cd "$CURRENT_DIR"
 export LD_LIBRARY_PATH="$CURRENT_DIR:$CURRENT_DIR/runtimes/linux-x64/native:${LD_LIBRARY_PATH:-}"
 export PATH="$CURRENT_DIR:$PATH"
-exec "$CURRENT_DIR/VibeSkua.Manager" "$@"
+exec "$CURRENT_DIR/BonxieMux.Manager" "$@"
 EOF
-chmod +x "$BINARY_DIR/VibeSkua.Manager.sh"
+chmod +x "$BINARY_DIR/BonxieMux.Manager.sh"
 
 # Create root icons if available
 if [[ -f "$SKUA_ICON" ]]; then
-    cp -f "$SKUA_ICON" "$BINARY_DIR/vibeskua.png"
-    cp -f "$SKUA_ICON" "$BINARY_DIR/vibeskua-manager.png"
+    cp -f "$SKUA_ICON" "$BINARY_DIR/bonxiemux.png"
+    cp -f "$SKUA_ICON" "$BINARY_DIR/bonxiemux-manager.png"
 fi
-
-ln -sfn "VibeSkua-linux-Binary" "$BUILD_DIR/VibeSkua-linux-Portable"
 
 echo "Compressing binary release archives..."
 (
     cd "$BUILD_DIR"
-    rm -f "VibeSkua-linux-Binary.zip" "VibeSkua-linux-Binary.tar.gz" "VibeSkua-linux-Portable.zip" "VibeSkua-linux-Portable.tar.gz"
+    rm -f "BonxieMux-x86_64.zip" "BonxieMux-x86_64.tar.gz"
     if command -v zip &>/dev/null; then
-        zip -q -r "VibeSkua-linux-Binary.zip" "VibeSkua-linux-Binary"
+        zip -q -r "BonxieMux-x86_64.zip" "BonxieMux-x86_64"
     elif command -v bsdtar &>/dev/null; then
-        bsdtar -a -cf "VibeSkua-linux-Binary.zip" "VibeSkua-linux-Binary"
+        bsdtar -a -cf "BonxieMux-x86_64.zip" "BonxieMux-x86_64"
     fi
-    tar -czf "VibeSkua-linux-Binary.tar.gz" "VibeSkua-linux-Binary"
-    [ -f "VibeSkua-linux-Binary.zip" ] && ln -sf "VibeSkua-linux-Binary.zip" "VibeSkua-linux-Portable.zip"
-    ln -sf "VibeSkua-linux-Binary.tar.gz" "VibeSkua-linux-Portable.tar.gz"
+    tar -czf "BonxieMux-x86_64.tar.gz" "BonxieMux-x86_64"
 )
 
 echo "=== Binary Packaging Complete! ==="

@@ -6,7 +6,7 @@ public static class ConnectedAccounts
 {
     /// <summary>
     /// The account logged in here followed by the ones logged in on the other open tabs.
-    /// Each tab writes its logged in username to %TEMP%\VibeSkuaTabs\{pid}.txt (MainWindow).
+    /// Each tab writes its logged in username to $XDG_RUNTIME_DIR/BonxieMuxTabs/{pid}.txt (MainWindow).
     /// </summary>
     public static List<string> Get(string? self)
     {

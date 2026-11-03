@@ -28,8 +28,8 @@ public partial class ScriptOption : ObservableRecipient, IScriptOption, IOptionD
         _lagKiller = _userLagKiller;
         _isInitializing = true;
         GetOptions();
-        _pickupACDropsAndSendToBank = settingsService?.Get<bool>("VibeSkuffle.PickupACDropsAndSendToBank") ?? false;
-        _rejectNonACDrops = settingsService?.Get<bool>("VibeSkuffle.RejectNonACDrops") ?? false;
+        _pickupACDropsAndSendToBank = settingsService?.Get<bool>("BonxieMux.PickupACDropsAndSendToBank") ?? false;
+        _rejectNonACDrops = settingsService?.Get<bool>("BonxieMux.RejectNonACDrops") ?? false;
         OptionDictionary = GenerateDictionary().ToImmutableDictionary();
         StrongReferenceMessenger.Default.Register<ScriptOption, ScriptStartedMessage, int>(this, (int)MessageChannels.ScriptStatus, ScriptStarted);
         StrongReferenceMessenger.Default.Register<ScriptOption, ScriptStoppedMessage, int>(this, (int)MessageChannels.ScriptStatus, ScriptStopped);
@@ -146,14 +146,14 @@ public partial class ScriptOption : ObservableRecipient, IScriptOption, IOptionD
     public bool PickupACDropsAndSendToBank
     {
         get => _pickupACDropsAndSendToBank;
-        set { if (SetProperty(ref _pickupACDropsAndSendToBank, value, true) && !_isInitializing) _settingsService?.Set("VibeSkuffle.PickupACDropsAndSendToBank", value); }
+        set { if (SetProperty(ref _pickupACDropsAndSendToBank, value, true) && !_isInitializing) _settingsService?.Set("BonxieMux.PickupACDropsAndSendToBank", value); }
     }
 
     private bool _rejectNonACDrops;
     public bool RejectNonACDrops
     {
         get => _rejectNonACDrops;
-        set { if (SetProperty(ref _rejectNonACDrops, value, true) && !_isInitializing) _settingsService?.Set("VibeSkuffle.RejectNonACDrops", value); }
+        set { if (SetProperty(ref _rejectNonACDrops, value, true) && !_isInitializing) _settingsService?.Set("BonxieMux.RejectNonACDrops", value); }
     }
 
     [ObservableProperty]
@@ -331,8 +331,8 @@ public partial class ScriptOption : ObservableRecipient, IScriptOption, IOptionD
     private bool _originalHidePlayers = false;
     private CancellationTokenSource? _streamerModeCts;
 
-    // Retained for compatibility with VibeSkua's settings interface; Streamer Mode
-    // follows VibeSkuffle's fixed anonymized display name.
+    // Retained for compatibility with BonxieMux's settings interface; Streamer Mode
+    // uses BonxieMux's fixed anonymized display name.
     [ObservableProperty]
     private string _streamerName = string.Empty;
 
@@ -340,14 +340,14 @@ public partial class ScriptOption : ObservableRecipient, IScriptOption, IOptionD
     {
         if (enabled)
         {
-            if (CustomName != "Hidden" && CustomName != "VibeSkuaUser")
+            if (CustomName != "Hidden" && CustomName != "BonxieMuxUser")
                 _originalName = CustomName;
             if (CustomGuild != "Hidden")
                 _originalGuild = CustomGuild;
 
             _originalHidePlayers = HidePlayers;
             HidePlayers = true;
-            CustomName = "VibeSkuaUser";
+            CustomName = "BonxieMuxUser";
             CustomGuild = "Hidden";
 
             _streamerModeCts?.Cancel();
@@ -364,9 +364,9 @@ public partial class ScriptOption : ObservableRecipient, IScriptOption, IOptionD
                         var flash = _lazyFlash.Value;
                         if (flash == null) return;
                         // Override visuals only, NEVER overwrite objData as it breaks shops/inventory
-                        flash.Call("setGameObject", "world.myAvatar.pMC.pname.ti.text", "VibeSkuaUser");
+                        flash.Call("setGameObject", "world.myAvatar.pMC.pname.ti.text", "BonxieMuxUser");
                         flash.Call("setGameObject", "world.myAvatar.pMC.pname.tg.text", "Hidden");
-                        flash.Call("setGameObject", "world.rootClass.ui.mcPortrait.strName.text", "VibeSkuaUser");
+                        flash.Call("setGameObject", "world.rootClass.ui.mcPortrait.strName.text", "BonxieMuxUser");
                         flash.Call("setGameObject", "world.rootClass.ui.mcPortraitTarget.strName.text", "Hidden");
 
                         // Hide Gold/Coins visually instead of wiping the client's cached integer amounts
@@ -407,7 +407,7 @@ public partial class ScriptOption : ObservableRecipient, IScriptOption, IOptionD
             _streamerModeCts?.Dispose();
             _streamerModeCts = null;
 
-            CustomName = (_originalName == "VibeSkuaUser" || _originalName == "Hidden") ? string.Empty : _originalName;
+            CustomName = (_originalName == "BonxieMuxUser" || _originalName == "Hidden") ? string.Empty : _originalName;
             CustomGuild = (_originalGuild == "Hidden") ? string.Empty : _originalGuild;
             HidePlayers = _originalHidePlayers;
 
@@ -463,8 +463,8 @@ public partial class ScriptOption : ObservableRecipient, IScriptOption, IOptionD
     [ObjectBinding("world.myAvatar.pMC.pname.tg.text", Get = false, HasSetter = true, Default = "string.Empty")]
     private string _customGuild = string.Empty;
 
-    [ObjectBinding("world.myAvatar.pMC.pname.tg.textColor", Get = false, HasSetter = true)]
-    public int _guildColor;
+    [ObjectBinding("world.myAvatar.pMC.pname.tg.textColor", Get = false, HasSetter = true, Default = "0xFFFFFF")]
+    private int _guildColor = 0xFFFFFF;
 
     [ObjectBinding("world.WALKSPEED", Get = false, HasSetter = true, Default = "8")]
     private int _walkSpeed = 8;
@@ -510,7 +510,7 @@ public partial class ScriptOption : ObservableRecipient, IScriptOption, IOptionD
         StringCollection saveOptions = new();
         foreach (PropertyInfo pi in GetType().GetProperties())
         {
-            if (pi.Name is nameof(OptionDictionary) or nameof(CustomName) or nameof(CustomGuild))
+            if (pi.Name is nameof(OptionDictionary) or nameof(CustomName) or nameof(CustomGuild) or nameof(NameColor) or nameof(GuildColor))
                 continue;
             string key = pi.Name;
             object? value = pi.GetValue(this);
@@ -529,7 +529,7 @@ public partial class ScriptOption : ObservableRecipient, IScriptOption, IOptionD
 
         foreach (PropertyInfo pi in GetType().GetProperties())
         {
-            if (pi.Name is nameof(OptionDictionary) or nameof(CustomName) or nameof(CustomGuild))
+            if (pi.Name is nameof(OptionDictionary) or nameof(CustomName) or nameof(CustomGuild) or nameof(NameColor) or nameof(GuildColor))
                 continue;
             if (_userOptions.ContainsKey(pi.Name))
             {
@@ -548,7 +548,7 @@ public partial class ScriptOption : ObservableRecipient, IScriptOption, IOptionD
         ScriptOption defaults = new(_lazyFlash);
         foreach (PropertyInfo pi in GetType().GetProperties())
         {
-            if (pi.Name is nameof(OptionDictionary) or nameof(CustomName) or nameof(CustomGuild))
+            if (pi.Name is nameof(OptionDictionary) or nameof(CustomName) or nameof(CustomGuild) or nameof(NameColor) or nameof(GuildColor))
                 continue;
 
             pi.SetValue(this, pi.GetValue(defaults), null);

@@ -317,19 +317,15 @@ public partial class App : Application
             {
                 string[] rawClientArgs = System.Linq.Enumerable.ToArray(System.Linq.Enumerable.Skip(args, 1));
                 List<string> filteredArgs = new();
-                string? envUser = Environment.GetEnvironmentVariable("SKUA_USERNAME")
-                    ?? Environment.GetEnvironmentVariable("VIBESKUA_USERNAME");
-                string? envPass = Environment.GetEnvironmentVariable("SKUA_PASSWORD")
-                    ?? Environment.GetEnvironmentVariable("VIBESKUA_PASSWORD");
+                string? envUser = Environment.GetEnvironmentVariable("BONXIEMUX_USERNAME");
+                string? envPass = Environment.GetEnvironmentVariable("BONXIEMUX_PASSWORD");
 
                 // Scrub credentials from the master/forwarding process environment immediately
                 // so TabbedHostWindow neither retains Account #1's credentials nor leaks them to blank '+' tabs.
                 try
                 {
-                    Environment.SetEnvironmentVariable("SKUA_USERNAME", null);
-                    Environment.SetEnvironmentVariable("VIBESKUA_USERNAME", null);
-                    Environment.SetEnvironmentVariable("SKUA_PASSWORD", null);
-                    Environment.SetEnvironmentVariable("VIBESKUA_PASSWORD", null);
+                    Environment.SetEnvironmentVariable("BONXIEMUX_USERNAME", null);
+                    Environment.SetEnvironmentVariable("BONXIEMUX_PASSWORD", null);
                 }
                 catch { }
 
@@ -864,7 +860,7 @@ public partial class App : Application
             _trayIcon = new TrayIcon
             {
                 Icon = icon,
-                ToolTipText = "Skua",
+                ToolTipText = "BonxieMux",
                 IsVisible = true
             };
             _trayIcon.Clicked += TrayIcon_Clicked;

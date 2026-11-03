@@ -122,7 +122,7 @@ public partial class TabbedHostWindow : Window
         _initialArgs = initialArgs ?? Array.Empty<string>();
         InitializeComponent();
         Skua.Shared.Avalonia.Services.WindowResizeHelper.Attach(this);
-        Title = $"VibeSkua V{Skua.Core.Models.ClientFileSources.DisplayVersion}";
+        Title = $"BonxieMux V{Skua.Core.Models.ClientFileSources.DisplayVersion}";
         MainTitleBar.TitleText = Title;
 
         try
@@ -589,7 +589,7 @@ public partial class TabbedHostWindow : Window
                                     }
                                     catch (Exception ex)
                                     {
-                                        Trace.WriteLine($"VibeSkua artwork sync failed: {ex.GetType().Name}: {ex.Message}");
+                                        Trace.WriteLine($"BonxieMux artwork sync failed: {ex.GetType().Name}: {ex.Message}");
                                     }
                                 });
                             }
@@ -621,7 +621,7 @@ public partial class TabbedHostWindow : Window
                                     }
                                     catch (Exception ex)
                                     {
-                                        Trace.WriteLine($"VibeSkua theme sync failed: {ex.GetType().Name}: {ex.Message}");
+                                        Trace.WriteLine($"BonxieMux theme sync failed: {ex.GetType().Name}: {ex.Message}");
                                     }
                                 });
                             }
@@ -1657,7 +1657,7 @@ public partial class TabbedHostWindow : Window
             }
 
             // Keep the host window alive when the final account tab closes.
-            // This allows the user to open another tab without restarting VibeSkua.
+            // This allows the user to open another tab without restarting BonxieMux.
             _lastSelectedTab = null;
             _lastActiveHwnd = IntPtr.Zero;
             _isGridViewEnabled = false;
@@ -1876,7 +1876,7 @@ public partial class TabbedHostWindow : Window
             p.StartInfo.FileName = exe;
             if (System.IO.Path.GetFileNameWithoutExtension(exe).Equals("dotnet", StringComparison.OrdinalIgnoreCase))
             {
-                p.StartInfo.ArgumentList.Add(System.IO.Path.Combine(AppContext.BaseDirectory, "VibeSkua.dll"));
+                p.StartInfo.ArgumentList.Add(System.IO.Path.Combine(AppContext.BaseDirectory, "BonxieMux.dll"));
             }
             p.StartInfo.ArgumentList.Add("--embed");
             p.StartInfo.ArgumentList.Add(_hostHwnd.ToInt64().ToString());
@@ -1907,18 +1907,16 @@ public partial class TabbedHostWindow : Window
                     p.StartInfo.ArgumentList.Add(arg);
             }
 
-            p.StartInfo.EnvironmentVariables.Remove("SKUA_USERNAME");
-            p.StartInfo.EnvironmentVariables.Remove("VIBESKUA_USERNAME");
-            p.StartInfo.EnvironmentVariables.Remove("SKUA_PASSWORD");
-            p.StartInfo.EnvironmentVariables.Remove("VIBESKUA_PASSWORD");
+            p.StartInfo.EnvironmentVariables.Remove("BONXIEMUX_USERNAME");
+            p.StartInfo.EnvironmentVariables.Remove("BONXIEMUX_PASSWORD");
 
             if (!string.IsNullOrWhiteSpace(embeddedUsername))
             {
-                p.StartInfo.EnvironmentVariables["SKUA_USERNAME"] = embeddedUsername;
+                p.StartInfo.EnvironmentVariables["BONXIEMUX_USERNAME"] = embeddedUsername;
             }
             if (!string.IsNullOrWhiteSpace(embeddedPassword))
             {
-                p.StartInfo.EnvironmentVariables["SKUA_PASSWORD"] = embeddedPassword;
+                p.StartInfo.EnvironmentVariables["BONXIEMUX_PASSWORD"] = embeddedPassword;
             }
 
             p.EnableRaisingEvents = true;
@@ -1941,7 +1939,7 @@ public partial class TabbedHostWindow : Window
             {
                 p.Dispose();
                 _isSpawning = false;
-                Trace.WriteLine($"VibeSkua failed to start child process for tab '{tabName}': {ex}");
+                Trace.WriteLine($"BonxieMux failed to start child process for tab '{tabName}': {ex}");
                 Dispatcher.UIThread.Post(() =>
                 {
                     if (_tabs.ContainsKey(newTab))
@@ -2245,7 +2243,7 @@ public partial class TabbedHostWindow : Window
 
         settings.ReloadSettings();
 
-        // 1. Ensure the account exists in ManagedAccounts so it appears in VibeSkua Manager!
+        // 1. Ensure the account exists in ManagedAccounts so it appears in BonxieMux Manager!
         var accs = settings.Get<Dictionary<string, AccountData>>("ManagedAccounts") ?? new();
         if (!accs.ContainsKey(accountName))
         {

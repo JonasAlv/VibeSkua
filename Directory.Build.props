@@ -2,9 +2,9 @@
 <Project>
     <!-- 1. Project, Compiler & External Runtime Versions -->
     <PropertyGroup>
-        <AssemblyVersion>2.1.1</AssemblyVersion>
-        <FileVersion>2.1.1</FileVersion>
-        <Version>2.1.1</Version>
+        <Version Condition="'$(Version)' == ''">2.1.1</Version>
+        <AssemblyVersion>$(Version)</AssemblyVersion>
+        <FileVersion>$(Version)</FileVersion>
 
         <!-- Skua-Mugetsu & WatchDog Versions -->
         <SkuaPlayerVersion Condition="'$(SkuaPlayerVersion)' == ''">1.6.0-skua.4</SkuaPlayerVersion>

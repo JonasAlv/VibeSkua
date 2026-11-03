@@ -26,7 +26,7 @@
                     <TextBlock FontSize="18"
                                FontWeight="Bold"
                                Foreground="{DynamicResource SkuaTextBrush}"
-                               Text="VibeSkua Process Launcher" />
+                               Text="BonxieMux Process Launcher" />
                     <TextBlock Text="Spin up new game client instances and manage active processes."
                                FontSize="12"
                                Foreground="{DynamicResource SkuaMutedTextBrush}" />

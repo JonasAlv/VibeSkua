@@ -18,7 +18,7 @@ public class LogService : ObservableRecipient, ILogService, IDisposable
 
     public LogService(ISettingsService settingsService)
     {
-        _fileWriter = new LogFileWriter(settingsService, Path.Combine(ClientFileSources.VibeSkuaDIR, "logs"));
+        _fileWriter = new LogFileWriter(settingsService, Path.Combine(ClientFileSources.BonxieMuxDIR, "logs"));
         _debugListener = new DebugListener(this);
         Trace.Listeners.Add(_debugListener);
         Messenger.Register<LogService, FlashErrorMessage>(this, LogFlashError);

@@ -35,7 +35,7 @@ public interface IScriptInterfaceManager
 public interface IScriptInterface
 {
     /// <summary>
-    /// VibeSkuffle: true while a recovery is under way (re-login, game window restart, script restart, Rescue
+    /// BonxieMux: true while a recovery is under way (re-login, game window restart, script restart, Rescue
     /// Allies), when a stopped script is about to start again rather than finished.
     /// </summary>
     bool RecoveryPending => false;

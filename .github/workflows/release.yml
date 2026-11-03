@@ -1,4 +1,4 @@
-name: Release VibeSkua
+name: Release BonxieMux
 
 on:
   push:
@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: 'Release version tag (e.g. v2.1.0). Leave blank to use tag or Directory.Build.props'
+        description: 'Release version tag (e.g. v2.1.1). Leave blank to read Version from Directory.Build.props'
         required: false
         default: ''
 
@@ -16,7 +16,7 @@ permissions:
 
 jobs:
   build-and-release:
-    name: Build & Release Linux AppImage
+    name: Build & Release Linux AppImages & Binaries
     runs-on: ubuntu-latest
     timeout-minutes: 30
 
@@ -32,31 +32,31 @@ jobs:
       - name: Install System Dependencies & appimagetool
         run: |
           sudo apt-get update
-          sudo apt-get install -y file curl tar gzip zip python3-pil
+          sudo apt-get install -y file gcc curl tar gzip zip python3-pil
           sudo curl -sSL https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-x86_64.AppImage -o /usr/local/bin/appimagetool
           sudo chmod +x /usr/local/bin/appimagetool
 
       - name: Determine Version Tag
         id: get_version
         run: |
+          source ./build-config.sh
           if [ "${{ github.ref_type }}" = "tag" ]; then
             TAG="${{ github.ref_name }}"
           elif [ -n "${{ github.event.inputs.tag }}" ]; then
             TAG="${{ github.event.inputs.tag }}"
           else
-            VERSION=$(grep -oPm1 "(?<=<Version>)[^<]+" Directory.Build.props || echo "2.1.0")
-            TAG="v$VERSION"
+            TAG="v${APP_VERSION}"
           fi
+          VERSION="${TAG#v}"
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
-          echo "Building release for tag: $TAG"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "Building release for tag: $TAG (version: $VERSION)"
 
       - name: Package Linux AppImages
         env:
-          # appimagetool is itself an AppImage; extraction avoids depending on
-          # FUSE package names that differ between GitHub Ubuntu images.
           APPIMAGE_EXTRACT_AND_RUN: '1'
+          Version: ${{ steps.get_version.outputs.version }}
         run: |
-          sudo apt-get install -y gcc
           chmod +x ./build-appimages.sh ./build-config.sh
           ./build-appimages.sh
 
@@ -66,10 +66,10 @@ jobs:
           TAG: ${{ steps.get_version.outputs.tag }}
         run: |
           ASSETS=(
-            "Build/VibeSkua-x86_64.AppImage"
-            "Build/VibeSkua-Manager-x86_64.AppImage"
-            "Build/VibeSkua-linux-AppImage.tar.gz"
-            "Build/VibeSkua-linux-AppImage.zip"
+            "Build/BonxieMux-x86_64.AppImage"
+            "Build/BonxieMux-Manager-x86_64.AppImage"
+            "Build/BonxieMux-x86_64.tar.gz"
+            "Build/BonxieMux-x86_64.zip"
           )
           for asset in "${ASSETS[@]}"; do
             if [ ! -f "$asset" ]; then
@@ -82,6 +82,6 @@ jobs:
           if gh release view "$TAG" >/dev/null 2>&1; then
             gh release upload "$TAG" "${ASSETS[@]}" --clobber
           else
-            gh release create "$TAG" "${ASSETS[@]}" --title "$TAG" --notes "Automated release $TAG bundled with official retr0gr4d3/skua-mugetsu."
+            gh release create "$TAG" "${ASSETS[@]}" --title "BonxieMux $TAG" --notes "Automated release $TAG bundled with official retr0gr4d3/skua-mugetsu."
           fi
           echo "Release $TAG published successfully!"

@@ -245,7 +245,7 @@ public static class SyncFile
             // Verify process name: Windows recycles PIDs after a crash. If another program
             // (e.g. RuntimeBroker, svchost, Discord) inherits the PID, it is NOT Skua.
             string name = process.ProcessName.ToLowerInvariant();
-            if (!name.Contains("skua") && !name.Contains("vibeskua") && name != "dotnet")
+            if (!name.Contains("skua") && !name.Contains("bonxiemux") && name != "dotnet")
                 return false;
 
             // If the process started after the sync file was written, the PID was recycled to a new process.

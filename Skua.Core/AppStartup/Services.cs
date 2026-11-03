@@ -27,7 +27,6 @@ public static class Services
         services.AddSingleton<ICustomScriptService, CustomScriptService>();
         services.AddSingleton<IScriptPathResolver, ScriptPathResolver>();
         services.AddSingleton<ILoadoutService, LoadoutService>();
-        services.AddSingleton<IDiscordWebhookService, DiscordWebhookService>();
 
         return services;
     }

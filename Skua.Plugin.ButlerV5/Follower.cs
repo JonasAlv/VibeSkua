@@ -667,7 +667,7 @@ public class Follower
                         // autoCorrect: false on every jump. It asks the client to validate
                         // and "correct" the target against the map's cell list, and a recent
                         // AQW update broke that path - clients that haven't patched it (e.g.
-                        // VibeSkua) silently fail to jump at all. We never need the safety
+                        // BonxieMux) silently fail to jump at all. We never need the safety
                         // net anyway: every target here is a real cell (the master's own
                         // position, our current cell, or Enter). Butler v3 does the same.
                         _bot.Map.Jump(targetCell, targetPad, autoCorrect: false);

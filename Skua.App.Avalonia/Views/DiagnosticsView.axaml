@@ -13,7 +13,7 @@
                 Padding="12,10">
             <Grid ColumnDefinitions="*,Auto" VerticalAlignment="Center">
                 <StackPanel Grid.Column="0" Spacing="2">
-                    <TextBlock Text="PERFORMANCE &amp; HEALTH TELEMETRY"
+                    <TextBlock Text="PERFORMANCE &amp; HEALTH DIAGNOSTICS"
                                FontSize="10"
                                FontWeight="Bold"
                                Foreground="{DynamicResource SkuaMutedTextBrush}" />
@@ -112,7 +112,7 @@
                 Padding="6">
             <DockPanel>
                 <TextBlock DockPanel.Dock="Top"
-                           Text="RECENT TELEMETRY EVENTS"
+                           Text="RECENT DIAGNOSTIC EVENTS"
                            FontSize="10"
                            FontWeight="Bold"
                            Foreground="{DynamicResource SkuaMutedTextBrush}"

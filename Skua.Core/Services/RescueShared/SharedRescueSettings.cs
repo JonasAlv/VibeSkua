@@ -4,7 +4,7 @@ using System.Text.Json;
 
 namespace WatchDog.Shared;
 
-// Kept byte-identical in Watch Dog and VibeSkuffle. No client-specific dependencies.
+// Kept byte-identical in Watch Dog and BonxieMux. No client-specific dependencies.
 internal sealed class SharedRescueSettings : IDisposable
 {
     internal sealed record State(bool Enabled, string[] ExcludedAccounts, long Revision,

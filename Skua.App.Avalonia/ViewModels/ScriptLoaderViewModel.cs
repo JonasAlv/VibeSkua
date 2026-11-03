@@ -88,12 +88,6 @@ public partial class ScriptLoaderViewModel : BotControlViewModelBase
     private string _loadedScript = "No script loaded";
 
     [RelayCommand]
-    private void OpenBrowserForm()
-    {
-        _processService.OpenLink(@"https://discord.gg/Xz5bF6q2CX");
-    }
-
-    [RelayCommand]
     private void OpenScriptRepo()
     {
         _windowService.ShowManagedWindow("Script Repo");

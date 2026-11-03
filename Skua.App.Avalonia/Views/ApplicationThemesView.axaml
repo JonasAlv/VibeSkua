@@ -100,7 +100,7 @@
             <StackPanel Spacing="3">
               <CheckBox Content="Use theme accent on the main title bar"
                         IsChecked="{Binding UseAccentOnMainTitleBar, Mode=TwoWay}" />
-              <TextBlock Text="When enabled, the main VibeSkua window follows the active built-in or custom theme. Turn it off to keep the title bar's normal surface color."
+              <TextBlock Text="When enabled, the main BonxieMux window follows the active built-in or custom theme. Turn it off to keep the title bar's normal surface color."
                          FontSize="11"
                          Foreground="{DynamicResource SkuaMutedTextBrush}"
                          TextWrapping="Wrap" />

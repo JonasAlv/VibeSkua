@@ -7,7 +7,7 @@ namespace Skua.Core.Utils;
 
 public static class CryptoUtils
 {
-    private const string AppFolderName = "VibeSkua";
+    private const string AppFolderName = "BonxieMux";
     private const string MasterKeyFileName = ".master.key";
     private const int MasterKeyBytes = 32;
     private const int GcmNonceBytes = 12;

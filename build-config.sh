@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # ==============================================================================
 # build-config.sh
-# Shared configuration and version properties reader for VibeSkua
+# Shared configuration and version properties reader for BonxieMux
 # Strictly requires versions to be defined in Directory.Build.props (no fallbacks)
 # ==============================================================================
 if [[ -z "${SCRIPT_DIR:-}" ]]; then
@@ -10,8 +10,8 @@ fi
 
 BUILD_DIR="$SCRIPT_DIR/Build"
 CURRENT_DIR="$BUILD_DIR/payload/current"
-BINARY_DIR="$BUILD_DIR/VibeSkua-linux-Binary"
-APPIMAGE_BUNDLE_DIR="$BUILD_DIR/VibeSkua-linux-AppImage"
+BINARY_DIR="$BUILD_DIR/BonxieMux-x86_64"
+APPIMAGE_BUNDLE_DIR="$BUILD_DIR/BonxieMux-x86_64"
 
 APP_BIN="$SCRIPT_DIR/Skua.App.Avalonia/bin/Release/net10.0"
 MGR_BIN="$SCRIPT_DIR/Skua.Manager.Avalonia/bin/Release/net10.0"
@@ -29,12 +29,13 @@ read_prop() {
     sed -n "s:.*<${name}[^>]*>\\([^<]*\\)</${name}>.*:\\1:p" "$PROPS_FILE" | head -n 1
 }
 
+APP_VERSION="$(read_prop Version)"
 SKUA_PLAYER_VERSION="$(read_prop SkuaPlayerVersion)"
 SKUA_PLAYER_OS="$(read_prop SkuaPlayerOs)"
 WATCHDOG_VERSION="$(read_prop WatchDogVersion)"
 
-if [[ -z "$SKUA_PLAYER_VERSION" || -z "$SKUA_PLAYER_OS" || -z "$WATCHDOG_VERSION" ]]; then
-    echo "Error: Directory.Build.props is missing required version properties (SkuaPlayerVersion, SkuaPlayerOs, or WatchDogVersion)." >&2
+if [[ -z "$APP_VERSION" || -z "$SKUA_PLAYER_VERSION" || -z "$SKUA_PLAYER_OS" || -z "$WATCHDOG_VERSION" ]]; then
+    echo "Error: Directory.Build.props is missing required version properties (Version, SkuaPlayerVersion, SkuaPlayerOs, or WatchDogVersion)." >&2
     exit 1
 fi
 
@@ -84,12 +85,12 @@ assemble_payload() {
     dotnet build "${dotnet_args[@]}"
 
     local required_outputs=(
-        "$APP_BIN/VibeSkua"
-        "$APP_BIN/VibeSkua.dll"
-        "$APP_BIN/VibeSkua.runtimeconfig.json"
-        "$MGR_BIN/VibeSkua.Manager"
-        "$MGR_BIN/VibeSkua.Manager.dll"
-        "$MGR_BIN/VibeSkua.Manager.runtimeconfig.json"
+        "$APP_BIN/BonxieMux"
+        "$APP_BIN/BonxieMux.dll"
+        "$APP_BIN/BonxieMux.runtimeconfig.json"
+        "$MGR_BIN/BonxieMux.Manager"
+        "$MGR_BIN/BonxieMux.Manager.dll"
+        "$MGR_BIN/BonxieMux.Manager.runtimeconfig.json"
         "$SCRIPT_DIR/Skua.Plugin.DailyTracker/bin/Release/net10.0/Skua.Plugin.DailyTracker.dll"
         "$SCRIPT_DIR/Skua.Plugin.ButlerV5/bin/Release/net10.0/ButlerV5.dll"
         "$SCRIPT_DIR/Skua.Plugin.Cosmetics/bin/Release/net10.0/Skua.Plugin.Cosmetics.dll"
@@ -110,16 +111,16 @@ assemble_payload() {
     mkdir -p "$CURRENT_DIR/FFDec"
 
     # Copy root executables & core files
-    cp -f "$APP_BIN"/VibeSkua "$CURRENT_DIR/"
-    cp -f "$APP_BIN"/VibeSkua.dll "$CURRENT_DIR/"
-    cp -f "$APP_BIN"/VibeSkua.runtimeconfig.json "$CURRENT_DIR/"
-    cp -f "$APP_BIN"/VibeSkua.deps.json "$CURRENT_DIR/"
+    cp -f "$APP_BIN"/BonxieMux "$CURRENT_DIR/"
+    cp -f "$APP_BIN"/BonxieMux.dll "$CURRENT_DIR/"
+    cp -f "$APP_BIN"/BonxieMux.runtimeconfig.json "$CURRENT_DIR/"
+    cp -f "$APP_BIN"/BonxieMux.deps.json "$CURRENT_DIR/"
     cp -f "$APP_BIN"/*.pdb "$CURRENT_DIR/" 2>/dev/null || true
 
-    cp -f "$MGR_BIN"/VibeSkua.Manager "$CURRENT_DIR/"
-    cp -f "$MGR_BIN"/VibeSkua.Manager.dll "$CURRENT_DIR/"
-    cp -f "$MGR_BIN"/VibeSkua.Manager.runtimeconfig.json "$CURRENT_DIR/"
-    cp -f "$MGR_BIN"/VibeSkua.Manager.deps.json "$CURRENT_DIR/"
+    cp -f "$MGR_BIN"/BonxieMux.Manager "$CURRENT_DIR/"
+    cp -f "$MGR_BIN"/BonxieMux.Manager.dll "$CURRENT_DIR/"
+    cp -f "$MGR_BIN"/BonxieMux.Manager.runtimeconfig.json "$CURRENT_DIR/"
+    cp -f "$MGR_BIN"/BonxieMux.Manager.deps.json "$CURRENT_DIR/"
     cp -f "$MGR_BIN"/*.pdb "$CURRENT_DIR/" 2>/dev/null || true
 
     # Copy JSON data assets
@@ -130,7 +131,7 @@ assemble_payload() {
     # Copy all dependent DLLs to Assemblies/ and current/
     cp -f "$APP_BIN"/*.dll "$CURRENT_DIR/Assemblies/"
     cp -f "$MGR_BIN"/*.dll "$CURRENT_DIR/Assemblies/"
-    rm -f "$CURRENT_DIR/Assemblies/VibeSkua.dll" "$CURRENT_DIR/Assemblies/VibeSkua.Manager.dll"
+    rm -f "$CURRENT_DIR/Assemblies/BonxieMux.dll" "$CURRENT_DIR/Assemblies/BonxieMux.Manager.dll"
     cp -f "$CURRENT_DIR/Assemblies/"*.dll "$CURRENT_DIR/"
 
     # Copy runtimes native libraries
@@ -227,5 +228,5 @@ assemble_payload() {
         echo "No x86-64-v2 Mugetsu asset is available; packaging standard player only."
     fi
 
-    chmod +x "$CURRENT_DIR/VibeSkua" "$CURRENT_DIR/VibeSkua.Manager"
+    chmod +x "$CURRENT_DIR/BonxieMux" "$CURRENT_DIR/BonxieMux.Manager"
 }

@@ -33,12 +33,12 @@
     <TrayIcon.Icons>
         <TrayIcons>
             <TrayIcon Icon="avares://Skua.Shared.Avalonia/Assets/SkuaIcon.png"
-                      ToolTipText="VibeSkua Manager"
+                      ToolTipText="BonxieMux Manager"
                       Clicked="TrayIcon_Clicked">
                 <TrayIcon.Menu>
                     <NativeMenu>
                         <NativeMenuItem Header="Show Manager" Click="TrayShowManager_Click" />
-                        <NativeMenuItem Header="VibeSkua Bot AQW" Click="TrayLaunchClient_Click" />
+                        <NativeMenuItem Header="BonxieMux Bot AQW" Click="TrayLaunchClient_Click" />
                         <NativeMenuItem Header="Update Scripts" Click="TrayUpdateScripts_Click" />
                         <NativeMenuItem Header="Reset Scripts" Click="TrayResetScripts_Click" />
                         <NativeMenuItem Header="Check Client Update" Click="TrayCheckUpdate_Click" />

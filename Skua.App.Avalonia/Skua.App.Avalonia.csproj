@@ -7,13 +7,13 @@
         <Nullable>enable</Nullable>
         <LangVersion>latest</LangVersion>
         <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-        <AssemblyName>VibeSkua</AssemblyName>
-        <AssemblyTitle>VibeSkua</AssemblyTitle>
+        <AssemblyName>BonxieMux</AssemblyName>
+        <AssemblyTitle>BonxieMux</AssemblyTitle>
         <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
     </PropertyGroup>
 
     <ItemGroup>
-        <AssemblyMetadata Include="Skua.ClientId" Value="VibeSkuaAvalonia" />
+        <AssemblyMetadata Include="Skua.ClientId" Value="BonxieMuxAvalonia" />
     </ItemGroup>
 
     <ItemGroup>

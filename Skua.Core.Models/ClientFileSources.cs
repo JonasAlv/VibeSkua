@@ -2,19 +2,17 @@ using System;
 using System.IO;
 using System.Reflection;
 
-using System.Threading;
-
 namespace Skua.Core.Models;
 
 public static class ClientFileSources
 {
     public static string AssemblyVersion { get; } = GetInformationalVersion();
+    public static Version ClientVersion { get; } = ParseClientVersion(AssemblyVersion);
     public static bool IsNightly { get; } = AssemblyVersion.Contains('-', StringComparison.Ordinal);
     public static string DisplayVersion { get; } = IsNightly ? AssemblyVersion + "-N" : AssemblyVersion;
 
-    public static string LegacySkuaDIR { get; } = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Skua");
-    public static string SkuaDIR { get; } = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "VibeSkua");
-    public static string VibeSkuaDIR => SkuaDIR;
+    public static string SkuaDIR { get; } = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "BonxieMux");
+    public static string BonxieMuxDIR => SkuaDIR;
     public static string ManagerDIR { get; } = Path.Combine(SkuaDIR, "Manager");
     public static string SkuaSettingsDIR { get; } = Path.Combine(SkuaDIR, "Skua.settings.json");
     public static string SkuaScriptsDIR { get; } = Path.Combine(SkuaDIR, "Scripts");
@@ -61,7 +59,7 @@ public static class ClientFileSources
             string? xdgRuntime = Environment.GetEnvironmentVariable("XDG_RUNTIME_DIR");
             if (!string.IsNullOrWhiteSpace(xdgRuntime) && Directory.Exists(xdgRuntime))
             {
-                string dir = Path.Combine(xdgRuntime, "VibeSkuaTabs");
+                string dir = Path.Combine(xdgRuntime, "BonxieMuxTabs");
                 Directory.CreateDirectory(dir);
                 RestrictDirectoryPermissions(dir);
                 return dir;
@@ -75,140 +73,48 @@ public static class ClientFileSources
         }
     }
 
-    private static bool _migrationAttempted;
-    private static readonly object _migrationLock = new();
+    private static bool _initialized;
+    private static readonly object _initLock = new();
 
     public static void EnsureInitialized()
     {
-        if (_migrationAttempted)
+        if (_initialized)
             return;
 
-        lock (_migrationLock)
+        lock (_initLock)
         {
-            if (_migrationAttempted)
+            if (_initialized)
                 return;
-            _migrationAttempted = true;
-
-            string appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
-            string vibeSkuaDir = Path.Combine(appData, "VibeSkua");
-            string legacySkuaDir = Path.Combine(appData, "Skua");
-            string migrationMarker = Path.Combine(vibeSkuaDir, ".migration_done");
+            _initialized = true;
 
             try
             {
-                bool isAlreadyMigrated = File.Exists(migrationMarker) ||
-                                         File.Exists(Path.Combine(vibeSkuaDir, "Skua.settings.json")) ||
-                                         File.Exists(Path.Combine(vibeSkuaDir, "ClientSettings.json"));
-
-                if (!isAlreadyMigrated)
-                {
-                    Directory.CreateDirectory(vibeSkuaDir);
-                    RestrictDirectoryPermissions(vibeSkuaDir);
-
-                    string lockPath = Path.Combine(vibeSkuaDir, ".migration.lock");
-                    FileStream? lockStream = null;
-                    DateTime deadline = DateTime.UtcNow.AddSeconds(5);
-                    while (DateTime.UtcNow < deadline)
-                    {
-                        try
-                        {
-                            lockStream = new FileStream(lockPath, FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None);
-                            RestrictFilePermissions(lockPath);
-                            break;
-                        }
-                        catch (IOException)
-                        {
-                            Thread.Sleep(25);
-                        }
-                    }
-
-                    try
-                    {
-                        bool stillNotMigrated = !File.Exists(migrationMarker) &&
-                                                !File.Exists(Path.Combine(vibeSkuaDir, "Skua.settings.json")) &&
-                                                !File.Exists(Path.Combine(vibeSkuaDir, "ClientSettings.json"));
-
-                        if (stillNotMigrated)
-                        {
-                            if (Directory.Exists(legacySkuaDir))
-                            {
-                                CopyDirectoryRecursive(legacySkuaDir, vibeSkuaDir, new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "plugins" });
-                            }
-
-                            try
-                            {
-                                File.WriteAllText(migrationMarker, DateTime.UtcNow.ToString("o"));
-                                RestrictFilePermissions(migrationMarker);
-                            }
-                            catch
-                            {
-                            }
-                        }
-                    }
-                    finally
-                    {
-                        lockStream?.Dispose();
-                    }
-                }
-                else
-                {
-                    RestrictDirectoryPermissions(vibeSkuaDir);
-                }
+                Directory.CreateDirectory(SkuaDIR);
+                RestrictDirectoryPermissions(SkuaDIR);
             }
-            catch
-            {
-                // Suppress migration errors to ensure client startup is uninterrupted
-            }
-        }
-    }
-
-    private static void CopyDirectoryRecursive(string sourceDir, string targetDir, HashSet<string>? excludedTopLevelDirs = null)
-    {
-        Directory.CreateDirectory(targetDir);
-
-        foreach (string file in Directory.EnumerateFiles(sourceDir))
-        {
-            try
-            {
-                string destFileName = Path.Combine(targetDir, Path.GetFileName(file));
-                if (!File.Exists(destFileName))
-                {
-                    File.Copy(file, destFileName, overwrite: false);
-                }
-            }
-            catch
-            {
-                // Continue on individual file copy failure
-            }
-        }
-
-        foreach (string subDir in Directory.EnumerateDirectories(sourceDir))
-        {
-            try
-            {
-                string subDirName = Path.GetFileName(subDir);
-                if (excludedTopLevelDirs != null && excludedTopLevelDirs.Contains(subDirName))
-                    continue;
-
-                string destSubDir = Path.Combine(targetDir, subDirName);
-                CopyDirectoryRecursive(subDir, destSubDir, null);
-            }
-            catch
-            {
-                // Continue on individual directory copy failure
-            }
+            catch { }
         }
     }
 
     private static string GetInformationalVersion()
     {
-        string? informational = Assembly.GetEntryAssembly()?
+        Assembly asm = Assembly.GetEntryAssembly() ?? typeof(ClientFileSources).Assembly;
+        string? informational = asm
             .GetCustomAttribute<AssemblyInformationalVersionAttribute>()?
             .InformationalVersion;
 
         if (!string.IsNullOrWhiteSpace(informational))
             return informational.Split('+', 2)[0];
 
-        return Assembly.GetEntryAssembly()?.GetName().Version?.ToString() ?? "0.0.0.0";
+        return asm.GetName().Version?.ToString() ?? string.Empty;
+    }
+
+    private static Version ParseClientVersion(string versionString)
+    {
+        string core = versionString.Split('-', '+')[0];
+        if (Version.TryParse(core, out Version? parsed))
+            return parsed;
+
+        return (Assembly.GetEntryAssembly() ?? typeof(ClientFileSources).Assembly).GetName().Version!;
     }
 }

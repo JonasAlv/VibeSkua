@@ -5,7 +5,7 @@
              x:DataType="vms:ScriptLoaderViewModel"
              x:Class="Skua.App.Avalonia.Views.ScriptLoaderView">
   
-    <Grid RowDefinitions="Auto,Auto,*,Auto" Margin="12" RowSpacing="10">
+    <Grid RowDefinitions="Auto,Auto,*" Margin="12" RowSpacing="10">
         
         <!-- 1. Header Status Card -->
         <Border Grid.Row="0"
@@ -187,22 +187,5 @@
                 ClipToBounds="True">
             <ContentControl Content="{Binding ScriptLogs}" />
         </Border>
-        
-        <!-- 4. Report Issues Button -->
-        <Button Grid.Row="3"
-                Classes="skua-button outline"
-                Height="30"
-                Padding="8,0"
-                FontSize="11"
-                HorizontalAlignment="Stretch"
-                HorizontalContentAlignment="Center"
-                Foreground="{DynamicResource SkuaMutedTextBrush}"
-                Command="{Binding OpenBrowserFormCommand}"
-                ToolTip.Tip="Open Discord feedback and issue channel">
-            <StackPanel Orientation="Horizontal" Spacing="6" HorizontalAlignment="Center">
-                <materialIcons:MaterialIcon Kind="HelpCircleOutline" Width="14" Height="14" VerticalAlignment="Center" />
-                <TextBlock Text="Report Issues to @Tato2/@lonewolf_12" VerticalAlignment="Center" />
-            </StackPanel>
-        </Button>
     </Grid>
 </UserControl>

@@ -143,12 +143,14 @@ public partial class ScriptInterface : IScriptInterface, IScriptInterfaceManager
         Accounts = accounts;
         _settingsService = settingsService;
 
-        string applicationVersion = settingsService.Get("ApplicationVersion", "1.8.5.0");
+        string applicationVersion = settingsService.Get("ApplicationVersion", ClientFileSources.AssemblyVersion);
         int versionSuffix = applicationVersion.IndexOfAny(['-', '+']);
         if (versionSuffix >= 0)
             applicationVersion = applicationVersion[..versionSuffix];
 
-        Version = new Version(1, 8, 5, 0);
+        Version = Version.TryParse(applicationVersion, out Version? parsedVersion)
+            ? parsedVersion
+            : ClientFileSources.ClientVersion;
 
         _stateChannel = new GameStateChannel(_ => { }, 100);
         _stateChannel.Start();

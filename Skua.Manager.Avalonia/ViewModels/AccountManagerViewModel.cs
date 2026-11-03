@@ -480,12 +480,12 @@ public sealed partial class AccountManagerViewModel : BotControlViewModelBase
 
             if (!string.IsNullOrWhiteSpace(username))
             {
-                psi.EnvironmentVariables["SKUA_USERNAME"] = username;
+                psi.EnvironmentVariables["BONXIEMUX_USERNAME"] = username;
             }
 
             if (!string.IsNullOrWhiteSpace(password))
             {
-                psi.EnvironmentVariables["SKUA_PASSWORD"] = password;
+                psi.EnvironmentVariables["BONXIEMUX_PASSWORD"] = password;
             }
 
             if (!string.IsNullOrWhiteSpace(hostInstanceId))

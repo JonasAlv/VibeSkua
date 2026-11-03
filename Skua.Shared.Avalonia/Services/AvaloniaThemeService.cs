@@ -281,7 +281,7 @@ public class AvaloniaThemeService : IThemeService, INotifyPropertyChanged
     private bool _useAccentOnMainTitleBar;
 
     /// <summary>
-    /// Gets or sets whether the main VibeSkua host title bar follows the active theme's primary accent.
+    /// Gets or sets whether the main BonxieMux host title bar follows the active theme's primary accent.
     /// </summary>
     public bool UseAccentOnMainTitleBar
     {
@@ -301,7 +301,7 @@ public class AvaloniaThemeService : IThemeService, INotifyPropertyChanged
     private bool _useAccentOnManagerTitleBar;
 
     /// <summary>
-    /// Gets or sets whether the VibeSkua Manager title bar follows the active theme's primary accent.
+    /// Gets or sets whether the BonxieMux Manager title bar follows the active theme's primary accent.
     /// </summary>
     public bool UseAccentOnManagerTitleBar
     {

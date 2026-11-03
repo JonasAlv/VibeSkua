@@ -6,7 +6,6 @@
     <Nullable>enable</Nullable>
     <AssemblyName>ButlerV5</AssemblyName>
     <RootNamespace>ButlerV5</RootNamespace>
-    <Version>1.2.7</Version>
   </PropertyGroup>
 
   <ItemGroup>

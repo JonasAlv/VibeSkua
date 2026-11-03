@@ -7,7 +7,7 @@
         xmlns:controls="clr-namespace:Skua.App.Avalonia.Controls"
         x:Class="Skua.App.Avalonia.Views.TabbedHostWindow"
         Classes="skua"
-        Title="VibeSkua" Icon="avares://Skua.Shared.Avalonia/Assets/SkuaIcon.png" Height="700" Width="1100"
+        Title="BonxieMux" Icon="avares://Skua.Shared.Avalonia/Assets/SkuaIcon.png" Height="700" Width="1100"
         CanResize="True"
         WindowStartupLocation="CenterScreen"
         Background="{DynamicResource SkuaPageBrush}"
@@ -16,7 +16,7 @@
         ExtendClientAreaChromeHints="NoChrome"
         ExtendClientAreaTitleBarHeightHint="32">
     <Grid RowDefinitions="32,Auto,*">
-        <sharedShell:WindowTitleBar x:Name="MainTitleBar" Grid.Row="0" TitleText="VibeSkua" />
+        <sharedShell:WindowTitleBar x:Name="MainTitleBar" Grid.Row="0" TitleText="BonxieMux" />
 
         <!-- Top Tab Bar & Army Bar -->
         <Border Grid.Row="1"

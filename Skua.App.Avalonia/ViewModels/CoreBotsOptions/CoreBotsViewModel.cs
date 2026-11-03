@@ -204,13 +204,6 @@ public partial class CoreBotsViewModel : BotControlViewModelBase
     public static Dictionary<string, string>? ReadProfile(string profile)
     {
         string filePath = Path.Combine(ClientFileSources.SkuaOptionsDIR, $"CBO_Storage({profile}).txt");
-        if (!File.Exists(filePath) && Directory.Exists(ClientFileSources.LegacySkuaDIR))
-        {
-            string legacyPath = Path.Combine(ClientFileSources.LegacySkuaDIR, "options", $"CBO_Storage({profile}).txt");
-            if (File.Exists(legacyPath))
-                filePath = legacyPath;
-        }
-
         if (!File.Exists(filePath))
             return null;
 
