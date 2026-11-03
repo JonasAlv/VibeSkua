@@ -357,19 +357,14 @@ public partial class AppUpdaterViewModel : ObservableObject
                 string destination = Path.Combine(targetDir, fileName);
 
                 // Set executable permissions (0755: rwxr-xr-x)
-#if IS_LINUX
-                if (OperatingSystem.IsLinux())
+                try
                 {
-                    try
-                    {
-                        File.SetUnixFileMode(extracted,
-                            UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute |
-                            UnixFileMode.GroupRead | UnixFileMode.GroupExecute |
-                            UnixFileMode.OtherRead | UnixFileMode.OtherExecute);
-                    }
-                    catch { }
+                    File.SetUnixFileMode(extracted,
+                        UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute |
+                        UnixFileMode.GroupRead | UnixFileMode.GroupExecute |
+                        UnixFileMode.OtherRead | UnixFileMode.OtherExecute);
                 }
-#endif
+                catch { }
 
                 // On Linux, directly overwriting or truncating a currently running binary/AppImage
                 // throws ETXTBSY (Text file busy). To cleanly replace it, rename or unlink the existing

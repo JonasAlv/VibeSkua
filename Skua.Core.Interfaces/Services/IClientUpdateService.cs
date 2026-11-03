@@ -1,7 +1,7 @@
 namespace Skua.Core.Interfaces;
 
 /// <summary>
-/// Defines the Velopack-backed client update workflow.
+/// Defines the Linux AppImage client update workflow.
 /// </summary>
 public interface IClientUpdateService
 {

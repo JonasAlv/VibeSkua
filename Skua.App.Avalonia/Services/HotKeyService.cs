@@ -36,10 +36,8 @@ public class HotKeyService : IHotKeyService, IDisposable
     private Window? _mainWindow;
     private volatile bool _isMainWindowActive;
     private volatile bool _disposed;
-#if IS_LINUX
     private X11HotKeyGrabber? _x11Grabber;
     private bool _waitingForMainWindow;
-#endif
 
     public void Reload()
     {
@@ -95,9 +93,7 @@ public class HotKeyService : IHotKeyService, IDisposable
             _bindings.AddRange(bindings);
         }
 
-#if IS_LINUX
         UpdateX11Grabs(bindings);
-#endif
     }
 
     public List<T> GetHotKeys<T>()
@@ -273,11 +269,10 @@ public class HotKeyService : IHotKeyService, IDisposable
         };
     }
 
-#if IS_LINUX
     // The embedded Mugetsu child owns keyboard focus, so grab configured hotkeys on this X11 window.
     private void UpdateX11Grabs(List<HotKeyBinding> bindings)
     {
-        if (!OperatingSystem.IsLinux() || _mainWindow is null)
+        if (_mainWindow is null)
             return;
 
         IPlatformHandle? handle = _mainWindow.TryGetPlatformHandle();
@@ -310,7 +305,6 @@ public class HotKeyService : IHotKeyService, IDisposable
                 ExecuteBinding(binding);
         }, DispatcherPriority.Input);
     }
-#endif
 
     private static KeyGestureBinding? ParseGesture(string gesture)
     {
@@ -536,9 +530,7 @@ public class HotKeyService : IHotKeyService, IDisposable
         }
 
 
-#if IS_LINUX
         _x11Grabber?.Dispose();
-#endif
         lock (_bindingsLock)
             _bindings.Clear();
         GC.SuppressFinalize(this);

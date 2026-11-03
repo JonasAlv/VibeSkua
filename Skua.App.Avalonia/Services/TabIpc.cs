@@ -19,17 +19,12 @@ public static class TabIpc
 {
     private static readonly ConcurrentDictionary<int, Channel<string>> _queues = new();
 
-    public static string GetChildPipeName(int pid)
-    {
-        if (OperatingSystem.IsLinux())
-            return Path.Combine(ClientFileSources.TabsDIR, $"child_{pid}.pipe");
+    public static string GetChildPipeName(int pid) =>
+        Path.Combine(ClientFileSources.TabsDIR, $"child_{pid}.pipe");
 
-        return $"VibeSkuaChildPipe_{pid}";
-    }
-
-    private static void DeleteSocketIfLinux(string pipeName)
+    private static void DeleteSocket(string pipeName)
     {
-        if (OperatingSystem.IsLinux() && Path.IsPathRooted(pipeName))
+        if (Path.IsPathRooted(pipeName))
         {
             try
             {
@@ -66,7 +61,7 @@ public static class TabIpc
         {
             channel.Writer.TryComplete();
         }
-        DeleteSocketIfLinux(GetChildPipeName(childPid));
+        DeleteSocket(GetChildPipeName(childPid));
     }
 
     private static async Task ProcessQueueAsync(int childPid, ChannelReader<string> reader)
@@ -186,7 +181,7 @@ public static class TabIpc
             }
             finally
             {
-                DeleteSocketIfLinux(pipeName);
+                DeleteSocket(pipeName);
             }
         }, ct);
     }

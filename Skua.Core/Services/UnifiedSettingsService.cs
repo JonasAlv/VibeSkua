@@ -15,7 +15,6 @@ public class UnifiedSettingsService
     private SettingsRoot _root = SettingsRoot.CreateDefaults();
     private AppRole _currentRole;
     private bool _initialized = false;
-    private readonly Mutex? _fileMutex;
     private readonly string _lockFilePath;
     private FileStream? _heldLockStream;
     private int _heldLockDepth;
@@ -31,9 +30,6 @@ public class UnifiedSettingsService
         ClientFileSources.RestrictDirectoryPermissions(ClientFileSources.SkuaDIR);
         Directory.CreateDirectory(ClientFileSources.ManagerDIR);
         ClientFileSources.RestrictDirectoryPermissions(ClientFileSources.ManagerDIR);
-
-        if (!OperatingSystem.IsLinux())
-            _fileMutex = new Mutex(false, @"Global\VibeSkua.Settings.IO");
     }
 
     private bool AcquireSettingsLock()
@@ -44,50 +40,27 @@ public class UnifiedSettingsService
             return true;
         }
 
-        if (OperatingSystem.IsLinux())
+        DateTime deadline = DateTime.UtcNow.AddSeconds(5);
+        while (true)
         {
-            DateTime deadline = DateTime.UtcNow.AddSeconds(5);
-            while (true)
+            try
             {
-                try
-                {
-                    Directory.CreateDirectory(ClientFileSources.SkuaDIR);
-                    ClientFileSources.RestrictDirectoryPermissions(ClientFileSources.SkuaDIR);
-                    _heldLockStream = new FileStream(_lockFilePath, FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None);
-                    ClientFileSources.RestrictFilePermissions(_lockFilePath);
-                    _heldLockDepth = 1;
-                    return true;
-                }
-                catch (IOException) when (DateTime.UtcNow < deadline)
-                {
-                    Thread.Sleep(15);
-                }
-                catch
-                {
-                    return false;
-                }
-            }
-        }
-
-        if (_fileMutex is null)
-            return false;
-
-        try
-        {
-            if (_fileMutex.WaitOne(TimeSpan.FromSeconds(5)))
-            {
+                Directory.CreateDirectory(ClientFileSources.SkuaDIR);
+                ClientFileSources.RestrictDirectoryPermissions(ClientFileSources.SkuaDIR);
+                _heldLockStream = new FileStream(_lockFilePath, FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None);
+                ClientFileSources.RestrictFilePermissions(_lockFilePath);
                 _heldLockDepth = 1;
                 return true;
             }
+            catch (IOException) when (DateTime.UtcNow < deadline)
+            {
+                Thread.Sleep(15);
+            }
+            catch
+            {
+                return false;
+            }
         }
-        catch (AbandonedMutexException)
-        {
-            _heldLockDepth = 1;
-            return true;
-        }
-        catch { }
-
-        return false;
     }
 
     private void ReleaseSettingsLock(bool acquired)
@@ -99,15 +72,8 @@ public class UnifiedSettingsService
         if (_heldLockDepth > 0)
             return;
 
-        if (OperatingSystem.IsLinux())
-        {
-            try { _heldLockStream?.Dispose(); } catch { }
-            _heldLockStream = null;
-        }
-        else
-        {
-            try { _fileMutex?.ReleaseMutex(); } catch { }
-        }
+        try { _heldLockStream?.Dispose(); } catch { }
+        _heldLockStream = null;
     }
 
     public void Initialize(AppRole role)
@@ -642,17 +608,6 @@ public class UnifiedSettingsService
 
             File.Move(tempFile, ClientFileSources.SkuaSettingsDIR, overwrite: true);
             ClientFileSources.RestrictFilePermissions(ClientFileSources.SkuaSettingsDIR);
-
-            // Signal cross-process settings change event (Windows named EventWaitHandle)
-            if (!OperatingSystem.IsLinux())
-            {
-                try
-                {
-                    using EventWaitHandle notifyEvent = new(false, EventResetMode.AutoReset, @"Global\VibeSkua.Settings.Changed");
-                    notifyEvent.Set();
-                }
-                catch { }
-            }
         }
         catch (Exception ex)
         {
@@ -787,6 +742,5 @@ public class UnifiedSettingsService
     public void Dispose()
     {
         try { _heldLockStream?.Dispose(); } catch { }
-        _fileMutex?.Dispose();
     }
 }

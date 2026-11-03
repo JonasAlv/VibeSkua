@@ -38,7 +38,6 @@ public partial class App : Application
         AvaloniaXamlLoader.Load(this);
     }
 
-#if IS_LINUX
     [System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential)]
     public struct XSetWindowAttributes
     {
@@ -82,41 +81,30 @@ public partial class App : Application
 
     [System.Runtime.InteropServices.DllImport("libX11.so.6")]
     public static extern int XFlush(IntPtr display);
-#endif
 
-    public static System.Threading.Mutex? AppMutex;
     public static System.IO.FileStream? HostLockStream;
     public static string? HostInstanceId { get; private set; }
-    public static string HostPipeName { get; private set; } = OperatingSystem.IsLinux()
-        ? System.IO.Path.Combine(ClientFileSources.TabsDIR, "host.pipe")
-        : "VibeSkuaTabHostPipe";
-    public static string HostMutexName { get; private set; } = "VibeSkuaTabHostMutex";
+    public static string HostPipeName { get; private set; } = System.IO.Path.Combine(ClientFileSources.TabsDIR, "host.pipe");
 
     private static bool TryAcquireSingleInstanceLock(string? safeInstanceId)
     {
-        if (OperatingSystem.IsLinux())
+        string lockName = string.IsNullOrEmpty(safeInstanceId) ? "host.lock" : $"host-{safeInstanceId}.lock";
+        string lockPath = System.IO.Path.Combine(ClientFileSources.TabsDIR, lockName);
+        try
         {
-            string lockName = string.IsNullOrEmpty(safeInstanceId) ? "host.lock" : $"host-{safeInstanceId}.lock";
-            string lockPath = System.IO.Path.Combine(ClientFileSources.TabsDIR, lockName);
-            try
-            {
-                HostLockStream?.Dispose();
-                HostLockStream = new System.IO.FileStream(
-                    lockPath,
-                    System.IO.FileMode.OpenOrCreate,
-                    System.IO.FileAccess.ReadWrite,
-                    System.IO.FileShare.None);
-                ClientFileSources.RestrictFilePermissions(lockPath);
-                return true;
-            }
-            catch
-            {
-                return false;
-            }
+            HostLockStream?.Dispose();
+            HostLockStream = new System.IO.FileStream(
+                lockPath,
+                System.IO.FileMode.OpenOrCreate,
+                System.IO.FileAccess.ReadWrite,
+                System.IO.FileShare.None);
+            ClientFileSources.RestrictFilePermissions(lockPath);
+            return true;
         }
-
-        AppMutex = new System.Threading.Mutex(true, HostMutexName, out bool createdNew);
-        return createdNew;
+        catch
+        {
+            return false;
+        }
     }
 
     public override void OnFrameworkInitializationCompleted()
@@ -163,7 +151,6 @@ public partial class App : Application
                 Ioc.Default.GetRequiredService<IDiagnosticsService>().Start();
                 ISettingsService settings = Ioc.Default.GetRequiredService<ISettingsService>();
                 settings.SetApplicationVersion();
-                FlashTrustManager.EnsureTrustFile();
             }
             catch { }
         });
@@ -205,14 +192,11 @@ public partial class App : Application
                 if (safeInstanceId.Length > 24)
                     safeInstanceId = safeInstanceId[..24];
                 HostInstanceId = safeInstanceId;
-                HostPipeName = OperatingSystem.IsLinux()
-                    ? System.IO.Path.Combine(ClientFileSources.TabsDIR, $"host-{safeInstanceId}.pipe")
-                    : $"VibeSkuaTabHostPipe-{safeInstanceId}";
-                HostMutexName = $"VibeSkuaTabHostMutex-{safeInstanceId}";
+                HostPipeName = System.IO.Path.Combine(ClientFileSources.TabsDIR, $"host-{safeInstanceId}.pipe");
             }
             else HostInstanceId = null;
         }
-        else if (OperatingSystem.IsLinux())
+        else
         {
             HostPipeName = System.IO.Path.Combine(ClientFileSources.TabsDIR, "host.pipe");
         }
@@ -419,15 +403,7 @@ public partial class App : Application
                     // Recover and take over as the host window.
                     try
                     {
-                        if (OperatingSystem.IsLinux())
-                        {
-                            TryAcquireSingleInstanceLock(HostInstanceId);
-                        }
-                        else
-                        {
-                            AppMutex?.Dispose();
-                            AppMutex = new System.Threading.Mutex(true, HostMutexName);
-                        }
+                        TryAcquireSingleInstanceLock(HostInstanceId);
                     }
                     catch { }
                 }
@@ -531,14 +507,6 @@ public partial class App : Application
         {
             if (Ioc.Default.GetService<IThemeService>() is AvaloniaThemeService ats)
                 ats.FlushPendingSave();
-        }
-        catch { }
-
-        try
-        {
-            AppMutex?.ReleaseMutex();
-            AppMutex?.Dispose();
-            AppMutex = null;
         }
         catch { }
 
@@ -890,7 +858,7 @@ public partial class App : Application
     {
         try
         {
-            using var stream = AssetLoader.Open(new Uri("avares://Skua.Shared.Avalonia/Assets/SkuaIcon.ico"));
+            using var stream = AssetLoader.Open(new Uri("avares://Skua.Shared.Avalonia/Assets/SkuaIcon.png"));
             var icon = new WindowIcon(stream);
 
             _trayIcon = new TrayIcon

@@ -136,8 +136,7 @@ public sealed class ScriptPathResolver : IScriptPathResolver
                 resolvedFiles.Add(Canonicalize(downloaded));
         }
 
-        resolvedFiles = resolvedFiles.Distinct(
-            OperatingSystem.IsWindows() ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal).ToList();
+        resolvedFiles = resolvedFiles.Distinct(StringComparer.Ordinal).ToList();
 
         ScriptPathResolution resolution = new(resolvedFiles.FirstOrDefault(), resolvedFiles, errors.Count > 0 ? string.Join("; ", errors) : null);
         if (resolution.SelectedPath != null)

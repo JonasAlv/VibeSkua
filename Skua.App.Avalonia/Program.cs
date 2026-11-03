@@ -1,8 +1,7 @@
 using Avalonia;
 using Avalonia.Skia;
-#if IS_LINUX
 using Avalonia.X11;
-#endif
+using Skua.Core.Models;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -11,25 +10,18 @@ using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Runtime.Loader;
-using Velopack;
-
-using Skua.Core.Models;
 
 namespace Skua.App.Avalonia;
 
 internal static class Program
 {
-#if IS_LINUX
     [DllImport("libX11.so.6")]
     private static extern int XInitThreads();
-#endif
 
     [STAThread]
     public static void Main(string[] args)
     {
-#if IS_LINUX
         XInitThreads();
-#endif
         InitializeAssemblyResolvers();
         RunApp(args);
     }
@@ -51,13 +43,7 @@ internal static class Program
             }
         }
 
-#if IS_LINUX
         string arch = RuntimeInformation.ProcessArchitecture == Architecture.Arm64 ? "linux-arm64" : "linux-x64";
-#else
-        string arch = OperatingSystem.IsWindows()
-            ? (Environment.Is64BitProcess ? "win-x64" : "win-x86")
-            : (RuntimeInformation.ProcessArchitecture == Architecture.Arm64 ? "linux-arm64" : "linux-x64");
-#endif
 
         string runtimeNativeDir = Path.Combine(AppContext.BaseDirectory, "Assemblies", "runtimes", arch, "native");
         HashSet<string>? runtimeNativeSet = null;
@@ -94,11 +80,7 @@ internal static class Program
 
         AssemblyLoadContext.Default.ResolvingUnmanagedDll += (assembly, unmanagedDllName) =>
         {
-#if IS_LINUX
-            string ext = ".so";
-#else
-            string ext = OperatingSystem.IsWindows() ? ".dll" : ".so";
-#endif
+            const string ext = ".so";
             string fileName = unmanagedDllName.EndsWith(ext, StringComparison.OrdinalIgnoreCase)
                 ? unmanagedDllName
                 : $"{unmanagedDllName}{ext}";
@@ -146,11 +128,6 @@ internal static class Program
         {
             ClientFileSources.EnsureInitialized();
             System.Threading.Tasks.Task.Run(() => Skua.App.Avalonia.Flash.FlashUtil.PreloadSwf());
-            VelopackApp.Build().Run();
-            if (Skua.Shared.Avalonia.Utils.AppShortcutHelper.IsInstalled())
-            {
-                Skua.Shared.Avalonia.Utils.AppShortcutHelper.CreateOrUpdateShortcuts(createIfMissing: false);
-            }
             Environment.CurrentDirectory = AppContext.BaseDirectory;
             BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
         }
@@ -162,23 +139,10 @@ internal static class Program
 
     public static AppBuilder BuildAvaloniaApp()
     {
-        AppBuilder builder = AppBuilder.Configure<App>();
-#if IS_LINUX
-        builder = builder.UseX11().UseSkia();
-#else
-        builder = builder.UsePlatformDetect();
-#endif
+        AppBuilder builder = AppBuilder.Configure<App>()
+            .UseX11()
+            .UseSkia();
 
-#if !IS_LINUX
-        if (OperatingSystem.IsWindows())
-        {
-            builder = builder.With(new Win32PlatformOptions
-            {
-                RenderingMode = new[] { Win32RenderingMode.AngleEgl, Win32RenderingMode.Software },
-                CompositionMode = new[] { Win32CompositionMode.WinUIComposition, Win32CompositionMode.RedirectionSurface }
-            });
-        }
-#endif
 #if DEBUG
         builder = builder.WithDeveloperTools();
 #endif

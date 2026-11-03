@@ -36,14 +36,11 @@ public static class CryptoUtils
 
             string appDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), AppFolderName);
             Directory.CreateDirectory(appDir);
-            if (OperatingSystem.IsLinux())
+            try
             {
-                try
-                {
-                    File.SetUnixFileMode(appDir, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
-                }
-                catch { }
+                File.SetUnixFileMode(appDir, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
             }
+            catch { }
 
             string keyPath = Path.Combine(appDir, MasterKeyFileName);
             if (File.Exists(keyPath))
@@ -51,10 +48,7 @@ public static class CryptoUtils
                 byte[] existing = File.ReadAllBytes(keyPath);
                 if (existing.Length == MasterKeyBytes)
                 {
-                    if (OperatingSystem.IsLinux())
-                    {
-                        try { File.SetUnixFileMode(keyPath, UnixFileMode.UserRead | UnixFileMode.UserWrite); } catch { }
-                    }
+                    try { File.SetUnixFileMode(keyPath, UnixFileMode.UserRead | UnixFileMode.UserWrite); } catch { }
                     _cachedMasterKey = existing;
                     return existing;
                 }
@@ -66,10 +60,7 @@ public static class CryptoUtils
             {
                 using (FileStream fs = new(tempPath, FileMode.CreateNew, FileAccess.Write, FileShare.None))
                 {
-                    if (OperatingSystem.IsLinux())
-                    {
-                        try { File.SetUnixFileMode(tempPath, UnixFileMode.UserRead | UnixFileMode.UserWrite); } catch { }
-                    }
+                    try { File.SetUnixFileMode(tempPath, UnixFileMode.UserRead | UnixFileMode.UserWrite); } catch { }
                     fs.Write(generated, 0, generated.Length);
                     fs.Flush(flushToDisk: true);
                 }

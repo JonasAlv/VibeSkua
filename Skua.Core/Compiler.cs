@@ -369,117 +369,95 @@ public class Compiler : CSharpScriptExecution
 
     private bool CompileOrWaitForAssembly(string source, string outputPath, ScriptLoadContext? loadContext)
     {
-        string mutexName = $"Global\\Skua_Compile_{Path.GetFileName(outputPath).Replace(".dll", "").Replace("-", "_")}";
-        Mutex? compilationMutex = null;
+        string lockPath = outputPath + ".lock";
+        FileStream? lockStream = null;
 
         try
         {
-            compilationMutex = new Mutex(false, mutexName);
-
-            if (!compilationMutex.WaitOne(TimeSpan.FromMinutes(2)))
+            string? lockDir = Path.GetDirectoryName(lockPath);
+            if (!string.IsNullOrEmpty(lockDir))
             {
-                ErrorType = ExecutionErrorTypes.Compilation;
-                ErrorMessage = "Timeout waiting for script compilation to complete.";
-                SetErrors(new ApplicationException(ErrorMessage));
-                return false;
+                Directory.CreateDirectory(lockDir);
+                Skua.Core.Models.ClientFileSources.RestrictDirectoryPermissions(lockDir);
             }
 
-            try
+            DateTime deadline = DateTime.UtcNow.AddMinutes(2);
+            while (true)
             {
-                if (File.Exists(outputPath))
+                try
                 {
-                    if (FastVerifyAssembly(outputPath))
-                    {
-                        if (loadContext != null)
-                        {
-                            using FileStream stream = File.OpenRead(outputPath);
-                            Assembly = loadContext.LoadFromStream(stream);
-                        }
-                        else
-                        {
-                            Assembly = Assembly.LoadFrom(outputPath);
-                        }
-                        return true;
-                    }
-                    else
-                    {
-                        try
-                        {
-                            File.Delete(outputPath);
-                        }
-                        catch
-                        {
-                        }
-                    }
+                    lockStream = new FileStream(lockPath, FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None);
+                    Skua.Core.Models.ClientFileSources.RestrictFilePermissions(lockPath);
+                    break;
                 }
-
-                if (!CompileAssemblyToDisk(source, outputPath))
+                catch (IOException) when (DateTime.UtcNow < deadline)
+                {
+                    Thread.Sleep(25);
+                }
+                catch (IOException)
+                {
+                    ErrorType = ExecutionErrorTypes.Compilation;
+                    ErrorMessage = "Timeout waiting for script compilation to complete.";
+                    SetErrors(new ApplicationException(ErrorMessage));
                     return false;
-
-                for (int attempt = 0; attempt < 10; attempt++)
-                {
-                    try
-                    {
-                        if (loadContext != null)
-                        {
-                            using FileStream stream = File.OpenRead(outputPath);
-                            Assembly = loadContext.LoadFromStream(stream);
-                        }
-                        else
-                        {
-                            Assembly = Assembly.LoadFrom(outputPath);
-                        }
-                        return true;
-                    }
-                    catch (IOException) when (attempt < 9)
-                    {
-                        Thread.Sleep(50);
-                    }
                 }
-                return false;
             }
-            finally
-            {
-                compilationMutex.ReleaseMutex();
-            }
-        }
-        catch (AbandonedMutexException)
-        {
+
             if (File.Exists(outputPath))
             {
                 if (FastVerifyAssembly(outputPath))
                 {
-                    for (int attempt = 0; attempt < 10; attempt++)
+                    if (loadContext != null)
                     {
-                        try
-                        {
-                            if (loadContext != null)
-                            {
-                                using FileStream stream = File.OpenRead(outputPath);
-                                Assembly = loadContext.LoadFromStream(stream);
-                            }
-                            else
-                            {
-                                Assembly = Assembly.LoadFrom(outputPath);
-                            }
-                            return true;
-                        }
-                        catch (IOException) when (attempt < 9)
-                        {
-                            Thread.Sleep(50);
-                        }
+                        using FileStream stream = File.OpenRead(outputPath);
+                        Assembly = loadContext.LoadFromStream(stream);
+                    }
+                    else
+                    {
+                        Assembly = Assembly.LoadFrom(outputPath);
+                    }
+                    return true;
+                }
+                else
+                {
+                    try
+                    {
+                        File.Delete(outputPath);
+                    }
+                    catch
+                    {
                     }
                 }
             }
 
-            ErrorType = ExecutionErrorTypes.Compilation;
-            ErrorMessage = "Compilation was abandoned by another process.";
-            SetErrors(new ApplicationException(ErrorMessage));
+            if (!CompileAssemblyToDisk(source, outputPath))
+                return false;
+
+            for (int attempt = 0; attempt < 10; attempt++)
+            {
+                try
+                {
+                    if (loadContext != null)
+                    {
+                        using FileStream stream = File.OpenRead(outputPath);
+                        Assembly = loadContext.LoadFromStream(stream);
+                    }
+                    else
+                    {
+                        Assembly = Assembly.LoadFrom(outputPath);
+                    }
+                    return true;
+                }
+                catch (IOException) when (attempt < 9)
+                {
+                    Thread.Sleep(50);
+                }
+            }
             return false;
         }
         finally
         {
-            compilationMutex?.Dispose();
+            lockStream?.Dispose();
         }
     }
 

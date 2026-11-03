@@ -30,7 +30,7 @@ public static class ClientFileSources
 
     public static void RestrictDirectoryPermissions(string path)
     {
-        if (!OperatingSystem.IsLinux() || string.IsNullOrWhiteSpace(path))
+        if (string.IsNullOrWhiteSpace(path))
             return;
 
         try
@@ -43,7 +43,7 @@ public static class ClientFileSources
 
     public static void RestrictFilePermissions(string path)
     {
-        if (!OperatingSystem.IsLinux() || string.IsNullOrWhiteSpace(path))
+        if (string.IsNullOrWhiteSpace(path))
             return;
 
         try
@@ -58,27 +58,20 @@ public static class ClientFileSources
     {
         get
         {
-            if (OperatingSystem.IsLinux())
+            string? xdgRuntime = Environment.GetEnvironmentVariable("XDG_RUNTIME_DIR");
+            if (!string.IsNullOrWhiteSpace(xdgRuntime) && Directory.Exists(xdgRuntime))
             {
-                string? xdgRuntime = Environment.GetEnvironmentVariable("XDG_RUNTIME_DIR");
-                if (!string.IsNullOrWhiteSpace(xdgRuntime) && Directory.Exists(xdgRuntime))
-                {
-                    string dir = Path.Combine(xdgRuntime, "VibeSkuaTabs");
-                    Directory.CreateDirectory(dir);
-                    RestrictDirectoryPermissions(dir);
-                    return dir;
-                }
-                string fallbackRunDir = Path.Combine(SkuaDIR, "run");
-                Directory.CreateDirectory(SkuaDIR);
-                RestrictDirectoryPermissions(SkuaDIR);
-                Directory.CreateDirectory(fallbackRunDir);
-                RestrictDirectoryPermissions(fallbackRunDir);
-                return fallbackRunDir;
+                string dir = Path.Combine(xdgRuntime, "VibeSkuaTabs");
+                Directory.CreateDirectory(dir);
+                RestrictDirectoryPermissions(dir);
+                return dir;
             }
-            string winTemp = Path.Combine(Path.GetTempPath(), "VibeSkuaTabs");
-            if (!Directory.Exists(winTemp))
-                Directory.CreateDirectory(winTemp);
-            return winTemp;
+            string fallbackRunDir = Path.Combine(SkuaDIR, "run");
+            Directory.CreateDirectory(SkuaDIR);
+            RestrictDirectoryPermissions(SkuaDIR);
+            Directory.CreateDirectory(fallbackRunDir);
+            RestrictDirectoryPermissions(fallbackRunDir);
+            return fallbackRunDir;
         }
     }
 
@@ -109,28 +102,34 @@ public static class ClientFileSources
 
                 if (!isAlreadyMigrated)
                 {
-                    using var migrationMutex = new Mutex(false, @"Global\VibeSkua.Migration.Init");
-                    bool hasHandle = false;
-                    try
+                    Directory.CreateDirectory(vibeSkuaDir);
+                    RestrictDirectoryPermissions(vibeSkuaDir);
+
+                    string lockPath = Path.Combine(vibeSkuaDir, ".migration.lock");
+                    FileStream? lockStream = null;
+                    DateTime deadline = DateTime.UtcNow.AddSeconds(5);
+                    while (DateTime.UtcNow < deadline)
                     {
                         try
                         {
-                            hasHandle = migrationMutex.WaitOne(5000, false);
+                            lockStream = new FileStream(lockPath, FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None);
+                            RestrictFilePermissions(lockPath);
+                            break;
                         }
-                        catch (AbandonedMutexException)
+                        catch (IOException)
                         {
-                            hasHandle = true;
+                            Thread.Sleep(25);
                         }
+                    }
 
+                    try
+                    {
                         bool stillNotMigrated = !File.Exists(migrationMarker) &&
                                                 !File.Exists(Path.Combine(vibeSkuaDir, "Skua.settings.json")) &&
                                                 !File.Exists(Path.Combine(vibeSkuaDir, "ClientSettings.json"));
 
                         if (stillNotMigrated)
                         {
-                            Directory.CreateDirectory(vibeSkuaDir);
-                            RestrictDirectoryPermissions(vibeSkuaDir);
-
                             if (Directory.Exists(legacySkuaDir))
                             {
                                 CopyDirectoryRecursive(legacySkuaDir, vibeSkuaDir, new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "plugins" });
@@ -148,8 +147,7 @@ public static class ClientFileSources
                     }
                     finally
                     {
-                        if (hasHandle)
-                            migrationMutex.ReleaseMutex();
+                        lockStream?.Dispose();
                     }
                 }
                 else

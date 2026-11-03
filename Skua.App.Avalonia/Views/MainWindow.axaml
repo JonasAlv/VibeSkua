@@ -17,7 +17,7 @@
         WindowStartupLocation="Manual"
 
         Title="{Binding Title}"
-        Icon="avares://Skua.Shared.Avalonia/Assets/SkuaIcon.ico"
+        Icon="avares://Skua.Shared.Avalonia/Assets/SkuaIcon.png"
 
         SystemDecorations="BorderOnly"
         ExtendClientAreaToDecorationsHint="True"

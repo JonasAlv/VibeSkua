@@ -11,7 +11,6 @@ namespace Skua.App.Avalonia.Services;
 
 public class ScreenshotService : IScreenshotService
 {
-#if IS_LINUX || !IS_WINDOWS
     public async Task<byte[]> TakeScreenshotAsync()
     {
         return await Dispatcher.UIThread.InvokeAsync(async () =>
@@ -42,5 +41,4 @@ public class ScreenshotService : IScreenshotService
             }
         });
     }
-#endif
 }

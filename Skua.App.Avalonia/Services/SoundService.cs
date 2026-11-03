@@ -9,7 +9,6 @@ namespace Skua.App.Avalonia.Services;
 
 public class SoundService : ISoundService
 {
-#if IS_LINUX
     [DllImport("libX11.so.6")]
     private static extern IntPtr XOpenDisplay(IntPtr display);
 
@@ -38,13 +37,15 @@ public class SoundService : ISoundService
                 // 1. Try canberra-gtk-play
                 try
                 {
-                    using var p = Process.Start(new ProcessStartInfo
+                    ProcessStartInfo canberraPsi = new()
                     {
                         FileName = "canberra-gtk-play",
-                        Arguments = "-i bell",
                         UseShellExecute = false,
                         CreateNoWindow = true
-                    });
+                    };
+                    canberraPsi.ArgumentList.Add("-i");
+                    canberraPsi.ArgumentList.Add("bell");
+                    using var p = Process.Start(canberraPsi);
                     if (p != null) return;
                 }
                 catch { }
@@ -64,13 +65,14 @@ public class SoundService : ISoundService
                 {
                     try
                     {
-                        using var p = Process.Start(new ProcessStartInfo
+                        ProcessStartInfo paplayPsi = new()
                         {
                             FileName = "paplay",
-                            Arguments = $"\"{soundPath}\"",
                             UseShellExecute = false,
                             CreateNoWindow = true
-                        });
+                        };
+                        paplayPsi.ArgumentList.Add(soundPath);
+                        using var p = Process.Start(paplayPsi);
                         if (p != null) return;
                     }
                     catch { }
@@ -88,35 +90,11 @@ public class SoundService : ISoundService
             }
             catch { }
 
-            // 4. Fallback to Console.Beep
             try { Console.Beep(); } catch { }
         });
     }
-#endif
 
-    public void Beep()
-    {
-#if IS_LINUX
-        PlayLinuxSound();
-#else
-        try
-        {
-            Console.Beep();
-        }
-        catch { }
-#endif
-    }
+    public void Beep() => PlayLinuxSound();
 
-    public void Beep(int frequency, int duration)
-    {
-#if IS_LINUX
-        PlayLinuxSound();
-#else
-        try
-        {
-            Console.Beep(frequency, duration);
-        }
-        catch { }
-#endif
-    }
+    public void Beep(int frequency, int duration) => PlayLinuxSound();
 }

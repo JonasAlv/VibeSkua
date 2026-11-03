@@ -1,14 +1,12 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
-        <OutputType>WinExe</OutputType>
+        <OutputType>Exe</OutputType>
         <TargetFramework>net10.0</TargetFramework>
         <RuntimeIdentifiers>linux-x64</RuntimeIdentifiers>
         <Nullable>enable</Nullable>
         <LangVersion>latest</LangVersion>
         <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-        <ApplicationIcon>../Skua.Shared.Avalonia/Assets/SkuaIcon.ico</ApplicationIcon>
-        <ApplicationManifest>app.manifest</ApplicationManifest>
         <AssemblyName>VibeSkua</AssemblyName>
         <AssemblyTitle>VibeSkua</AssemblyTitle>
         <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
@@ -19,11 +17,10 @@
     </ItemGroup>
 
     <ItemGroup>
-        <PackageReference Include="Velopack" />
         <PackageReference Include="Avalonia" />
         <PackageReference Include="Avalonia.Desktop" />
         <PackageReference Include="Avalonia.Skia" />
-        <PackageReference Include="Avalonia.X11" Condition="'$(OS)' != 'Windows_NT'" />
+        <PackageReference Include="Avalonia.X11" />
         <PackageReference Include="Avalonia.Controls.ColorPicker" />
         <PackageReference Include="Avalonia.Themes.Fluent" />
         <PackageReference Include="AvaloniaUI.DiagnosticsSupport" />
@@ -52,12 +49,6 @@
     <ItemGroup>
         <EmbeddedResource Include="UltraWiki.json" LogicalName="UltraWiki.json" />
         <None Include="..\Skua.AS3\skua\bin\skua.swf" Link="skua.swf" Condition="Exists('..\Skua.AS3\skua\bin\skua.swf')">
-          <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-        </None>
-    </ItemGroup>
-
-    <ItemGroup>
-        <None Update="app.manifest">
           <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
         </None>
     </ItemGroup>

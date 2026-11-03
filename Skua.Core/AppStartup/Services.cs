@@ -157,10 +157,6 @@ public static class Services
             "System.Threading",
             "System.Threading.Tasks",
             "System.Timers",
-#if !IS_LINUX
-            "System.Windows.Forms",
-            "Microsoft.Win32",
-#endif
             "Skua.Core",
             "Skua.Core.Interfaces",
             "Skua.Core.Models",

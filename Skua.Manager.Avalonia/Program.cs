@@ -1,8 +1,10 @@
 using Avalonia;
+using Avalonia.Skia;
 using Avalonia.Threading;
+using Avalonia.X11;
 using CommunityToolkit.Mvvm.Messaging;
 using Skua.Core.Messaging;
-using Skua.Shared.Avalonia.Utils;
+using Skua.Core.Models;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -13,15 +15,13 @@ using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Runtime.Loader;
 using System.Text;
-using System.Threading;
 using System.Threading.Tasks;
-using Velopack;
 
 namespace Skua.Manager.Avalonia;
 
 internal static class Program
 {
-    private static Mutex? _singleInstanceMutex;
+    private static FileStream? _singleInstanceLockStream;
 
     static Program()
     {
@@ -32,11 +32,10 @@ internal static class Program
     public static void Main(string[] args)
     {
         InitializeAssemblyResolvers();
+        ClientFileSources.EnsureInitialized();
 
-        VelopackApp.Build().Run();
-
-#if IS_LINUX
-        string socketPath = Path.Combine(Path.GetTempPath(), $"vibeskua-manager-{Environment.UserName}.sock");
+        string socketPath = Path.Combine(ClientFileSources.TabsDIR, "manager.sock");
+        string lockPath = Path.Combine(ClientFileSources.TabsDIR, "manager.lock");
 
         // Attempt to signal existing primary instance
         try
@@ -45,7 +44,6 @@ internal static class Program
             client.Connect(new UnixDomainSocketEndPoint(socketPath));
             client.Send(Encoding.UTF8.GetBytes("SHOW\n"));
             client.Close();
-            // Existing instance alerted, exit cleanly
             return;
         }
         catch
@@ -56,8 +54,19 @@ internal static class Program
 
         try
         {
+            _singleInstanceLockStream = new FileStream(lockPath, FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None);
+            ClientFileSources.RestrictFilePermissions(lockPath);
+        }
+        catch
+        {
+            return;
+        }
+
+        try
+        {
             Socket listenerSocket = new(AddressFamily.Unix, SocketType.Stream, ProtocolType.Unspecified);
             listenerSocket.Bind(new UnixDomainSocketEndPoint(socketPath));
+            ClientFileSources.RestrictFilePermissions(socketPath);
             listenerSocket.Listen(5);
 
             Task.Run(async () =>
@@ -88,21 +97,12 @@ internal static class Program
             {
                 try { listenerSocket.Dispose(); } catch { }
                 try { if (File.Exists(socketPath)) File.Delete(socketPath); } catch { }
+                try { _singleInstanceLockStream?.Dispose(); } catch { }
             };
         }
         catch
         {
-            bool createdNew;
-            _singleInstanceMutex = new Mutex(true, "VibeSkuaManagerSingleInstanceMutex", out createdNew);
-            if (!createdNew)
-                return;
         }
-#else
-        bool createdNewFallback;
-        _singleInstanceMutex = new Mutex(true, "VibeSkuaManagerSingleInstanceMutex", out createdNewFallback);
-        if (!createdNewFallback)
-            return;
-#endif
 
         RunApp(args);
     }
@@ -161,7 +161,7 @@ internal static class Program
 
         AssemblyLoadContext.Default.ResolvingUnmanagedDll += (assembly, unmanagedDllName) =>
         {
-            string ext = ".so";
+            const string ext = ".so";
             string fileName = unmanagedDllName.EndsWith(ext, StringComparison.OrdinalIgnoreCase)
                 ? unmanagedDllName
                 : $"{unmanagedDllName}{ext}";
@@ -207,11 +207,6 @@ internal static class Program
     {
         try
         {
-            Skua.Core.Models.ClientFileSources.EnsureInitialized();
-            if (AppShortcutHelper.IsInstalled())
-            {
-                AppShortcutHelper.CreateOrUpdateShortcuts(createIfMissing: false);
-            }
             BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
         }
         catch (Exception ex)
@@ -223,7 +218,8 @@ internal static class Program
     public static AppBuilder BuildAvaloniaApp()
     {
         AppBuilder builder = AppBuilder.Configure<App>()
-            .UsePlatformDetect();
+            .UseX11()
+            .UseSkia();
 
 #if DEBUG
         builder = builder.WithDeveloperTools();

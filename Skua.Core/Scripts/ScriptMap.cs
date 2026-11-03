@@ -354,18 +354,21 @@ public partial class ScriptMap : IScriptMap
             fileName = fileName.EndsWith(".swf") ? fileName : fileName + ".swf";
             string tmpDir = Path.Combine(_cachePath, "tmp");
             string swfFile = Path.Combine(_cachePath, fileName);
-            Process decompile = new()
+            string ffdecDir = Path.Combine(AppContext.BaseDirectory, "FFDec");
+            ProcessStartInfo psi = new()
             {
-                StartInfo = new ProcessStartInfo
-                {
-                    CreateNoWindow = true,
-                    UseShellExecute = false,
-                    RedirectStandardError = true,
-                    FileName = "/bin/sh",
-                    WorkingDirectory = Path.Combine(AppContext.BaseDirectory, "FFDec"),
-                    Arguments = $"-c \"./ffdec.sh -export script '{tmpDir}' '{swfFile}'\""
-                }
+                CreateNoWindow = true,
+                UseShellExecute = false,
+                RedirectStandardError = true,
+                FileName = Path.Combine(ffdecDir, "ffdec.sh"),
+                WorkingDirectory = ffdecDir
             };
+            psi.ArgumentList.Add("-export");
+            psi.ArgumentList.Add("script");
+            psi.ArgumentList.Add(tmpDir);
+            psi.ArgumentList.Add(swfFile);
+
+            using Process decompile = new() { StartInfo = psi };
             decompile.Start();
             string error = decompile.StandardError.ReadToEnd();
             decompile.WaitForExit();

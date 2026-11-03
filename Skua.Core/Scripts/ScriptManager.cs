@@ -443,7 +443,7 @@ public partial class ScriptManager : ObservableObject, IScriptManager, IDisposab
             throw new ScriptCompileException($"Script file '{LoadedScript}' contains no class definitions after processing includes and references. Scripts must contain at least one class.", final);
         }
 
-        StringComparer pathComparer = OperatingSystem.IsWindows() ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal;
+        StringComparer pathComparer = StringComparer.Ordinal;
         ConcurrentDictionary<string, string> sourceCache = new(pathComparer);
 
         // Recursively discover all transitive includes using single-pass BFS and populate sourceCache
@@ -587,7 +587,7 @@ public partial class ScriptManager : ObservableObject, IScriptManager, IDisposab
 
     private void DiscoverAllIncludes(HashSet<string> references, ConcurrentDictionary<string, string> sourceCache)
     {
-        StringComparer pathComparer = OperatingSystem.IsWindows() ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal;
+        StringComparer pathComparer = StringComparer.Ordinal;
         HashSet<string> visited = new(pathComparer);
         Queue<string> queue = new();
 
@@ -757,10 +757,10 @@ public partial class ScriptManager : ObservableObject, IScriptManager, IDisposab
         using MemoryStream ms = new();
         ms.Write(sourceHash, 0, sourceHash.Length);
 
-        byte[] platformBytes = Encoding.UTF8.GetBytes(OperatingSystem.IsLinux() ? "linux" : OperatingSystem.IsWindows() ? "windows" : "other");
+        byte[] platformBytes = Encoding.UTF8.GetBytes("linux");
         ms.Write(platformBytes, 0, platformBytes.Length);
 
-        foreach (string file in includedFiles.OrderBy(f => f, OperatingSystem.IsWindows() ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal))
+        foreach (string file in includedFiles.OrderBy(f => f, StringComparer.Ordinal))
         {
             if (File.Exists(file))
             {
@@ -801,7 +801,7 @@ public partial class ScriptManager : ObservableObject, IScriptManager, IDisposab
         ConcurrentDictionary<string, bool> compilationCompleted = new();
         object lockObj = new();
 
-        StringComparer pathComparer = OperatingSystem.IsWindows() ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal;
+        StringComparer pathComparer = StringComparer.Ordinal;
         ConcurrentDictionary<string, List<string>> dependencyGraph = new(pathComparer);
         ConcurrentDictionary<string, (string source, string fileName, int hash, string cachePath)> fileInfoCache = new(pathComparer);
 
@@ -1290,7 +1290,7 @@ public partial class ScriptManager : ObservableObject, IScriptManager, IDisposab
 
     private static string SanitizeScriptSourceForLinux(string source)
     {
-        if (!OperatingSystem.IsLinux() || string.IsNullOrEmpty(source))
+        if (string.IsNullOrEmpty(source))
             return source;
 
         source = source

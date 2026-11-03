@@ -33,7 +33,6 @@ namespace Skua.App.Avalonia.Views;
 
 public partial class TabbedHostWindow : Window
 {
-#if IS_LINUX
     private IntPtr SendChildMessage(TabInfo info, uint msg, IntPtr wParam, IntPtr lParam)
     {
         if (msg == (uint)WM_SKUA_CHECK_LOGIN)
@@ -48,7 +47,6 @@ public partial class TabbedHostWindow : Window
         }
         return IntPtr.Zero;
     }
-#endif
 
     #region Tab State
     private class TabInfo
@@ -155,9 +153,7 @@ public partial class TabbedHostWindow : Window
         Opened += TabbedHostWindow_Opened;
         PositionChanged += (s, e) => OnWindowPositionChanged(e.Point);
         SizeChanged += (s, e) => { ScheduleReposition(); UpdateTabScrollButtons(); };
-#if IS_LINUX
         ScalingChanged += (s, e) => Dispatcher.UIThread.Post(RepositionWithFreshCache, DispatcherPriority.Loaded);
-#endif
         
         PropertyChanged += (s, e) =>
         {
@@ -192,9 +188,7 @@ public partial class TabbedHostWindow : Window
             else if (HotKeys.ActiveChildHwnd != IntPtr.Zero)
                 PostChildMessage(HotKeys.ActiveChildHwnd, (uint)HotKeys.WM_SKUA_FOCUS, new IntPtr(1), IntPtr.Zero);
         };
-#if IS_LINUX
         StartGridFocusTracking();
-#endif
         Deactivated += (s, e) =>
         {
             CloseHostDropdowns();
@@ -473,7 +467,6 @@ public partial class TabbedHostWindow : Window
         if (process == null) return;
         try
         {
-#if IS_LINUX
             try
             {
                 using var pkill = Process.Start(new ProcessStartInfo
@@ -485,7 +478,6 @@ public partial class TabbedHostWindow : Window
                 });
             }
             catch { }
-#endif
 
             if (!process.HasExited)
             {
@@ -530,13 +522,13 @@ public partial class TabbedHostWindow : Window
         App.DisposeTrayIcon();
         try
         {
-            App.AppMutex?.ReleaseMutex();
-            App.AppMutex?.Dispose();
-            App.AppMutex = null;
+            App.HostLockStream?.Dispose();
+            App.HostLockStream = null;
+            if (System.IO.Path.IsPathRooted(App.HostPipeName) && System.IO.File.Exists(App.HostPipeName))
+                System.IO.File.Delete(App.HostPipeName);
         }
         catch { }
 
-#if IS_LINUX
         lock (_xLock)
         {
             if (_xDisplay != IntPtr.Zero)
@@ -545,7 +537,6 @@ public partial class TabbedHostWindow : Window
                 _xDisplay = IntPtr.Zero;
             }
         }
-#endif
 
         Task.Run(async () =>
         {
@@ -665,7 +656,7 @@ public partial class TabbedHostWindow : Window
                 }
             }
 
-            if (OperatingSystem.IsLinux() && System.IO.Path.IsPathRooted(App.HostPipeName))
+            if (System.IO.Path.IsPathRooted(App.HostPipeName))
             {
                 try
                 {
@@ -754,7 +745,7 @@ public partial class TabbedHostWindow : Window
                 return;
             }
 
-            string tempFile = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "skua_global_playlist.json");
+            string tempFile = System.IO.Path.Combine(ClientFileSources.TabsDIR, "skua_global_playlist.json");
             var data = m.Queue.Select(x => new ScriptSchedulerViewModel.SavedScriptItem { Path = x.Path, Id = x.Id, Name = x.Name }).ToList();
             System.IO.File.WriteAllText(tempFile, System.Text.Json.JsonSerializer.Serialize(data));
             
@@ -808,9 +799,7 @@ public partial class TabbedHostWindow : Window
         {
             _lastGridViewToggleTime = DateTime.UtcNow;
             _isGridViewEnabled = true;
-#if IS_LINUX
             _gridFocusedChild = IntPtr.Zero;
-#endif
             UpdateGridViewBorderColor();
 
             foreach (var info in _tabs.Values)
@@ -850,9 +839,7 @@ public partial class TabbedHostWindow : Window
         {
             _lastGridViewToggleTime = DateTime.UtcNow;
             _isGridViewEnabled = false;
-#if IS_LINUX
             _gridFocusedChild = IntPtr.Zero;
-#endif
             UpdateGridViewBorderColor();
 
             foreach (var info in _tabs.Values)
@@ -1122,7 +1109,7 @@ public partial class TabbedHostWindow : Window
     {
         try
         {
-            string tempFile = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "skua_global_script.txt");
+            string tempFile = System.IO.Path.Combine(ClientFileSources.TabsDIR, "skua_global_script.txt");
             System.IO.File.WriteAllText(tempFile, scriptPath);
 
             foreach (var info in _tabs.Values)
@@ -1195,7 +1182,7 @@ public partial class TabbedHostWindow : Window
             {
                 _lastJumpMap = targetMap;
                 _lastJumpCell = targetCell;
-                string tempFile = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "skua_global_jump.txt");
+                string tempFile = System.IO.Path.Combine(ClientFileSources.TabsDIR, "skua_global_jump.txt");
                 System.IO.File.WriteAllLines(tempFile, new[] { targetMap, targetCell });
                 
                 foreach (var info in _tabs.Values)
@@ -1216,7 +1203,7 @@ public partial class TabbedHostWindow : Window
             if (!string.IsNullOrWhiteSpace(targetPlayer))
             {
                 _lastJumpPlayer = targetPlayer;
-                string tempFile = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "skua_global_jump_player.txt");
+                string tempFile = System.IO.Path.Combine(ClientFileSources.TabsDIR, "skua_global_jump_player.txt");
                 System.IO.File.WriteAllText(tempFile, targetPlayer);
                 
                 foreach (var info in _tabs.Values)
@@ -1249,7 +1236,7 @@ public partial class TabbedHostWindow : Window
             if (!string.IsNullOrWhiteSpace(questId))
             {
                 _lastAcceptQuestId = questId;
-                string tempFile = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "skua_global_accept_quest.txt");
+                string tempFile = System.IO.Path.Combine(ClientFileSources.TabsDIR, "skua_global_accept_quest.txt");
                 System.IO.File.WriteAllLines(tempFile, new[] { questId, "-1" });
                 
                 foreach (var info in _tabs.Values)
@@ -1286,9 +1273,7 @@ public partial class TabbedHostWindow : Window
         {
             if (info.ChildHwnd != IntPtr.Zero)
             {
-#if IS_LINUX || !IS_WINDOWS
                 PlatformHideChild(info.ChildHwnd);
-#endif
             }
         }
 
@@ -1308,7 +1293,6 @@ public partial class TabbedHostWindow : Window
         ScheduleReposition();
     }
 
-#if IS_LINUX
     // Places the tabs now, even mid-drag.
     private void RepositionWithFreshCache()
     {
@@ -1324,7 +1308,6 @@ public partial class TabbedHostWindow : Window
         DoReposition();
         _isDraggingWindow = dragging;
     }
-#endif
 
     private void OnWindowPositionChanged(PixelPoint newPos)
     {
@@ -1413,13 +1396,11 @@ public partial class TabbedHostWindow : Window
                 return;
             }
 
-#if IS_LINUX || !IS_WINDOWS
             Point? hostPos = HostContainer.TranslatePoint(new Point(0, 0), this);
             int x = (int)(hostPos?.X ?? 0);
             int y = Math.Max((int)(hostPos?.Y ?? 68), 68);
             int w = (int)Math.Max(HostContainer.Bounds.Width > 1 ? HostContainer.Bounds.Width : Bounds.Width, 1);
             int h = (int)Math.Max(HostContainer.Bounds.Height > 1 ? HostContainer.Bounds.Height : Bounds.Height - y, 1);
-#endif
 
             if (w <= 1 || h <= 1)
             {
@@ -1486,9 +1467,7 @@ public partial class TabbedHostWindow : Window
                         Width = tileW,
                         Height = tileH
                     });
-#if IS_LINUX || !IS_WINDOWS
                     PlatformMoveResizeChild(activeWindows[i].ChildHwnd, x + tileX, y + tileY, tileW, tileH);
-#endif
 
                     if (activeWindows[i].IsThrottled)
                     {
@@ -1535,9 +1514,7 @@ public partial class TabbedHostWindow : Window
                 {
                     if (activeInfo == null || activeInfo.IsLoaded)
                     {
-#if IS_LINUX || !IS_WINDOWS
                         PlatformMoveResizeChild(activeChildHwnd, x, y, w, h, focus: true);
-#endif
 
                         if (activeInfo != null)
                         {
@@ -1548,9 +1525,7 @@ public partial class TabbedHostWindow : Window
                     }
                     else
                     {
-#if IS_LINUX || !IS_WINDOWS
                         PlatformHideChild(activeChildHwnd);
-#endif
                     }
                 }
 
@@ -1595,25 +1570,19 @@ public partial class TabbedHostWindow : Window
             int visibility;
             if (_isGridViewEnabled)
             {
-#if IS_LINUX
                 IScriptOption? options = Ioc.Default.GetService<IScriptOption>();
                 bool autoHeadlessGrid = options?.AutoHeadless == true && options.AutoHeadlessGridView;
                 bool liftFocusedGrid = autoHeadlessGrid && options!.AutoHeadlessLiftOnFocus;
                 visibility = liftFocusedGrid && _gridFocusedChild != IntPtr.Zero && info.ChildHwnd == _gridFocusedChild
                     ? 2
                     : autoHeadlessGrid ? 3 : (i == selectedGridIndex ? 2 : 3);
-#else
-                visibility = i == selectedGridIndex ? 2 : 3;
-#endif
             }
             else
             {
                 visibility = selectedTab != null && _tabs.TryGetValue(selectedTab, out TabInfo? activeInfo) && ReferenceEquals(info, activeInfo) ? 0 : 1;
             }
-#if IS_LINUX
             // The grid mapping above deliberately keeps every client headless until
             // X11 focus identifies the tile the user clicked.
-#endif
             PostChildMessage(info.ChildHwnd, HotKeys.WM_SKUA_VISIBILITY, new IntPtr(visibility), IntPtr.Zero);
         }
     }

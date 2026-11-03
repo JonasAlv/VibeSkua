@@ -171,7 +171,6 @@ public partial class MainWindow : Window
         Closing += (s, e) => App.DisposeTrayIcon();
         Closed += MainWindow_Closed;
 
-#if IS_LINUX
         Deactivated += (s, e) =>
         {
             CloseDropdowns();
@@ -183,7 +182,6 @@ public partial class MainWindow : Window
             ReleaseAllPressedKeys();
             Skua.App.Avalonia.Controls.GameHost.ForwardFocus(true);
         };
-#endif
 
         if (_options is INotifyPropertyChanged notifyOptions)
         {
@@ -195,9 +193,7 @@ public partial class MainWindow : Window
                     or nameof(IScriptOption.AutoHeadlessWhenMinimized)
                     or nameof(IScriptOption.AutoHeadlessLiftOnFocus))
                 {
-#if IS_LINUX
                     Dispatcher.UIThread.Post(EvaluateAutoHeadless);
-#endif
                 }
                 else if (e.PropertyName is nameof(IScriptOption.HeadlessMode) or Skua.Core.Scripts.ScriptOption.AutoHeadlessActiveChanged)
                 {
@@ -205,22 +201,16 @@ public partial class MainWindow : Window
                     {
                         // Turning manual headless off also releases an automatic headless hold.
                         // Otherwise a tab can remain hidden after it becomes visible again.
-#if IS_LINUX
                         if (e.PropertyName == nameof(IScriptOption.HeadlessMode) && !_options.HeadlessMode)
                         {
                             _autoHeadlessHeld = false;
                             EvaluateAutoHeadless();
                         }
-#endif
                         bool isHeadless = _options.IsHeadlessNow();
                         if (HeadlessOverlay != null) HeadlessOverlay.IsVisible = isHeadless;
                         if (FlashHost != null)
                         {
-#if IS_LINUX
                             FlashHost.IsVisible = !isHeadless && _isFlashLoaded;
-#else
-                            FlashHost.IsVisible = !isHeadless && _isFlashLoaded;
-#endif
                         }
                     });
                 }
@@ -255,7 +245,6 @@ public partial class MainWindow : Window
         }
         catch { }
 
-#if IS_LINUX
         Focusable = true;
         InitializeLinuxInput();
 
@@ -271,7 +260,6 @@ public partial class MainWindow : Window
             player.ParentWindow = FlashHost?.WindowHandle ?? 0;
         _flash.InitializeFlash();
         TabIpc.StartListener(this, Environment.ProcessId, _ipcCancelCts.Token);
-#endif
 
         _tabTitleSyncTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
         string lastWrittenUsername = "";
@@ -316,28 +304,4 @@ public partial class MainWindow : Window
         StrongReferenceMessenger.Default.UnregisterAll(this);
         WeakReferenceMessenger.Default.UnregisterAll(this);
     }
-
-#if !IS_LINUX
-    private void OnFlashCall(string function, params object[] args)
-    {
-        if (function == "loaded" && !_isFlashLoaded)
-        {
-            _isFlashLoaded = true;
-            Dispatcher.UIThread.Post(() =>
-            {
-                LoadingBar.IsVisible = false;
-                bool isHeadless = _options.IsHeadlessNow();
-                FlashHost.Opacity = isHeadless ? 0 : 1;
-                FlashHost.IsVisible = true;
-                HeadlessOverlay.IsVisible = isHeadless;
-                try
-                {
-                    FlashHost?.SetScaleMode(false);
-                    _flash.Call("setGameObject", "stage.scaleMode", "showAll");
-                }
-                catch { }
-            });
-        }
-    }
-#endif
 }

@@ -230,7 +230,7 @@ public class FlashUtil : IFlashUtil, IRestartableGamePlayer
             return false;
         }
 
-        if (OperatingSystem.IsLinux() && File.Exists("/proc/net/tcp"))
+        if (File.Exists("/proc/net/tcp"))
         {
             if (!VerifyLinuxLoopbackPeer(remoteEp.Port, localEp.Port, expectedPid))
                 return false;

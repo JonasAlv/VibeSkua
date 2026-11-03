@@ -1,4 +1,3 @@
-#if IS_LINUX
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Threading;
@@ -214,4 +213,3 @@ public partial class TabbedHostWindow : Window
     }
     #endregion
 }
-#endif

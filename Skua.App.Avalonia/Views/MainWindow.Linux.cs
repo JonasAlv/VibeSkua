@@ -1,4 +1,3 @@
-#if IS_LINUX
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
 using Avalonia.Input;
@@ -396,7 +395,7 @@ public partial class MainWindow : Window
             {
                 try 
                 {
-                    string tempFile = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "skua_global_jump.txt");
+                    string tempFile = System.IO.Path.Combine(ClientFileSources.TabsDIR, "skua_global_jump.txt");
                     if (System.IO.File.Exists(tempFile))
                     {
                         string[] lines = System.IO.File.ReadAllLines(tempFile);
@@ -427,7 +426,7 @@ public partial class MainWindow : Window
             {
                 try 
                 {
-                    string tempFile = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "skua_global_jump_player.txt");
+                    string tempFile = System.IO.Path.Combine(ClientFileSources.TabsDIR, "skua_global_jump_player.txt");
                     if (System.IO.File.Exists(tempFile))
                     {
                         string targetPlayer = System.IO.File.ReadAllText(tempFile)?.Trim() ?? "";
@@ -458,7 +457,7 @@ public partial class MainWindow : Window
             {
                 try 
                 {
-                    string tempFile = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "skua_global_script.txt");
+                    string tempFile = System.IO.Path.Combine(ClientFileSources.TabsDIR, "skua_global_script.txt");
                     if (System.IO.File.Exists(tempFile))
                     {
                         string targetScript = System.IO.File.ReadAllText(tempFile);
@@ -521,7 +520,7 @@ public partial class MainWindow : Window
             {
                 try 
                 {
-                    string tempFile = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "skua_global_playlist.json");
+                    string tempFile = System.IO.Path.Combine(ClientFileSources.TabsDIR, "skua_global_playlist.json");
                     if (System.IO.File.Exists(tempFile))
                     {
                         var data = System.Text.Json.JsonSerializer.Deserialize<System.Collections.Generic.List<Skua.Shared.Avalonia.ViewModels.ScriptSchedulerViewModel.SavedScriptItem>>(System.IO.File.ReadAllText(tempFile));
@@ -573,7 +572,7 @@ public partial class MainWindow : Window
             {
                 try 
                 {
-                    string tempFile = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "skua_global_accept_quest.txt");
+                    string tempFile = System.IO.Path.Combine(ClientFileSources.TabsDIR, "skua_global_accept_quest.txt");
                     if (System.IO.File.Exists(tempFile))
                     {
                         string[] lines = System.IO.File.ReadAllLines(tempFile);
@@ -732,4 +731,3 @@ public partial class MainWindow : Window
     }
 
 }
-#endif

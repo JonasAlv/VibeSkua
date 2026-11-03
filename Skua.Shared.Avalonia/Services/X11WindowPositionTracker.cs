@@ -47,9 +47,6 @@ public static class X11WindowPositionTracker
 
     static X11WindowPositionTracker()
     {
-        if (!OperatingSystem.IsLinux())
-            return;
-
         try
         {
             foreach (var asm in AppDomain.CurrentDomain.GetAssemblies())
@@ -95,9 +92,6 @@ public static class X11WindowPositionTracker
     /// </summary>
     public static void Track(Window window)
     {
-        if (!OperatingSystem.IsLinux())
-            return;
-
         // Track can be called by more than one window/service setup path. Do not
         // attach another set of handlers and another timer to an already tracked
         // window; duplicate timers can cause visible popup jitter under XWayland.
@@ -175,9 +169,6 @@ public static class X11WindowPositionTracker
     /// </summary>
     public static void SyncPosition(Window window)
     {
-        if (!OperatingSystem.IsLinux())
-            return;
-
         try
         {
             var platformImpl = window.PlatformImpl;

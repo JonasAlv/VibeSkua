@@ -34,7 +34,7 @@ public class GameHost : NativeControlHost
     {
         get
         {
-            if (_holder == 0 && OperatingSystem.IsLinux())
+            if (_holder == 0)
             {
                 try
                 {

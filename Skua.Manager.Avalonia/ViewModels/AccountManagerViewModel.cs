@@ -751,8 +751,6 @@ public sealed partial class AccountManagerViewModel : BotControlViewModelBase
     private volatile bool _pendingReload = false;
     private int _isSavingInternalCounter = 0;
     private FileSystemWatcher? _settingsWatcher;
-    private RegisteredWaitHandle? _registeredWaitHandle;
-    private EventWaitHandle? _globalNotifyEvent;
     private CancellationTokenSource? _reloadDebounceCts;
     private readonly object _reloadLock = new();
 
@@ -804,23 +802,7 @@ public sealed partial class AccountManagerViewModel : BotControlViewModelBase
     {
         try
         {
-            // 1. Cross-process instant signaling via named EventWaitHandle
-            try
-            {
-                _globalNotifyEvent = new EventWaitHandle(false, EventResetMode.AutoReset, @"Global\VibeSkua.Settings.Changed");
-                _registeredWaitHandle = ThreadPool.RegisterWaitForSingleObject(
-                    _globalNotifyEvent,
-                    (state, timedOut) =>
-                    {
-                        ScheduleReload();
-                    },
-                    null,
-                    -1,
-                    false);
-            }
-            catch { }
-
-            // 2. FileSystemWatcher watching all write/create/rename events in Skua directory
+            // FileSystemWatcher watching all write/create/rename events in Skua directory
             string dir = ClientFileSources.SkuaDIR;
             if (Directory.Exists(dir))
             {

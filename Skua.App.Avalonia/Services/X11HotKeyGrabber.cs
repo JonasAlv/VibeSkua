@@ -8,8 +8,8 @@ using System.Threading;
 namespace Skua.App.Avalonia.Services;
 
 /// <summary>
-/// Linux hotkeys. The game runs in the player's own X11 window inside Bonxie's, and while it has the keyboard
-/// focus Avalonia never sees a key press. XGrabKey on Bonxie's window makes the X server send the hotkeys to us
+/// Linux hotkeys. The game runs in the player's own X11 window inside VibeSkua's, and while it has the keyboard
+/// focus Avalonia never sees a key press. XGrabKey on VibeSkua's window makes the X server send the hotkeys to us
 /// whenever the focus is in that window or in any window inside it (the game included), and to nobody else;
 /// other programs keep their keys.
 /// </summary>
@@ -221,7 +221,7 @@ internal sealed class X11HotKeyGrabber : IDisposable
         finally
         {
             Marshal.FreeHGlobal(xevent);
-            // Close first: closing syncs, and errors it reports (e.g. BadWindow if Bonxie's window is already
+            // Close first: closing syncs, and errors it reports (e.g. BadWindow if VibeSkua's window is already
             // gone) must still be recognized as ours.
             XCloseDisplay(display);
             lock (s_ownDisplays)
