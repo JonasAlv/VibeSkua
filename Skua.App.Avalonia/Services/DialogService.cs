@@ -440,8 +440,7 @@ public class DialogService : IDialogService
                 return bot.Servers.CachedUsername.Trim();
 
             string? envUser = Environment.GetEnvironmentVariable("SKUA_USERNAME")
-                ?? Environment.GetEnvironmentVariable("VIBESKUA_USERNAME")
-                ?? Environment.GetEnvironmentVariable("BONXIE_USERNAME");
+                ?? Environment.GetEnvironmentVariable("VIBESKUA_USERNAME");
             if (!string.IsNullOrWhiteSpace(envUser))
                 return envUser.Trim();
 
