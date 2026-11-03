@@ -33,6 +33,10 @@ public class ClientFilesService : IClientFilesService
             if (!Directory.Exists(ClientFileSources.SkuaThemesDIR))
                 Directory.CreateDirectory(ClientFileSources.SkuaThemesDIR);
         }
+
+        ClientFileSources.RestrictDirectoryPermissions(ClientFileSources.SkuaDIR);
+        ClientFileSources.RestrictDirectoryPermissions(ClientFileSources.ManagerDIR);
+        ClientFileSources.RestrictDirectoryPermissions(ClientFileSources.SkuaOptionsDIR);
     }
 
     public void CreateFiles()

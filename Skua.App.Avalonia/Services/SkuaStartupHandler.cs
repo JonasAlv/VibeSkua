@@ -77,7 +77,7 @@ public sealed class SkuaStartupHandler : IDisposable
                     if (accounts != null && accounts.TryGetValue(_options.Username!, out var acc) && !string.IsNullOrWhiteSpace(acc.Password))
                     {
                         password = acc.Password;
-                        if (password.StartsWith("enc:"))
+                        if (Skua.Core.Utils.CryptoUtils.IsEncrypted(password))
                             password = Skua.Core.Utils.CryptoUtils.Decrypt(password);
                     }
                 }

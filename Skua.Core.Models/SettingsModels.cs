@@ -95,7 +95,7 @@ public class AccountDataDictionaryJsonConverter : JsonConverter<Dictionary<strin
         {
             writer.WritePropertyName(kvp.Key);
             string password = kvp.Value.Password ?? string.Empty;
-            if (!string.IsNullOrEmpty(password) && !password.StartsWith("enc:"))
+            if (!string.IsNullOrEmpty(password) && !password.StartsWith("enc2:", StringComparison.Ordinal))
                 password = Skua.Core.Utils.CryptoUtils.Encrypt(password);
 
             AccountData plainData = new()
@@ -108,6 +108,32 @@ public class AccountDataDictionaryJsonConverter : JsonConverter<Dictionary<strin
             JsonSerializer.Serialize(writer, plainData, options);
         }
         writer.WriteEndObject();
+    }
+}
+
+public class EncryptedStringJsonConverter : JsonConverter<string>
+{
+    public override string Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+    {
+        if (reader.TokenType == JsonTokenType.Null)
+            return string.Empty;
+
+        string? raw = reader.GetString();
+        return string.IsNullOrEmpty(raw) ? string.Empty : Skua.Core.Utils.CryptoUtils.Decrypt(raw);
+    }
+
+    public override void Write(Utf8JsonWriter writer, string value, JsonSerializerOptions options)
+    {
+        if (string.IsNullOrEmpty(value))
+        {
+            writer.WriteStringValue(string.Empty);
+            return;
+        }
+
+        string encrypted = value.StartsWith("enc2:", StringComparison.Ordinal)
+            ? value
+            : Skua.Core.Utils.CryptoUtils.Encrypt(value);
+        writer.WriteStringValue(encrypted);
     }
 }
 
@@ -163,6 +189,7 @@ public class SharedSettings
     public string CurrentTheme { get; set; } = "Skua,Dark,#FF607D8B,#FF607D8B,#FF000000,#FF000000,true,4.5,Medium,All";
 
     [JsonPropertyName("UserGitHubToken")]
+    [JsonConverter(typeof(EncryptedStringJsonConverter))]
     public string UserGitHubToken { get; set; } = string.Empty;
 
     [JsonPropertyName("UserCustomScriptsFolder")]
@@ -248,9 +275,11 @@ public class ClientSettings
     public StringCollection UserPinnedScripts { get; set; } = new();
 
     [JsonPropertyName("DiscordWebhookUrl")]
+    [JsonConverter(typeof(EncryptedStringJsonConverter))]
     public string DiscordWebhookUrl { get; set; } = string.Empty;
 
     [JsonPropertyName("NexusWebhookUrl")]
+    [JsonConverter(typeof(EncryptedStringJsonConverter))]
     public string NexusWebhookUrl { get; set; } = string.Empty;
 
     [JsonPropertyName("WebhookNotifyStarted")]

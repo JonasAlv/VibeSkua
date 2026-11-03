@@ -137,12 +137,15 @@ internal sealed partial class LogFileWriter : IDisposable
         try
         {
             Directory.CreateDirectory(_directory);
+            ClientFileSources.RestrictDirectoryPermissions(_directory);
             if (!_cleanedUp)
             {
                 _cleanedUp = true;
                 DeleteOldFiles();
             }
-            File.AppendAllText(CurrentFile(), text, Encoding.UTF8);
+            string currentLogPath = CurrentFile();
+            File.AppendAllText(currentLogPath, text, Encoding.UTF8);
+            ClientFileSources.RestrictFilePermissions(currentLogPath);
         }
         catch (IOException)
         {

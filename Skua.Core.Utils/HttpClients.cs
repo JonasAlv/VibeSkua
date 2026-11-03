@@ -1,4 +1,4 @@
-﻿using System.Net;
+using System.Net;
 using System.Net.Http.Headers;
 
 namespace Skua.Core.Utils;
@@ -12,12 +12,25 @@ public class WebClient : HttpClient
     private readonly string _authString2 = Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes("449f889db3d655d2ef4a:27863d426bc5bb46c410daf7ed6b479ba4a9f7eb"));
 
     /// <param name="accJson"></param>
-    public WebClient(bool accJson) : base(CreateHttpClientHandler())
+    public WebClient(bool accJson) : this(accJson, includeGitHubAuth: true)
     {
-        DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", _authString2);
+    }
+
+    /// <param name="accJson"></param>
+    /// <param name="includeGitHubAuth"></param>
+    public WebClient(bool accJson, bool includeGitHubAuth) : base(CreateHttpClientHandler())
+    {
+        if (includeGitHubAuth)
+        {
+            DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", _authString2);
+            DefaultRequestHeaders.UserAgent.ParseAdd("Skua");
+        }
+        else
+        {
+            DefaultRequestHeaders.UserAgent.ParseAdd("Mozilla/5.0");
+        }
         if (accJson)
             DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
-        DefaultRequestHeaders.UserAgent.ParseAdd("Skua");
         Timeout = TimeSpan.FromSeconds(60);
     }
 
@@ -65,9 +78,9 @@ public static class HttpClients
     public static WebClient? UserGitHubClient { get; set; } = null;
 
     /// <summary>
-    /// Gets the Map Client
+    /// Gets the Map and AQW Content Client (no GitHub credentials attached)
     /// </summary>
-    public static WebClient GetAQContent { get; set; } = new(false);
+    public static WebClient GetAQContent { get; set; } = new(false, includeGitHubAuth: false);
 
     /// <summary>
     /// Default HttpClient

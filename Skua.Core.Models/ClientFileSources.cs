@@ -28,6 +28,32 @@ public static class ClientFileSources
     public static string SkuaScriptsCacheFile { get; } = Path.Combine(SkuaDIR, "scripts_cache.json");
     public static string SkuaJunkItemsFile { get; } = Path.Combine(SkuaScriptsDIR, "JunkItems.json");
 
+    public static void RestrictDirectoryPermissions(string path)
+    {
+        if (!OperatingSystem.IsLinux() || string.IsNullOrWhiteSpace(path))
+            return;
+
+        try
+        {
+            if (Directory.Exists(path))
+                File.SetUnixFileMode(path, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
+        }
+        catch { }
+    }
+
+    public static void RestrictFilePermissions(string path)
+    {
+        if (!OperatingSystem.IsLinux() || string.IsNullOrWhiteSpace(path))
+            return;
+
+        try
+        {
+            if (File.Exists(path))
+                File.SetUnixFileMode(path, UnixFileMode.UserRead | UnixFileMode.UserWrite);
+        }
+        catch { }
+    }
+
     public static string TabsDIR
     {
         get
@@ -38,20 +64,16 @@ public static class ClientFileSources
                 if (!string.IsNullOrWhiteSpace(xdgRuntime) && Directory.Exists(xdgRuntime))
                 {
                     string dir = Path.Combine(xdgRuntime, "VibeSkuaTabs");
-                    if (!Directory.Exists(dir))
-                    {
-                        Directory.CreateDirectory(dir);
-                        try { File.SetUnixFileMode(dir, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute); } catch { }
-                    }
+                    Directory.CreateDirectory(dir);
+                    RestrictDirectoryPermissions(dir);
                     return dir;
                 }
-                string userTemp = Path.Combine(Path.GetTempPath(), $"VibeSkuaTabs-{Environment.UserName}");
-                if (!Directory.Exists(userTemp))
-                {
-                    Directory.CreateDirectory(userTemp);
-                    try { File.SetUnixFileMode(userTemp, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute); } catch { }
-                }
-                return userTemp;
+                string fallbackRunDir = Path.Combine(SkuaDIR, "run");
+                Directory.CreateDirectory(SkuaDIR);
+                RestrictDirectoryPermissions(SkuaDIR);
+                Directory.CreateDirectory(fallbackRunDir);
+                RestrictDirectoryPermissions(fallbackRunDir);
+                return fallbackRunDir;
             }
             string winTemp = Path.Combine(Path.GetTempPath(), "VibeSkuaTabs");
             if (!Directory.Exists(winTemp))
@@ -107,6 +129,7 @@ public static class ClientFileSources
                         if (stillNotMigrated)
                         {
                             Directory.CreateDirectory(vibeSkuaDir);
+                            RestrictDirectoryPermissions(vibeSkuaDir);
 
                             if (Directory.Exists(legacySkuaDir))
                             {
@@ -116,6 +139,7 @@ public static class ClientFileSources
                             try
                             {
                                 File.WriteAllText(migrationMarker, DateTime.UtcNow.ToString("o"));
+                                RestrictFilePermissions(migrationMarker);
                             }
                             catch
                             {
@@ -127,6 +151,10 @@ public static class ClientFileSources
                         if (hasHandle)
                             migrationMutex.ReleaseMutex();
                     }
+                }
+                else
+                {
+                    RestrictDirectoryPermissions(vibeSkuaDir);
                 }
             }
             catch

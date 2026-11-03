@@ -205,7 +205,7 @@ public partial class ScriptServers : ObservableRecipient, IScriptServers
 
         try
         {
-            string response = await ValidatedHttpExtensions.GetStringAsync(HttpClients.GetGHClient()
+            string response = await ValidatedHttpExtensions.GetStringAsync(HttpClients.GetAQContent
 , $"https://content.aq.com/game/api/data/servers")
                 .ConfigureAwait(false);
 

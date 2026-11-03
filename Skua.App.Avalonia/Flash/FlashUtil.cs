@@ -17,6 +17,7 @@ using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Sockets;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -38,10 +39,18 @@ public class FlashUtil : IFlashUtil, IRestartableGamePlayer
     private readonly Lazy<IScriptManager> _lazyManager;
     private readonly ConcurrentDictionary<int, TaskCompletionSource<JObject>> _pending = new();
     private readonly object _sendLock = new();
+    private readonly object _playerLock = new();
     private TcpListener? _listener;
     private Process? _player;
+    private int _acceptedPlayerPid;
     private StreamWriter? _bridge;
     private int _nextId;
+
+    [DllImport("libc", SetLastError = true)]
+    private static extern uint geteuid();
+
+    [DllImport("libc", SetLastError = true)]
+    private static extern nint readlink(string path, byte[] buf, nuint bufsiz);
 
     public FlashUtil(IMessenger messenger, Lazy<IScriptManager> manager)
     {
@@ -158,19 +167,33 @@ public class FlashUtil : IFlashUtil, IRestartableGamePlayer
             start.Environment.Remove("WAYLAND_SOCKET");
         }
         start.ArgumentList.Add(SwfPath);
-        _player = Process.Start(start);
+        Process proc = new() { StartInfo = start };
+        lock (_playerLock)
+        {
+            if (!proc.Start())
+                throw new InvalidOperationException("Failed to start game player.");
+            _player = proc;
+            _acceptedPlayerPid = 0;
+        }
     }
 
     private void StopPlayer()
     {
+        Process? oldPlayer;
+        lock (_playerLock)
+        {
+            oldPlayer = _player;
+            _player = null;
+            _acceptedPlayerPid = 0;
+        }
+
         try
         {
-            if (_player is { HasExited: false })
-                _player.Kill(entireProcessTree: true);
+            if (oldPlayer is { HasExited: false })
+                oldPlayer.Kill(entireProcessTree: true);
         }
         catch { /* already gone */ }
-        _player?.Dispose();
-        _player = null;
+        oldPlayer?.Dispose();
     }
 
     private async Task AcceptLoopAsync()
@@ -190,10 +213,115 @@ public class FlashUtil : IFlashUtil, IRestartableGamePlayer
         }
     }
 
+    private bool TryAuthorizeBridgeClient(TcpClient client)
+    {
+        int expectedPid;
+        lock (_playerLock)
+        {
+            if (_player is not { HasExited: false } activePlayer || _acceptedPlayerPid == activePlayer.Id)
+                return false;
+            expectedPid = activePlayer.Id;
+        }
+
+        if (client.Client.RemoteEndPoint is not IPEndPoint remoteEp ||
+            client.Client.LocalEndPoint is not IPEndPoint localEp ||
+            !IPAddress.IsLoopback(remoteEp.Address))
+        {
+            return false;
+        }
+
+        if (OperatingSystem.IsLinux() && File.Exists("/proc/net/tcp"))
+        {
+            if (!VerifyLinuxLoopbackPeer(remoteEp.Port, localEp.Port, expectedPid))
+                return false;
+        }
+
+        lock (_playerLock)
+        {
+            if (_player is not { HasExited: false } currentPlayer ||
+                currentPlayer.Id != expectedPid ||
+                _acceptedPlayerPid != 0)
+            {
+                return false;
+            }
+
+            _acceptedPlayerPid = expectedPid;
+            return true;
+        }
+    }
+
+    private static bool VerifyLinuxLoopbackPeer(int clientPort, int serverPort, int expectedPid)
+    {
+        try
+        {
+            string expectedLocal = $"0100007F:{clientPort:X4}";
+            string expectedRem = $"0100007F:{serverPort:X4}";
+            uint currentUid = geteuid();
+            string? matchedInode = null;
+
+            foreach (string line in File.ReadLines("/proc/net/tcp").Skip(1))
+            {
+                string[] parts = line.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+                if (parts.Length < 10)
+                    continue;
+
+                if (string.Equals(parts[1], expectedLocal, StringComparison.OrdinalIgnoreCase) &&
+                    string.Equals(parts[2], expectedRem, StringComparison.OrdinalIgnoreCase))
+                {
+                    if (!uint.TryParse(parts[7], NumberStyles.Integer, CultureInfo.InvariantCulture, out uint peerUid) ||
+                        peerUid != currentUid)
+                    {
+                        return false;
+                    }
+
+                    matchedInode = parts[9];
+                    break;
+                }
+            }
+
+            if (string.IsNullOrEmpty(matchedInode) || matchedInode == "0")
+                return false;
+
+            string fdDir = $"/proc/{expectedPid}/fd";
+            if (Directory.Exists(fdDir))
+            {
+                string expectedTarget = $"socket:[{matchedInode}]";
+                byte[] buf = new byte[128];
+                try
+                {
+                    foreach (string fdEntry in Directory.EnumerateFileSystemEntries(fdDir))
+                    {
+                        nint len = readlink(fdEntry, buf, (nuint)buf.Length);
+                        if (len > 0 && Encoding.ASCII.GetString(buf, 0, (int)len) == expectedTarget)
+                            return true;
+                    }
+                    return false;
+                }
+                catch (UnauthorizedAccessException)
+                {
+                    // Fall back to UID + single-client PID gate if /proc/<pid>/fd enumeration is restricted.
+                    return true;
+                }
+            }
+
+            return true;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
     private async Task RunBridgeAsync(TcpClient client)
     {
         using (client)
         {
+            if (!TryAuthorizeBridgeClient(client))
+            {
+                Trace.WriteLine("Rejected unauthorized connection to Flash bridge.");
+                return;
+            }
+
             client.NoDelay = true;
             NetworkStream stream = client.GetStream();
             StreamWriter writer = new(stream, new UTF8Encoding(false)) { AutoFlush = true, NewLine = "\n" };
@@ -314,7 +442,12 @@ public class FlashUtil : IFlashUtil, IRestartableGamePlayer
         catch (Exception e)
         {
             if (function != "isKicked")
-                _messenger.Send<FlashErrorMessage>(new(e, function, args));
+            {
+                object[] safeArgs = string.Equals(function, "login", StringComparison.OrdinalIgnoreCase)
+                    ? args.Select((a, idx) => idx > 0 ? (object)"***" : a).ToArray()
+                    : args;
+                _messenger.Send<FlashErrorMessage>(new(e, function, safeArgs));
+            }
             return default!;
         }
     }

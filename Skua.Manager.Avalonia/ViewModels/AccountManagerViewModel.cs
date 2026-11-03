@@ -911,7 +911,7 @@ public sealed partial class AccountManagerViewModel : BotControlViewModelBase
         foreach (KeyValuePair<string, AccountData> kvp in accs)
         {
             string password = kvp.Value.Password ?? string.Empty;
-            if (password.StartsWith("enc:"))
+            if (Skua.Core.Utils.CryptoUtils.IsEncrypted(password))
                 password = Skua.Core.Utils.CryptoUtils.Decrypt(password);
 
             IAccountItemViewModel? existing = Accounts.FirstOrDefault(a => a.Username.Equals(kvp.Key, StringComparison.OrdinalIgnoreCase));
@@ -1027,7 +1027,7 @@ public sealed partial class AccountManagerViewModel : BotControlViewModelBase
     {
         try
         {
-            string response = await ValidatedHttpExtensions.GetStringAsync(HttpClients.GetGHClient()
+            string response = await ValidatedHttpExtensions.GetStringAsync(HttpClients.GetAQContent
 , $"https://content.aq.com/game/api/data/servers");
 
             List<Server>? servers = JsonConvert.DeserializeObject<List<Server>>(response);

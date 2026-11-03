@@ -15,18 +15,99 @@ public class UnifiedSettingsService
     private SettingsRoot _root = SettingsRoot.CreateDefaults();
     private AppRole _currentRole;
     private bool _initialized = false;
-    private readonly Mutex _fileMutex;
+    private readonly Mutex? _fileMutex;
+    private readonly string _lockFilePath;
+    private FileStream? _heldLockStream;
+    private int _heldLockDepth;
 
     public UnifiedSettingsService()
     {
         ClientFileSources.EnsureInitialized();
         _clientSettingsFile = Path.Combine(ClientFileSources.SkuaDIR, "ClientSettings.json");
         _managerSettingsFile = Path.Combine(ClientFileSources.ManagerDIR, "ManagerSettings.json");
+        _lockFilePath = Path.Combine(ClientFileSources.SkuaDIR, ".settings.lock");
 
         Directory.CreateDirectory(ClientFileSources.SkuaDIR);
+        ClientFileSources.RestrictDirectoryPermissions(ClientFileSources.SkuaDIR);
         Directory.CreateDirectory(ClientFileSources.ManagerDIR);
+        ClientFileSources.RestrictDirectoryPermissions(ClientFileSources.ManagerDIR);
 
-        _fileMutex = new Mutex(false, @"Global\VibeSkua.Settings.IO");
+        if (!OperatingSystem.IsLinux())
+            _fileMutex = new Mutex(false, @"Global\VibeSkua.Settings.IO");
+    }
+
+    private bool AcquireSettingsLock()
+    {
+        if (_heldLockDepth > 0)
+        {
+            _heldLockDepth++;
+            return true;
+        }
+
+        if (OperatingSystem.IsLinux())
+        {
+            DateTime deadline = DateTime.UtcNow.AddSeconds(5);
+            while (true)
+            {
+                try
+                {
+                    Directory.CreateDirectory(ClientFileSources.SkuaDIR);
+                    ClientFileSources.RestrictDirectoryPermissions(ClientFileSources.SkuaDIR);
+                    _heldLockStream = new FileStream(_lockFilePath, FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None);
+                    ClientFileSources.RestrictFilePermissions(_lockFilePath);
+                    _heldLockDepth = 1;
+                    return true;
+                }
+                catch (IOException) when (DateTime.UtcNow < deadline)
+                {
+                    Thread.Sleep(15);
+                }
+                catch
+                {
+                    return false;
+                }
+            }
+        }
+
+        if (_fileMutex is null)
+            return false;
+
+        try
+        {
+            if (_fileMutex.WaitOne(TimeSpan.FromSeconds(5)))
+            {
+                _heldLockDepth = 1;
+                return true;
+            }
+        }
+        catch (AbandonedMutexException)
+        {
+            _heldLockDepth = 1;
+            return true;
+        }
+        catch { }
+
+        return false;
+    }
+
+    private void ReleaseSettingsLock(bool acquired)
+    {
+        if (!acquired || _heldLockDepth <= 0)
+            return;
+
+        _heldLockDepth--;
+        if (_heldLockDepth > 0)
+            return;
+
+        if (OperatingSystem.IsLinux())
+        {
+            try { _heldLockStream?.Dispose(); } catch { }
+            _heldLockStream = null;
+        }
+        else
+        {
+            try { _fileMutex?.ReleaseMutex(); } catch { }
+        }
     }
 
     public void Initialize(AppRole role)
@@ -37,10 +118,11 @@ public class UnifiedSettingsService
                 return;
 
             _currentRole = role;
+            bool acquired = false;
 
             try
             {
-                _fileMutex.WaitOne();
+                acquired = AcquireSettingsLock();
 
                 if (!File.Exists(ClientFileSources.SkuaSettingsDIR))
                 {
@@ -65,7 +147,7 @@ public class UnifiedSettingsService
             }
             finally
             {
-                _fileMutex.ReleaseMutex();
+                ReleaseSettingsLock(acquired);
             }
         }
     }
@@ -222,7 +304,12 @@ public class UnifiedSettingsService
             string backupFile = ClientFileSources.SkuaSettingsDIR + ".bak";
             if (File.Exists(ClientFileSources.SkuaSettingsDIR) && !File.Exists(backupFile))
             {
-                try { File.Copy(ClientFileSources.SkuaSettingsDIR, backupFile, overwrite: false); } catch { }
+                try
+                {
+                    File.Copy(ClientFileSources.SkuaSettingsDIR, backupFile, overwrite: false);
+                    ClientFileSources.RestrictFilePermissions(backupFile);
+                }
+                catch { }
             }
 
             if (clientExists)
@@ -535,15 +622,18 @@ public class UnifiedSettingsService
 
     private void SaveSettings()
     {
+        bool acquired = false;
         try
         {
-            _fileMutex.WaitOne();
+            acquired = AcquireSettingsLock();
 
+            ClientFileSources.RestrictDirectoryPermissions(ClientFileSources.SkuaDIR);
             string tempFile = ClientFileSources.SkuaSettingsDIR + ".tmp";
 
             JsonSerializerOptions options = GetJsonOptions();
             string json = JsonSerializer.Serialize(_root, options);
             File.WriteAllText(tempFile, json);
+            ClientFileSources.RestrictFilePermissions(tempFile);
 
             if (File.Exists(ClientFileSources.SkuaSettingsDIR))
             {
@@ -551,14 +641,18 @@ public class UnifiedSettingsService
             }
 
             File.Move(tempFile, ClientFileSources.SkuaSettingsDIR, overwrite: true);
+            ClientFileSources.RestrictFilePermissions(ClientFileSources.SkuaSettingsDIR);
 
-            // Signal cross-process settings change event
-            try
+            // Signal cross-process settings change event (Windows named EventWaitHandle)
+            if (!OperatingSystem.IsLinux())
             {
-                using EventWaitHandle notifyEvent = new(false, EventResetMode.AutoReset, @"Global\VibeSkua.Settings.Changed");
-                notifyEvent.Set();
+                try
+                {
+                    using EventWaitHandle notifyEvent = new(false, EventResetMode.AutoReset, @"Global\VibeSkua.Settings.Changed");
+                    notifyEvent.Set();
+                }
+                catch { }
             }
-            catch { }
         }
         catch (Exception ex)
         {
@@ -566,7 +660,7 @@ public class UnifiedSettingsService
         }
         finally
         {
-            _fileMutex.ReleaseMutex();
+            ReleaseSettingsLock(acquired);
         }
     }
 
@@ -629,6 +723,7 @@ public class UnifiedSettingsService
             {
                 string backupPath = ClientFileSources.SkuaSettingsDIR + ".corrupt";
                 File.Copy(ClientFileSources.SkuaSettingsDIR, backupPath, overwrite: true);
+                ClientFileSources.RestrictFilePermissions(backupPath);
                 File.Delete(ClientFileSources.SkuaSettingsDIR);
             }
         }
@@ -676,20 +771,22 @@ public class UnifiedSettingsService
     {
         lock (_lock)
         {
+            bool acquired = false;
             try
             {
-                _fileMutex.WaitOne();
+                acquired = AcquireSettingsLock();
                 LoadSettings();
             }
             finally
             {
-                _fileMutex.ReleaseMutex();
+                ReleaseSettingsLock(acquired);
             }
         }
     }
 
     public void Dispose()
     {
+        try { _heldLockStream?.Dispose(); } catch { }
         _fileMutex?.Dispose();
     }
 }

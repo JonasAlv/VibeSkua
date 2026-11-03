@@ -6,6 +6,7 @@ using System.Formats.Tar;
 using System.IO;
 using System.IO.Compression;
 using System.Net.Http;
+using System.Security.Cryptography;
 using System.Text.Json;
 using System.Threading.Tasks;
 using Skua.Core.Interfaces;
@@ -38,6 +39,8 @@ public partial class AppUpdaterViewModel : ObservableObject
     private int _progressValue;
 
     private string? _remoteDownloadUrl;
+    private string? _remoteAssetDigest;
+    private string? _remoteChecksumUrl;
     private string? _remoteTagName;
     private long _assetSize;
 
@@ -52,6 +55,8 @@ public partial class AppUpdaterViewModel : ObservableObject
         });
 
         _remoteDownloadUrl = null;
+        _remoteAssetDigest = null;
+        _remoteChecksumUrl = null;
         _remoteTagName = null;
         _assetSize = 0;
 
@@ -108,10 +113,20 @@ public partial class AppUpdaterViewModel : ObservableObject
                         _remoteDownloadUrl = asset.TryGetProperty("browser_download_url", out JsonElement urlEl)
                             ? urlEl.GetString()
                             : null;
+                        _remoteAssetDigest = asset.TryGetProperty("digest", out JsonElement digestEl)
+                            ? digestEl.GetString()
+                            : null;
                         _assetSize = asset.TryGetProperty("size", out JsonElement sizeEl)
                             ? sizeEl.GetInt64()
                             : 0;
-                        break;
+                    }
+                    else if (name.Equals(TarAssetName + ".sha256", StringComparison.OrdinalIgnoreCase) ||
+                             name.Equals("SHA256SUMS", StringComparison.OrdinalIgnoreCase) ||
+                             name.Equals("checksums.txt", StringComparison.OrdinalIgnoreCase))
+                    {
+                        _remoteChecksumUrl = asset.TryGetProperty("browser_download_url", out JsonElement csUrlEl)
+                            ? csUrlEl.GetString()
+                            : null;
                     }
                 }
             }
@@ -191,13 +206,17 @@ public partial class AppUpdaterViewModel : ObservableObject
             ProgressValue = 0;
         });
 
-        string tempDir = Path.Combine(Path.GetTempPath(), "VibeSkuaUpdate_" + Guid.NewGuid().ToString("N")[..8]);
+        string updatesRoot = Path.Combine(ClientFileSources.SkuaDIR, ".updates");
+        string tempDir = Path.Combine(updatesRoot, "update_" + Guid.NewGuid().ToString("N"));
         string tarGzPath = Path.Combine(tempDir, TarAssetName);
         string extractDir = Path.Combine(tempDir, "extracted");
 
         try
         {
+            Directory.CreateDirectory(updatesRoot);
+            ClientFileSources.RestrictDirectoryPermissions(updatesRoot);
             Directory.CreateDirectory(tempDir);
+            ClientFileSources.RestrictDirectoryPermissions(tempDir);
 
             // Determine where the target AppImages reside
             string? runningAppImage = Environment.GetEnvironmentVariable("APPIMAGE");
@@ -214,35 +233,114 @@ public partial class AppUpdaterViewModel : ObservableObject
 
                 long totalBytes = resp.Content.Headers.ContentLength ?? _assetSize;
                 await using Stream contentStream = await resp.Content.ReadAsStreamAsync();
-                await using FileStream fileStream = new(tarGzPath, FileMode.Create, FileAccess.Write, FileShare.None, 81920, true);
-
-                byte[] buffer = new byte[81920];
-                long totalRead = 0;
-                int read;
-                while ((read = await contentStream.ReadAsync(buffer, 0, buffer.Length)) > 0)
+                await using (FileStream fileStream = new(tarGzPath, FileMode.Create, FileAccess.Write, FileShare.None, 81920, true))
                 {
-                    await fileStream.WriteAsync(buffer.AsMemory(0, read));
-                    totalRead += read;
-                    if (totalBytes > 0)
+                    ClientFileSources.RestrictFilePermissions(tarGzPath);
+
+                    byte[] buffer = new byte[81920];
+                    long totalRead = 0;
+                    int read;
+                    while ((read = await contentStream.ReadAsync(buffer, 0, buffer.Length)) > 0)
                     {
-                        int pct = (int)((totalRead * 100) / totalBytes);
-                        _dispatcherService.Invoke(() =>
+                        await fileStream.WriteAsync(buffer.AsMemory(0, read));
+                        totalRead += read;
+                        if (totalBytes > 0)
                         {
-                            ProgressValue = pct;
-                            UpdateStatus = $"Downloading {pct}% ({totalRead / (1024 * 1024)} MB / {totalBytes / (1024 * 1024)} MB)...";
-                        });
+                            int pct = (int)((totalRead * 100) / totalBytes);
+                            _dispatcherService.Invoke(() =>
+                            {
+                                ProgressValue = pct;
+                                UpdateStatus = $"Downloading {pct}% ({totalRead / (1024 * 1024)} MB / {totalBytes / (1024 * 1024)} MB)...";
+                            });
+                        }
+                    }
+                }
+
+                string? expectedSha256 = null;
+                if (!string.IsNullOrWhiteSpace(_remoteAssetDigest) &&
+                    _remoteAssetDigest.StartsWith("sha256:", StringComparison.OrdinalIgnoreCase))
+                {
+                    expectedSha256 = _remoteAssetDigest.Substring("sha256:".Length).Trim();
+                }
+                else if (!string.IsNullOrWhiteSpace(_remoteChecksumUrl))
+                {
+                    string checksumBody = await client.GetStringAsync(_remoteChecksumUrl);
+                    foreach (string rawLine in checksumBody.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+                    {
+                        if (rawLine.Contains(TarAssetName, StringComparison.OrdinalIgnoreCase) || !rawLine.Contains(' '))
+                        {
+                            string candidate = rawLine.Split(new[] { ' ', '\t' }, StringSplitOptions.RemoveEmptyEntries)[0];
+                            if (candidate.Length == 64)
+                            {
+                                expectedSha256 = candidate;
+                                break;
+                            }
+                        }
+                    }
+                }
+
+                if (!string.IsNullOrWhiteSpace(expectedSha256))
+                {
+                    _dispatcherService.Invoke(() => UpdateStatus = "Verifying SHA-256 integrity...");
+                    await using FileStream verifyStream = File.OpenRead(tarGzPath);
+                    byte[] actualHash = await SHA256.HashDataAsync(verifyStream);
+                    string actualHex = Convert.ToHexString(actualHash);
+                    if (!actualHex.Equals(expectedSha256, StringComparison.OrdinalIgnoreCase))
+                    {
+                        throw new InvalidDataException($"SHA-256 verification failed (expected {expectedSha256}, got {actualHex}).");
                     }
                 }
             }
 
             _dispatcherService.Invoke(() => UpdateStatus = "Extracting update archive...");
             Directory.CreateDirectory(extractDir);
+            ClientFileSources.RestrictDirectoryPermissions(extractDir);
 
             await Task.Run(() =>
             {
+                string extractFullDir = Path.GetFullPath(extractDir);
+                string extractPrefix = extractFullDir.EndsWith(Path.DirectorySeparatorChar)
+                    ? extractFullDir
+                    : extractFullDir + Path.DirectorySeparatorChar;
+
                 using FileStream gzStream = File.OpenRead(tarGzPath);
                 using GZipStream decompressedStream = new(gzStream, CompressionMode.Decompress);
-                TarFile.ExtractToDirectory(decompressedStream, extractDir, overwriteFiles: true);
+                using TarReader reader = new(decompressedStream);
+
+                while (reader.GetNextEntry() is { } entry)
+                {
+                    if (entry.EntryType is TarEntryType.SymbolicLink or TarEntryType.HardLink or
+                        TarEntryType.BlockDevice or TarEntryType.CharacterDevice or TarEntryType.Fifo)
+                    {
+                        throw new InvalidDataException($"Refusing unsafe tar entry '{entry.Name}' ({entry.EntryType}).");
+                    }
+
+                    if (string.IsNullOrWhiteSpace(entry.Name))
+                        continue;
+
+                    string destPath = Path.GetFullPath(Path.Combine(extractFullDir, entry.Name));
+                    if (!destPath.StartsWith(extractPrefix, StringComparison.Ordinal) &&
+                        !string.Equals(destPath, extractFullDir, StringComparison.Ordinal))
+                    {
+                        throw new InvalidDataException($"Refusing path-traversal tar entry '{entry.Name}'.");
+                    }
+
+                    if (entry.EntryType == TarEntryType.Directory)
+                    {
+                        Directory.CreateDirectory(destPath);
+                        ClientFileSources.RestrictDirectoryPermissions(destPath);
+                    }
+                    else if (entry.EntryType is TarEntryType.RegularFile or TarEntryType.V7RegularFile)
+                    {
+                        string? parent = Path.GetDirectoryName(destPath);
+                        if (!string.IsNullOrEmpty(parent))
+                        {
+                            Directory.CreateDirectory(parent);
+                            ClientFileSources.RestrictDirectoryPermissions(parent);
+                        }
+                        entry.ExtractToFile(destPath, overwrite: true);
+                    }
+                }
             });
 
             _dispatcherService.Invoke(() => UpdateStatus = "Applying update...");

@@ -7,6 +7,7 @@ using System.Threading.Channels;
 using System.Threading.Tasks;
 using Avalonia.Threading;
 using Skua.App.Avalonia.Views;
+using Skua.Core.Models;
 
 namespace Skua.App.Avalonia.Services;
 
@@ -17,6 +18,27 @@ namespace Skua.App.Avalonia.Services;
 public static class TabIpc
 {
     private static readonly ConcurrentDictionary<int, Channel<string>> _queues = new();
+
+    public static string GetChildPipeName(int pid)
+    {
+        if (OperatingSystem.IsLinux())
+            return Path.Combine(ClientFileSources.TabsDIR, $"child_{pid}.pipe");
+
+        return $"VibeSkuaChildPipe_{pid}";
+    }
+
+    private static void DeleteSocketIfLinux(string pipeName)
+    {
+        if (OperatingSystem.IsLinux() && Path.IsPathRooted(pipeName))
+        {
+            try
+            {
+                if (File.Exists(pipeName))
+                    File.Delete(pipeName);
+            }
+            catch { }
+        }
+    }
 
     public static void SendMessage(int childPid, uint msg, IntPtr wParam, IntPtr lParam)
     {
@@ -44,10 +66,12 @@ public static class TabIpc
         {
             channel.Writer.TryComplete();
         }
+        DeleteSocketIfLinux(GetChildPipeName(childPid));
     }
 
     private static async Task ProcessQueueAsync(int childPid, ChannelReader<string> reader)
     {
+        string pipeName = GetChildPipeName(childPid);
         try
         {
             while (await reader.WaitToReadAsync())
@@ -61,7 +85,7 @@ public static class TabIpc
                     {
                         try
                         {
-                            client = new NamedPipeClientStream(".", $"VibeSkuaChildPipe_{childPid}", PipeDirection.Out);
+                            client = new NamedPipeClientStream(".", pipeName, PipeDirection.Out);
                             await client.ConnectAsync(300);
                             writer = new StreamWriter(client) { AutoFlush = true };
                             break;
@@ -102,59 +126,67 @@ public static class TabIpc
 
     public static void StartListener(MainWindow window, int pid, CancellationToken ct)
     {
+        string pipeName = GetChildPipeName(pid);
         Task.Run(async () =>
         {
-            while (!ct.IsCancellationRequested)
+            try
             {
-                NamedPipeServerStream? server = null;
-                try
+                while (!ct.IsCancellationRequested)
                 {
-                    server = new NamedPipeServerStream(
-                        $"VibeSkuaChildPipe_{pid}",
-                        PipeDirection.In,
-                        NamedPipeServerStream.MaxAllowedServerInstances,
-                        PipeTransmissionMode.Byte,
-                        PipeOptions.Asynchronous);
-
-                    using (ct.Register(() => { try { server?.Dispose(); } catch { } }))
+                    NamedPipeServerStream? server = null;
+                    try
                     {
-                        await server.WaitForConnectionAsync(ct);
-                    }
+                        server = new NamedPipeServerStream(
+                            pipeName,
+                            PipeDirection.In,
+                            NamedPipeServerStream.MaxAllowedServerInstances,
+                            PipeTransmissionMode.Byte,
+                            PipeOptions.Asynchronous);
 
-                    using (server)
-                    using (var reader = new StreamReader(server))
-                    {
-                        while (!ct.IsCancellationRequested)
+                        using (ct.Register(() => { try { server?.Dispose(); } catch { } }))
                         {
-                            string? line = await reader.ReadLineAsync();
-                            if (line == null) break;
-                            if (string.IsNullOrWhiteSpace(line)) continue;
+                            await server.WaitForConnectionAsync(ct);
+                        }
 
-                            var parts = line.Split(':');
-                            if (parts.Length >= 3 &&
-                                uint.TryParse(parts[0], out uint msg) &&
-                                long.TryParse(parts[1], out long wParam) &&
-                                long.TryParse(parts[2], out long lParam))
+                        using (server)
+                        using (var reader = new StreamReader(server))
+                        {
+                            while (!ct.IsCancellationRequested)
                             {
-                                Dispatcher.UIThread.Post(() =>
+                                string? line = await reader.ReadLineAsync();
+                                if (line == null) break;
+                                if (string.IsNullOrWhiteSpace(line)) continue;
+
+                                var parts = line.Split(':');
+                                if (parts.Length >= 3 &&
+                                    uint.TryParse(parts[0], out uint msg) &&
+                                    long.TryParse(parts[1], out long wParam) &&
+                                    long.TryParse(parts[2], out long lParam))
                                 {
-                                    window.HandleIpcMessage(msg, (IntPtr)wParam, (IntPtr)lParam);
-                                });
+                                    Dispatcher.UIThread.Post(() =>
+                                    {
+                                        window.HandleIpcMessage(msg, (IntPtr)wParam, (IntPtr)lParam);
+                                    });
+                                }
                             }
                         }
                     }
+                    catch (OperationCanceledException)
+                    {
+                        try { server?.Dispose(); } catch { }
+                        break;
+                    }
+                    catch
+                    {
+                        try { server?.Dispose(); } catch { }
+                        if (ct.IsCancellationRequested) break;
+                        await Task.Delay(50, ct);
+                    }
                 }
-                catch (OperationCanceledException)
-                {
-                    try { server?.Dispose(); } catch { }
-                    break;
-                }
-                catch
-                {
-                    try { server?.Dispose(); } catch { }
-                    if (ct.IsCancellationRequested) break;
-                    await Task.Delay(50, ct);
-                }
+            }
+            finally
+            {
+                DeleteSocketIfLinux(pipeName);
             }
         }, ct);
     }
