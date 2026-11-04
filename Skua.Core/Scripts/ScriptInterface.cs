@@ -329,7 +329,7 @@ public partial class ScriptInterface : IScriptInterface, IScriptInterfaceManager
                 else
                 {
                     catching = false;
-                    if ((wasPlaying || Manager.ScriptRunning) && !_waitForLogin && !Servers.IsIntentionalLogout && Options.AutoRelogin)
+                    if ((wasPlaying || Manager.ScriptRunning) && !_waitForLogin && !Servers.IsIntentionalLogout && Options.AutoRelogin && WatchdogEnabled)
                     {
                         // A busy Flash makes reads fail and return false; only act if the disconnect persists.
                         if (disconnectedSince == 0)
@@ -371,6 +371,10 @@ public partial class ScriptInterface : IScriptInterface, IScriptInterfaceManager
             }
         }
     }
+
+    // The relogin watchdog (Application Options); read only when a disconnect would trigger it. Not the
+    // default-value overload: it turns a saved false into the default. Unsaved, the model default is true.
+    private bool WatchdogEnabled => _settingsService.Get<bool>("ReloginWatchdog");
 
     private void CheckOptions()
     {
@@ -503,7 +507,7 @@ public partial class ScriptInterface : IScriptInterface, IScriptInterfaceManager
 
             case "connectionLost":
                 Log("Flash socket connection lost event received.");
-                if (!_waitForLogin && !Servers.IsIntentionalLogout && Options.AutoRelogin)
+                if (!_waitForLogin && !Servers.IsIntentionalLogout && Options.AutoRelogin && WatchdogEnabled)
                 {
                     BeginLogout();
                 }
@@ -664,6 +668,7 @@ public partial class ScriptInterface : IScriptInterface, IScriptInterfaceManager
 
                         case "getDrop":
                             bool toBank = Convert.ToBoolean(data.bBank);
+                            Messenger.Send<DropPickupResultMessage, int>(new(Convert.ToInt32(data.ItemID), data.bSuccess == 1), (int)MessageChannels.GameEvents);
                             if (data.bSuccess == 1)
                             {
                                 Stats.Drops += (int)data.iQty;

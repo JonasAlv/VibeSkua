@@ -19,7 +19,14 @@ public partial class ScriptItemViewModel : ObservableObject
     private string _path;
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsRunning), nameof(IsDone), nameof(IsStopped), nameof(IsProblem))]
     private string _status;
+
+    // For the Scheduler's status chip: running green, stopped amber, problems red, done dimmed
+    public bool IsRunning => Status == "Running";
+    public bool IsDone => Status == "Completed";
+    public bool IsStopped => Status == "Stopped";
+    public bool IsProblem => Status is "Failed" or "Crashed" or "File Not Found" or "Disconnected";
 
     [ObservableProperty]
     private string _duration = "00:00";

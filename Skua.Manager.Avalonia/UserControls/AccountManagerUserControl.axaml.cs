@@ -36,6 +36,9 @@ public partial class AccountManagerUserControl : UserControl
         Unloaded += OnUnloaded;
     }
 
+    // Measure the servers when the list is opened (again after 30 seconds if it is opened again).
+    private void ServerList_DropDownOpened(object? sender, EventArgs e) => _ = _viewModel.RefreshServerPingsAsync();
+
     private void OnUnloaded(object? sender, RoutedEventArgs e)
     {
         StrongReferenceMessenger.Default.UnregisterAll(this);
@@ -240,6 +243,14 @@ public partial class AccountManagerUserControl : UserControl
 
     private void AddAccountToGroup(IAccountItemViewModel account)
     {
+        // When accounts are checked, use the checked selection rather than only the
+        // account whose context menu was clicked.
+        if (_viewModel.Accounts.Any(selectedAccount => selectedAccount.UseCheck))
+        {
+            AddSelectedToGroupAction();
+            return;
+        }
+
         SelectGroupDialogViewModel dialogVm = new(_viewModel.Groups);
         bool? result = _dialogService.ShowDialog(dialogVm, "Add to Group");
         if (result == true && dialogVm.SelectedGroup != null)

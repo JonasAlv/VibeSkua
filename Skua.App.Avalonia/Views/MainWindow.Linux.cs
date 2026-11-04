@@ -43,6 +43,7 @@ public partial class MainWindow : Window
     private const int WM_SKUA_GRIDVIEW = 0x0400 + 444;
     private const int WM_SKUA_AUTO_ATTACK = 0x0400 + 459;
     private const int WM_SKUA_OPEN_BANK = 0x0400 + 460;
+    private const int WM_SKUA_CHANGE_SERVER = 0x0400 + 467;
 
     private int _preThrottleFPS = -1;
     private string? _preThrottleQuality = null;
@@ -401,7 +402,7 @@ public partial class MainWindow : Window
                         string[] lines = System.IO.File.ReadAllLines(tempFile);
                         string map = lines.Length > 0 ? lines[0].Trim() : "";
                         string cell = lines.Length > 1 && !string.IsNullOrWhiteSpace(lines[1]) ? lines[1].Trim() : "Enter";
-                        string pad = "Spawn";
+                        string pad = lines.Length > 2 && !string.IsNullOrWhiteSpace(lines[2]) ? lines[2].Trim() : "Spawn";
                         
                         if (cell.Contains(','))
                         {
@@ -434,6 +435,23 @@ public partial class MainWindow : Window
                             Ioc.Default.GetRequiredService<IScriptPlayer>().Goto(targetPlayer);
                     }
                 } catch { }
+            });
+            return IntPtr.Zero;
+        }
+        else if (uMsg == WM_SKUA_CHANGE_SERVER)
+        {
+            Task.Run(() =>
+            {
+                try
+                {
+                    string tempFile = System.IO.Path.Combine(ClientFileSources.TabsDIR, "skua_global_change_server.txt");
+                    if (!System.IO.File.Exists(tempFile))
+                        return;
+                    string targetServer = System.IO.File.ReadAllText(tempFile).Trim();
+                    if (!string.IsNullOrWhiteSpace(targetServer))
+                        Ioc.Default.GetRequiredService<IScriptServers>().Relogin(targetServer);
+                }
+                catch { }
             });
             return IntPtr.Zero;
         }

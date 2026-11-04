@@ -31,7 +31,8 @@ public partial class ScriptSchedulerViewModel : BotControlViewModelBase
         _settingsService = settingsService;
         _windowService = windowService;
         _dialogService = dialogService;
-        
+        _scriptQueue.CollectionChanged += ScriptQueue_CollectionChanged;
+
         StrongReferenceMessenger.Default.Register<ScriptSchedulerViewModel, ScriptStoppedMessage, int>(this, (int)MessageChannels.ScriptStatus, (r, m) => Dispatcher.UIThread.Post(r.OnScriptStopped));
         StrongReferenceMessenger.Default.Register<ScriptSchedulerViewModel, QueueScriptMessage, int>(this, (int)MessageChannels.ScriptStatus, (r, m) => r.OnQueueScript(m));
     }
@@ -64,14 +65,35 @@ public partial class ScriptSchedulerViewModel : BotControlViewModelBase
     [ObservableProperty]
     private string _queueStartedTime = string.Empty;
 
-    public string ToggleQueueText => IsRunningQueue ? "Stop Queue" : "Start Queue";
+    public string ToggleQueueText => IsRunningQueue ? "Stop queue" : "Start queue";
+
+    // "Started at 22:10:05 · running 2 of 4", or "4 scripts" while stopped
+    public string QueueSummary => IsRunningQueue
+        ? $"{QueueStartedTime} · running {Math.Min(CurrentIndex + 1, ScriptQueue.Count)} of {ScriptQueue.Count}"
+        : ScriptQueue.Count == 1 ? "1 script" : $"{ScriptQueue.Count} scripts";
 
     partial void OnIsRunningQueueChanged(bool value)
     {
         OnPropertyChanged(nameof(ToggleQueueText));
         if (!value)
             QueueStartedTime = string.Empty;
+        OnPropertyChanged(nameof(QueueSummary));
     }
+
+    partial void OnQueueStartedTimeChanged(string value) => OnPropertyChanged(nameof(QueueSummary));
+
+    partial void OnCurrentIndexChanged(int value) => OnPropertyChanged(nameof(QueueSummary));
+
+    partial void OnScriptQueueChanged(ObservableCollection<ScriptItemViewModel>? oldValue, ObservableCollection<ScriptItemViewModel> newValue)
+    {
+        if (oldValue is not null)
+            oldValue.CollectionChanged -= ScriptQueue_CollectionChanged;
+        newValue.CollectionChanged += ScriptQueue_CollectionChanged;
+        OnPropertyChanged(nameof(QueueSummary));
+    }
+
+    private void ScriptQueue_CollectionChanged(object? sender, System.Collections.Specialized.NotifyCollectionChangedEventArgs e)
+        => OnPropertyChanged(nameof(QueueSummary));
 
     [ObservableProperty]
     private int _currentIndex = 0;

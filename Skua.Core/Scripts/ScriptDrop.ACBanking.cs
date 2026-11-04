@@ -52,7 +52,7 @@ public partial class ScriptDrop
         {
             try
             {
-                await Task.Delay(1000, token);
+                await Task.Delay(250, token);
                 if (!Player.LoggedIn) continue;
                 // Rejection is legal during combat and must never be blocked behind banking.
                 if (Options.RejectNonACDrops && CurrentDropInfos.Any(d => !d.Coins))
@@ -97,9 +97,24 @@ public partial class ScriptDrop
             Interlocked.Exchange(ref _bankingACDrops, 1);
             _combat.Value.CancelAutoAttack();
             // Let attacks already sent settle, then recheck before every operation.
-            await Task.Delay(500, token);
+            await Task.Delay(150, token);
             if (!SafeToBank(account)) return "Combat resumed; AC banking will wait.";
-            List<string> banked = new(), failed = new();
+            List<string> banked = new(), failed = new(), rejected = new();
+
+            // An item the bank already holds (one that cannot be owned twice) is rejected, not picked up and banked again.
+            if (drops.Length > 0)
+            {
+                if (!_bank.Value.Loaded) _bank.Value.Load(true);
+                ItemBase[] already = drops.Where(d => !d.Temp && d.MaxStack <= 1 && _bank.Value.Contains(d.ID)).ToArray();
+                if (already.Length > 0 && RejectDrops(already))
+                {
+                    rejected.AddRange(already.Select(d => d.Name));
+                    drops = drops.Where(d => already.All(a => a.ID != d.ID)).ToArray();
+                }
+            }
+
+            // Every pickup goes out at once; then each is waited for. One at a time took a round trip per item.
+            List<(ItemBase Drop, int Before)> sent = new();
             foreach (ItemBase drop in drops)
             {
                 if (!SafeToBank(account) || (automatic && !Options.PickupACDropsAndSendToBank)) break;
@@ -112,21 +127,24 @@ public partial class ScriptDrop
                     _lootRetry[drop.ID] = DateTime.UtcNow.AddSeconds(30);
                     continue;
                 }
-                int quantity = previous?.Quantity ?? 0;
                 // Use the same server operation as Pickup, bypassing only our automatic-queue guard.
                 Send.Packet($"%xt%zm%getDrop%{Map.RoomID}%{drop.ID}%");
                 _currentDropInfos.Remove(d => d.ID == drop.ID);
-                DateTime until = DateTime.UtcNow.AddSeconds(10);
-                bool received = false;
-                while (SafeAccount(account) && DateTime.UtcNow < until)
-                {
-                    InventoryItem? item = Inventory.Items.FirstOrDefault(i => i.ID == drop.ID);
-                    if (item != null && item.Quantity > quantity) { received = true; break; }
-                    await Task.Delay(200, token);
-                }
-                if (received) _pendingBank[drop.ID] = (drop.Name, 0);
-                else failed.Add(drop.Name);
+                sent.Add((drop, previous?.Quantity ?? 0));
             }
+            DateTime until = DateTime.UtcNow.AddSeconds(10);
+            while (sent.Count > 0 && SafeAccount(account) && DateTime.UtcNow < until)
+            {
+                sent.RemoveAll(s =>
+                {
+                    InventoryItem? item = Inventory.Items.FirstOrDefault(i => i.ID == s.Drop.ID);
+                    if (item == null || item.Quantity <= s.Before) return false;
+                    _pendingBank[s.Drop.ID] = (s.Drop.Name, 0);
+                    return true;
+                });
+                if (sent.Count > 0) await Task.Delay(40, token);
+            }
+            failed.AddRange(sent.Select(s => s.Drop.Name));
 
             foreach (var entry in _pendingBank.ToArray())
             {
@@ -158,9 +176,10 @@ public partial class ScriptDrop
             }
             OnPropertyChanged(nameof(CurrentDropInfos));
             OnPropertyChanged(nameof(CurrentDrops));
-            return (banked.Count > 0 ? $"Banked: {string.Join(", ", banked)}. " : "") +
+            return (rejected.Count > 0 ? $"Rejected (already in the bank): {string.Join(", ", rejected)}. " : "") +
+                (banked.Count > 0 ? $"Banked: {string.Join(", ", banked)}. " : "") +
                 (failed.Count > 0 ? $"Not banked: {string.Join(", ", failed.Distinct())}. Check inventory/bank space and item restrictions." :
-                _pendingBank.Count > 0 ? "Remaining items queued until out of combat." : banked.Count == 0 ? "No eligible AC drops." : "");
+                _pendingBank.Count > 0 ? "Remaining items queued until out of combat." : banked.Count == 0 && rejected.Count == 0 ? "No eligible AC drops." : "");
         }
         finally
         {
@@ -169,6 +188,17 @@ public partial class ScriptDrop
             Interlocked.Exchange(ref _bankingACDrops, 0);
             _bankGate.Release();
         }
+    }
+
+    /// <summary>Rejects just these drops and leaves every other drop where it is (the game only offers "reject all except these names").</summary>
+    private bool RejectDrops(ItemBase[] items)
+    {
+        string[] keep = CurrentDropInfos.Where(d => items.All(i => i.ID != d.ID)).Select(d => d.Name).Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
+        if (!Flash.Call<bool>("rejectExcept", string.Join(',', keep).ToLowerInvariant())) return false;
+        _currentDropInfos.Remove(d => items.Any(i => i.ID == d.ID));
+        OnPropertyChanged(nameof(CurrentDropInfos));
+        OnPropertyChanged(nameof(CurrentDrops));
+        return true;
     }
 
     private bool SafeAccount(string account) => _pendingSession == Volatile.Read(ref _lootSession) && Player.LoggedIn && Player.Username.Equals(account, StringComparison.OrdinalIgnoreCase);

@@ -2,10 +2,23 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:materialIcons="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
              xmlns:vms="clr-namespace:Skua.App.Avalonia.ViewModels"
+             xmlns:uc="clr-namespace:Skua.App.Avalonia.UserControls"
              x:DataType="vms:ScriptLoaderViewModel"
              x:Class="Skua.App.Avalonia.Views.ScriptLoaderView">
   
-    <Grid RowDefinitions="Auto,Auto,*" Margin="12" RowSpacing="10">
+    <DockPanel Margin="12" LastChildFill="True">
+
+    <!-- Whose script the card and the buttons below work on: this client or any other open account -->
+    <Grid DockPanel.Dock="Top" ColumnDefinitions="Auto,*" ColumnSpacing="8" Margin="0,0,0,10">
+      <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+        <materialIcons:MaterialIcon Kind="AccountSwitchOutline" Width="16" Height="16" Foreground="{DynamicResource SkuaAccentBrush}" />
+        <TextBlock Text="Account" VerticalAlignment="Center" />
+      </StackPanel>
+      <ComboBox Grid.Column="1" HorizontalAlignment="Stretch" ItemsSource="{Binding Accounts}" SelectedItem="{Binding SelectedAccount, Mode=TwoWay}"
+                ToolTip.Tip="Pick another open account: the script you load or start here goes to that account" />
+    </Grid>
+
+    <Grid RowDefinitions="Auto,Auto,*" RowSpacing="10">
         
         <!-- 1. Header Status Card -->
         <Border Grid.Row="0"
@@ -25,7 +38,7 @@
                                FontWeight="Bold"
                                FontFamily="JetBrains Mono,Consolas,Courier New,monospace"
                                Foreground="{DynamicResource SkuaTextBrush}"
-                               Text="{Binding LoadedScript, FallbackValue='No script loaded'}"
+                               ToolTip.Tip="{Binding ShownScriptPath}" Text="{Binding ShownScript, FallbackValue='No script loaded'}"
                                TextTrimming="CharacterEllipsis" />
                 </StackPanel>
 
@@ -40,10 +53,10 @@
                     <StackPanel Orientation="Horizontal" Spacing="5" VerticalAlignment="Center">
                         <!-- Status dot: muted when idle/loaded, green running, amber paused/compiling, red on error -->
                         <Ellipse Width="6" Height="6" VerticalAlignment="Center"
-                                 Classes.running="{Binding ScriptStatus, Converter={x:Static ObjectConverters.Equal}, ConverterParameter='[Running]'}"
-                                 Classes.paused="{Binding ScriptStatus, Converter={x:Static ObjectConverters.Equal}, ConverterParameter='[Paused]'}"
-                                 Classes.compiling="{Binding ScriptStatus, Converter={x:Static ObjectConverters.Equal}, ConverterParameter='Compiling...'}"
-                                 Classes.error="{Binding ScriptStatus, Converter={x:Static ObjectConverters.Equal}, ConverterParameter='[Error]'}">
+                                 Classes.running="{Binding ShownStatus, Converter={x:Static ObjectConverters.Equal}, ConverterParameter='[Running]'}"
+                                 Classes.paused="{Binding ShownStatus, Converter={x:Static ObjectConverters.Equal}, ConverterParameter='[Paused]'}"
+                                 Classes.compiling="{Binding ShownStatus, Converter={x:Static ObjectConverters.Equal}, ConverterParameter='Compiling...'}"
+                                 Classes.error="{Binding ShownStatus, Converter={x:Static ObjectConverters.Equal}, ConverterParameter='[Error]'}">
                             <Ellipse.Styles>
                                 <Style Selector="Ellipse"><Setter Property="Fill" Value="{DynamicResource SkuaMutedTextBrush}" /></Style>
                                 <Style Selector="Ellipse.running"><Setter Property="Fill" Value="{DynamicResource SkuaSuccessBrush}" /></Style>
@@ -54,7 +67,7 @@
                         <TextBlock FontSize="10"
                                    FontWeight="Bold"
                                    Foreground="{DynamicResource SkuaTextBrush}"
-                                   Text="{Binding ScriptStatus, FallbackValue='[No script]'}" />
+                                   Text="{Binding ShownStatus, FallbackValue='[No script]'}" />
                     </StackPanel>
                 </Border>
             </Grid>
@@ -74,7 +87,7 @@
                     Padding="8,0"
                     HorizontalAlignment="Stretch"
                     HorizontalContentAlignment="Center"
-                    Command="{Binding LoadScriptCommand}">
+                    Command="{Binding LoadScriptForAccountCommand}">
                 <StackPanel Orientation="Horizontal" Spacing="6" HorizontalAlignment="Center">
                     <materialIcons:MaterialIcon Kind="FolderOpen" Width="15" Height="15" />
                     <TextBlock Text="Load Script" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center" />
@@ -131,7 +144,7 @@
                     HorizontalAlignment="Stretch"
                     HorizontalContentAlignment="Center"
                     Command="{Binding EditScriptConfigCommand}"
-                    IsEnabled="{Binding ToggleScriptEnabled}">
+                    IsEnabled="{Binding CanEditOptionsShown}">
                 <StackPanel Orientation="Horizontal" Spacing="6" HorizontalAlignment="Center">
                     <materialIcons:MaterialIcon Kind="Cog" Width="15" Height="15" />
                     <TextBlock Text="Edit Script Options" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center" />
@@ -141,24 +154,24 @@
             <!-- Start / Stop Script Button -->
             <Button Grid.Row="3" Grid.Column="0"
                     Classes="skua-button"
-                    Classes.skua-danger="{Binding ScriptManager.ScriptRunning}"
-                    Classes.skua-primary="{Binding !ScriptManager.ScriptRunning}"
+                    Classes.skua-danger="{Binding ShownRunning}"
+                    Classes.skua-primary="{Binding !ShownRunning}"
                     Height="32"
                     Padding="8,0"
                     HorizontalAlignment="Stretch"
                     HorizontalContentAlignment="Center"
-                    Command="{Binding ToggleScriptCommand}"
+                    Command="{Binding ToggleScriptForAccountCommand}"
                     IsEnabled="{Binding ToggleScriptEnabled}">
                 <StackPanel Orientation="Horizontal" Spacing="6" HorizontalAlignment="Center">
                     <materialIcons:MaterialIcon Kind="Play"
                                                 Width="15" Height="15"
                                                 VerticalAlignment="Center"
-                                                IsVisible="{Binding !ScriptManager.ScriptRunning}" />
+                                                IsVisible="{Binding !ShownRunning}" />
                     <materialIcons:MaterialIcon Kind="Stop"
                                                 Width="15" Height="15"
                                                 VerticalAlignment="Center"
-                                                IsVisible="{Binding ScriptManager.ScriptRunning}" />
-                    <TextBlock Text="{Binding ToggleScriptText}" FontSize="11" FontWeight="Bold" VerticalAlignment="Center" />
+                                                IsVisible="{Binding ShownRunning}" />
+                    <TextBlock Text="{Binding ShownToggleText}" FontSize="11" FontWeight="Bold" VerticalAlignment="Center" />
                 </StackPanel>
             </Button>
             
@@ -170,7 +183,7 @@
                     HorizontalAlignment="Stretch"
                     HorizontalContentAlignment="Center"
                     Command="{Binding TogglePauseScriptCommand}"
-                    IsEnabled="{Binding ScriptManager.ScriptRunning}">
+                    IsEnabled="{Binding CanPauseShown}">
                 <StackPanel Orientation="Horizontal" Spacing="6" HorizontalAlignment="Center">
                     <materialIcons:MaterialIcon Kind="{Binding TogglePauseScriptIcon}" Width="15" Height="15" VerticalAlignment="Center" />
                     <TextBlock Text="{Binding TogglePauseScriptText}" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center" />
@@ -178,14 +191,32 @@
             </Button>
         </Grid>
         
-        <!-- 3. Script Logs Framed Card -->
-        <Border Grid.Row="2"
-                Background="{DynamicResource SkuaSurfaceBrush}"
-                BorderBrush="{DynamicResource SkuaBorderBrush}"
-                BorderThickness="1"
-                CornerRadius="6"
-                ClipToBounds="True">
-            <ContentControl Content="{Binding ScriptLogs}" />
-        </Border>
+        <!-- 3. Script log: header with its actions, then the log (lines wrap; the copy hint doesn't fit here) -->
+        <Grid Grid.Row="2" RowDefinitions="Auto,*" RowSpacing="6">
+            <Grid ColumnDefinitions="Auto,Auto,*,Auto,Auto,Auto,Auto" ColumnSpacing="6">
+                <TextBlock Grid.Column="0" Classes="section-label" Text="SCRIPT LOG" />
+                <Border Grid.Column="1" Classes="count">
+                    <TextBlock Text="{Binding ScriptLogs.Logs.Count}" />
+                </Border>
+                <Button Grid.Column="3" Classes="skua-button small" Width="26" Padding="0" HorizontalContentAlignment="Center"
+                        ToolTip.Tip="Copy the selected lines, or the whole log" Click="CopyLog_Click">
+                    <materialIcons:MaterialIcon Kind="ContentCopy" Width="14" Height="14" />
+                </Button>
+                <Button Grid.Column="4" Classes="skua-button small" Width="26" Padding="0" HorizontalContentAlignment="Center"
+                        ToolTip.Tip="Clear the selected lines" Click="DeselectLog_Click">
+                    <materialIcons:MaterialIcon Kind="SelectionRemove" Width="14" Height="14" />
+                </Button>
+                <Button Grid.Column="5" Classes="skua-button small" Width="26" Padding="0" HorizontalContentAlignment="Center"
+                        ToolTip.Tip="Save the log to a file" Command="{Binding ScriptLogs.SaveLogCommand}">
+                    <materialIcons:MaterialIcon Kind="ContentSave" Width="14" Height="14" />
+                </Button>
+                <Button Grid.Column="6" Classes="skua-button small skua-danger-soft" Width="26" Padding="0" HorizontalContentAlignment="Center"
+                        ToolTip.Tip="Clear the log" Command="{Binding ScriptLogs.ClearLogCommand}">
+                    <materialIcons:MaterialIcon Kind="TrashCanOutline" Width="14" Height="14" />
+                </Button>
+            </Grid>
+            <uc:LogTabUserControl Grid.Row="1" x:Name="ScriptLog" DataContext="{Binding ScriptLogs}" WrapLines="True" ShowCopyHint="False" />
+        </Grid>
     </Grid>
+    </DockPanel>
 </UserControl>

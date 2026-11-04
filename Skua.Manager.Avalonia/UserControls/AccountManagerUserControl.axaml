@@ -357,6 +357,8 @@
                           ItemsSource="{Binding ServerList}"
                           SelectedItem="{Binding SelectedServer}"
                           VerticalAlignment="Center"
+                          DropDownOpened="ServerList_DropDownOpened"
+                          PlaceholderText="Loading servers…"
                           ToolTip.Tip="Which server to login when launching accounts">
                     <ComboBox.ItemTemplate>
                         <DataTemplate>

@@ -289,7 +289,7 @@ public sealed partial class AccountManagerViewModel : BotControlViewModelBase
             foreach (IAccountItemViewModel account in accounts)
             {
                 _launchCancellation.Token.ThrowIfCancellationRequested();
-                _LaunchAcc(account.Username, account.Password, account.DisplayName, runScript, hostInstanceId, _startInGridView ? batchId : null);
+                _LaunchAcc(account.Username, account.Password, account.DisplayName, runScript, hostInstanceId, (accounts.Count >= 2 && _startInGridView) ? batchId : null);
                 await Task.Delay(TimeSpan.FromSeconds(LaunchDelaySeconds), _launchCancellation.Token);
             }
         }
@@ -1018,9 +1018,6 @@ public sealed partial class AccountManagerViewModel : BotControlViewModelBase
 
             _cachedServers = servers;
 
-            // Measure pings before displaying servers
-            await _MeasureServerPings(_cachedServers);
-
             ServerList.AddRange(_cachedServers);
 
             string lastServer = _settingsService.Get<string>("LastServer");
@@ -1028,36 +1025,52 @@ public sealed partial class AccountManagerViewModel : BotControlViewModelBase
             if (!string.IsNullOrEmpty(lastServer))
                 serverToSelect = Enumerable.FirstOrDefault<Server>(ServerList, s => s.Name == lastServer);
             SelectedServer = serverToSelect ?? ServerList[0];
+
+            // The list is shown at once; the pings fill in as they come.
+            _ = RefreshServerPingsAsync(force: true);
         }
         catch
         {
         }
     }
 
-    private async Task _MeasureServerPings(List<Server> servers)
+    private DateTime _lastPingRun = DateTime.MinValue;
+    private int _pingRunning;
+
+    /// <summary>
+    /// Measures every online server (how long it takes to answer the game's version check) and files the result on the server,
+    /// which the list shows. Called when the list loads and when the server drop-down opens; not more than every 30 seconds,
+    /// and not while accounts are being launched.
+    /// </summary>
+    public Task RefreshServerPingsAsync(bool force = false)
     {
-        const int TimeoutMs = 2000;
-        const long FailedPing = 9999;
+        if (_isLaunching || _cachedServers.Count == 0)
+            return Task.CompletedTask;
+        if (!force && DateTime.UtcNow - _lastPingRun < TimeSpan.FromSeconds(30))
+            return Task.CompletedTask;
+        if (Interlocked.Exchange(ref _pingRunning, 1) == 1)
+            return Task.CompletedTask;
 
-        List<Task> pingTasks = servers.Select(server => Task.Run(async () =>
+        _lastPingRun = DateTime.UtcNow;
+        List<Server> servers = _cachedServers.ToList();
+        return Task.Run(async () =>
         {
-            using (System.Net.NetworkInformation.Ping pinger = new())
+            try
             {
-                try
+                await Task.WhenAll(servers.Where(s => s.Online).Select(async server =>
                 {
-                    System.Net.NetworkInformation.PingReply reply = await pinger.SendPingAsync(server.IP, TimeoutMs);
-                    server.Ping = reply.Status == System.Net.NetworkInformation.IPStatus.Success
-                        ? reply.RoundtripTime
-                        : FailedPing;
-                }
-                catch
-                {
-                    server.Ping = FailedPing;
-                }
+                    long? ms = await ServerPing.MeasureAsync(server.IP, server.Port);
+                    Dispatcher.UIThread.Post(() => server.Ping = ms ?? Server.NoAnswer);
+                }));
             }
-        })).ToList();
-
-        await Task.WhenAll(pingTasks);
+            catch
+            {
+            }
+            finally
+            {
+                Interlocked.Exchange(ref _pingRunning, 0);
+            }
+        });
     }
 
     // Script Commands

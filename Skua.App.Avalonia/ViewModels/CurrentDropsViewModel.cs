@@ -11,6 +11,7 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Linq;
 using System.Threading.Tasks;
+using Avalonia.Threading;
 
 namespace Skua.App.Avalonia.ViewModels;
 
@@ -30,6 +31,7 @@ public partial class CurrentDropsViewModel : BotControlViewModelBase
     {
         _drops.PropertyChanged += DropsPropertyChanged;
         StrongReferenceMessenger.Default.Register<CurrentDropsViewModel, ItemDroppedMessage, int>(this, (int)MessageChannels.GameEvents, CurrentDropsChanged);
+        StrongReferenceMessenger.Default.Register<CurrentDropsViewModel, DropPickupResultMessage, int>(this, (int)MessageChannels.GameEvents, PickupResultReceived);
         RefreshDrops();
     }
 
@@ -84,7 +86,6 @@ public partial class CurrentDropsViewModel : BotControlViewModelBase
             return;
 
         _drops.Pickup(SelectedDrop.ID);
-        RefreshDrops();
     }
 
     [RelayCommand]
@@ -99,22 +100,20 @@ public partial class CurrentDropsViewModel : BotControlViewModelBase
             if (items[i] is ItemBase ib)
                 dropIds[i] = ib.ID;
         }
-        _drops.Pickup(dropIds);
-        RefreshDrops();
+        // Pickup(int[]) waits for the server's reply, which arrives on the UI thread: don't block it.
+        Task.Run(() => _drops.Pickup(dropIds));
     }
 
     [RelayCommand]
     private void PickupAll()
     {
         _drops.PickupAll(true);
-        RefreshDrops();
     }
 
     [RelayCommand]
     private void PickupAC()
     {
-        _drops.PickupACItems();
-        RefreshDrops();
+        Task.Run(() => _drops.PickupACItems());
     }
 
     /// <summary>Picks up only the AC drops, then puts each picked-up item straight into the bank.</summary>
@@ -167,6 +166,12 @@ public partial class CurrentDropsViewModel : BotControlViewModelBase
                 if (!Banking && e.PropertyName == nameof(IScriptDrop.ACBankingStatus)) Status = _drops.ACBankingStatus;
                 RefreshDrops();
             });
+    }
+
+    private void PickupResultReceived(CurrentDropsViewModel recipient, DropPickupResultMessage message)
+    {
+        // Posted so the list is read after ScriptDrop has handled the same message.
+        Dispatcher.UIThread.Post(recipient.RefreshDrops);
     }
 
     private void RefreshDrops()

@@ -64,6 +64,7 @@ public partial class ScriptRepoViewModel : BotControlViewModelBase
     {
         if (_isLoadingInitial) return;
         _isLoadingInitial = true;
+        IsLoadingScripts = true;
         IsBusy = true;
         try
         {
@@ -119,6 +120,10 @@ public partial class ScriptRepoViewModel : BotControlViewModelBase
     [ObservableProperty]
     private string _progressReportMessage = string.Empty;
 
+    // True while the list is fetched or rebuilt, so an empty list shows "Loading" instead of "No scripts found"
+    [ObservableProperty]
+    private bool _isLoadingScripts;
+
     [ObservableProperty]
     private string _sortBy = "Name";
 
@@ -128,7 +133,13 @@ public partial class ScriptRepoViewModel : BotControlViewModelBase
     [ObservableProperty]
     private string _filterBy = "All";
 
-    public List<string> SortOptions { get; } = new() { "Name", "Date Created" };
+    // Which part of a script the search looks in (Skua 1.4.5's scopes)
+    public List<string> SearchScopes { get; } = new() { "All", "Name", "Tag", "Description", "File" };
+
+    [ObservableProperty]
+    private string _searchScope = "All";
+
+    partial void OnSearchScopeChanged(string value) => ApplySearchFilter();
 
     public List<string> FilterOptions { get; } = new()
     {
@@ -143,13 +154,15 @@ public partial class ScriptRepoViewModel : BotControlViewModelBase
     public bool ShowStartButton => !IsManagerMode;
     public IRelayCommand OpenScriptFolderCommand { get; }
 
-    public string SortDirectionText => SortDescending ? "Desc" : "Asc";
+    // The window sorts by name only; the toggle flips the direction
+    public string SortDirectionText => SortDescending ? "Name Z to A" : "Name A to Z";
     public string SortDirectionIcon => SortDescending ? "SortDescending" : "SortAscending";
 
     [RelayCommand]
     private void ClearSearch()
     {
         SearchText = string.Empty;
+        SearchScope = "All";
         FilterBy = "All";
     }
 
@@ -169,17 +182,7 @@ public partial class ScriptRepoViewModel : BotControlViewModelBase
             await Task.Delay(100, token);
             if (token.IsCancellationRequested) return;
 
-            string query = (value ?? string.Empty).Trim().ToLowerInvariant();
-            List<ScriptInfoViewModel> matches;
-
-            if (string.IsNullOrWhiteSpace(query))
-            {
-                matches = _scripts.ToList();
-            }
-            else
-            {
-                matches = _scripts.Where(s => s.SearchIndex.Contains(query, StringComparison.Ordinal)).ToList();
-            }
+            List<ScriptInfoViewModel> matches = FindMatches(value, SearchScope);
 
             if (token.IsCancellationRequested) return;
 
@@ -425,6 +428,7 @@ public partial class ScriptRepoViewModel : BotControlViewModelBase
         if (!await _refreshSemaphore.WaitAsync(0))
             return;
 
+        IsLoadingScripts = true;
         try
         {
             List<ScriptInfoViewModel> scriptViewModels = await Task.Run(() =>
@@ -674,6 +678,8 @@ public partial class ScriptRepoViewModel : BotControlViewModelBase
         }
         finally
         {
+            // A refresh during the initial fetch (filter change after Cancel) must not end the loading state
+            IsLoadingScripts = _isLoadingInitial;
             _refreshSemaphore.Release();
         }
     }
@@ -785,10 +791,8 @@ public partial class ScriptRepoViewModel : BotControlViewModelBase
             ProgressReportMessage = $"Downloading {target.FileName}...";
             await _getScriptsService.DownloadScriptAsync(target.Info, token);
             ProgressReportMessage = $"Downloaded {target.FileName}.";
-            target.Downloaded = true;
-            target.LocalSize = File.Exists(target.LocalFile) ? (int)new FileInfo(target.LocalFile).Length : target.Info.Size;
-            target.Info.CachedDownloaded = true;
-            target.Info.CachedLocalSize = target.LocalSize;
+            int localSize = File.Exists(target.LocalFile) ? (int)new FileInfo(target.LocalFile).Length : target.Info.Size;
+            await target.RefreshDownloadStateAsync(true, localSize);
         }
         catch (OperationCanceledException)
         {
@@ -921,19 +925,24 @@ public partial class ScriptRepoViewModel : BotControlViewModelBase
         IsBusy = false;
     }
 
+    // Matches in rank order. OrderBy is stable, so within a rank the list keeps its order: pinned first, then the
+    // chosen sort.
+    private List<ScriptInfoViewModel> FindMatches(string? text, string scope)
+    {
+        string query = (text ?? string.Empty).Trim();
+        if (query.Length == 0)
+            return _scripts.ToList();
+
+        return _scripts.Select(s => (Script: s, Rank: s.SearchRank(query, scope)))
+            .Where(m => m.Rank.HasValue)
+            .OrderBy(m => m.Rank)
+            .Select(m => m.Script)
+            .ToList();
+    }
+
     private void ApplySearchFilter()
     {
-        string query = (SearchText ?? string.Empty).Trim().ToLowerInvariant();
-        List<ScriptInfoViewModel> matches;
-
-        if (string.IsNullOrWhiteSpace(query))
-        {
-            matches = _scripts.ToList();
-        }
-        else
-        {
-            matches = _scripts.Where(s => s.SearchIndex.Contains(query, StringComparison.Ordinal)).ToList();
-        }
+        List<ScriptInfoViewModel> matches = FindMatches(SearchText, SearchScope);
 
         FilteredScripts.ReplaceRange(matches);
 

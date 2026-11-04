@@ -81,6 +81,9 @@
     <DataTemplate DataType="fastTravel:FastTravelViewModel">
       <views:FastTravelView />
     </DataTemplate>
+    <DataTemplate DataType="vms:CalendarViewModel">
+      <views:CalendarView />
+    </DataTemplate>
     <DataTemplate DataType="vms:CurrentDropsViewModel">
       <views:CurrentDropsView />
     </DataTemplate>

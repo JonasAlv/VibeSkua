@@ -262,6 +262,9 @@ public class ClientSettings
     [JsonPropertyName("ReloginTryDelay")]
     public int ReloginTryDelay { get; set; } = 800;
 
+    [JsonPropertyName("ReloginWatchdog")]
+    public bool ReloginWatchdog { get; set; } = true;
+
     [JsonPropertyName("ShowUsernameInTitle")]
     public bool ShowUsernameInTitle { get; set; } = true;
 

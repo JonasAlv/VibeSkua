@@ -45,6 +45,7 @@ internal class MainMenu
         windowService.RegisterManagedWindow<CurrentDropsViewModel>("Current Drops");
         windowService.RegisterManagedWindow<JunkItemsViewModel>("Junk Items");
         windowService.RegisterManagedWindow<UltraWikiViewModel>("Ultra Wiki");
+        windowService.RegisterManagedWindow<CalendarViewModel>("Calendar");
 
         windowService.RegisterManagedWindow<LoaderViewModel>("Loader");
         windowService.RegisterManagedWindow<GrabberViewModel>("Grabber");
@@ -90,7 +91,8 @@ internal class MainMenu
                 new("Grabber"),
                 new("Current Drops"),
                 new("Junk Items"),
-                new("Ultra Wiki")
+                new("Ultra Wiki"),
+                new("Calendar")
             }),
             new("Combat", new List<MainMenuItemViewModel>()
             {

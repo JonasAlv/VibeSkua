@@ -58,6 +58,8 @@ public partial class ScriptLoaderViewModel : BotControlViewModelBase
                 OnPropertyChanged(nameof(TogglePauseScriptIcon));
             }
         };
+        // The Account drop-down's card follows this client's script when this client is the shown account.
+        ScriptManager.PropertyChanged += (_, _) => RaiseShownIfLocal();
         _windowService = windowService;
         _dialogService = dialogService;
         ScriptLogs = logs.FirstOrDefault(l => l.Title == "Script") ?? logs.First();
@@ -74,6 +76,8 @@ public partial class ScriptLoaderViewModel : BotControlViewModelBase
     private readonly IDialogService _dialogService;
     private readonly IFileDialogService _fileDialog;
     public LogTabViewModel ScriptLogs { get; }
+
+    public string LoadedScriptPath => ScriptManager.LoadedScript ?? "";
 
     [ObservableProperty]
     private string _scriptErrorToolTip = string.Empty;

@@ -118,6 +118,7 @@ public static class Services
             new("Current Drops", () => s.GetRequiredService<CurrentDropsViewModel>()),
             new("Junk Items", () => s.GetRequiredService<JunkItemsViewModel>()),
             new("Ultra Wiki", () => s.GetRequiredService<UltraWikiViewModel>()),
+            new("Calendar", () => s.GetRequiredService<CalendarViewModel>()),
             new("Runtime", () => s.GetRequiredService<RuntimeHelpersViewModel>()),
             new("Loader", () => s.GetRequiredService<LoaderViewModel>()),
             new("Grabber", () => s.GetRequiredService<GrabberViewModel>()),
@@ -180,6 +181,7 @@ public static class Services
         services.AddTransient<CurrentDropsViewModel>();
         services.AddTransient<JunkItemsViewModel>();
         services.AddTransient<UltraWikiViewModel>();
+        services.AddTransient<CalendarViewModel>();
 
         services.AddThemeViewModels();
 

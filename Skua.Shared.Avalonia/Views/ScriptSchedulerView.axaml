@@ -1,248 +1,187 @@
-<UserControl x:Class="Skua.Shared.Avalonia.Views.ScriptSchedulerView"
+<UserControl
              xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
-             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:vms="clr-namespace:Skua.Shared.Avalonia.ViewModels;assembly=Skua.Shared.Avalonia"
              xmlns:materialIcons="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
              x:DataType="vms:ScriptSchedulerViewModel"
-             mc:Ignorable="d" 
-             d:DesignHeight="450" d:DesignWidth="800">
-    <Grid Margin="12" RowDefinitions="Auto,*,Auto" RowSpacing="8">
+             x:Name="Root"
+             mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+             x:Class="Skua.Shared.Avalonia.Views.ScriptSchedulerView">
 
-        <!-- Title & Subtitle Header Card -->
-        <Border Grid.Row="0"
-                Background="{DynamicResource SkuaSurfaceBrush}"
-                BorderBrush="{DynamicResource SkuaBorderBrush}"
-                BorderThickness="1"
-                CornerRadius="8"
-                Padding="12,10">
-            <Grid ColumnDefinitions="*,Auto" VerticalAlignment="Center">
-                <StackPanel Grid.Column="0" Spacing="2">
-                    <TextBlock Text="SCRIPT SCHEDULER &amp; PLAYLISTS"
-                               FontSize="10"
-                               FontWeight="Bold"
-                               Foreground="{DynamicResource SkuaMutedTextBrush}" />
-                    <TextBlock FontSize="16"
-                               FontWeight="Bold"
-                               Foreground="{DynamicResource SkuaTextBrush}"
-                               Text="Script Execution Queue" />
+    <!-- The playlist: runs top to bottom. A table of #, script, status and time; each row's actions are in its menu. -->
+    <Grid Margin="12" RowDefinitions="Auto,*,Auto" RowSpacing="10">
+        <Grid Grid.Row="0" ColumnDefinitions="Auto,*,Auto,Auto,Auto" ColumnSpacing="8">
+            <Button Grid.Column="0"
+                    Classes="skua-button w140"
+                    Classes.skua-danger="{Binding IsRunningQueue}"
+                    Classes.skua-primary="{Binding !IsRunningQueue}"
+                    Command="{Binding ToggleQueueCommand}">
+                <StackPanel Orientation="Horizontal" Spacing="6">
+                    <materialIcons:MaterialIcon Kind="PlayCircleOutline" Width="15" Height="15" IsVisible="{Binding !IsRunningQueue}" />
+                    <materialIcons:MaterialIcon Kind="StopCircleOutline" Width="15" Height="15" IsVisible="{Binding IsRunningQueue}" />
+                    <TextBlock Text="{Binding ToggleQueueText}" VerticalAlignment="Center" />
                 </StackPanel>
-
-                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-                    <Border Background="#163C29"
-                            BorderBrush="#10B981"
-                            BorderThickness="1"
-                            CornerRadius="20"
-                            Padding="10,4"
-                            VerticalAlignment="Center"
-                            IsVisible="{Binding IsRunningQueue}">
-                        <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
-                            <Ellipse Width="6" Height="6" Fill="#10B981" VerticalAlignment="Center" />
-                            <TextBlock Text="{Binding QueueStartedTime}"
-                                       FontSize="11"
-                                       FontWeight="Bold"
-                                       Foreground="#10B981" />
-                        </StackPanel>
-                    </Border>
-
-                    <Border Background="{DynamicResource SkuaSurfaceAltBrush}"
-                            BorderBrush="{DynamicResource SkuaBorderBrush}"
-                            BorderThickness="1"
-                            CornerRadius="20"
-                            Padding="10,4"
-                            VerticalAlignment="Center">
-                        <TextBlock Text="{Binding ScriptQueue.Count, StringFormat='Total Queued: {0}'}"
-                                   FontSize="11"
-                                   FontWeight="Bold"
-                                   Foreground="{DynamicResource SkuaTextBrush}" />
-                    </Border>
+            </Button>
+            <TextBlock Grid.Column="1" Text="{Binding QueueSummary}" FontSize="11" Margin="4,0,0,0" VerticalAlignment="Center"
+                       TextTrimming="CharacterEllipsis" Foreground="{DynamicResource SkuaMutedTextBrush}" />
+            <Button Grid.Column="2" Classes="skua-button w84" Command="{Binding LoadPlaylistCommand}" ToolTip.Tip="Load a saved playlist">
+                <StackPanel Orientation="Horizontal" Spacing="6">
+                    <materialIcons:MaterialIcon Kind="FolderOpenOutline" Width="15" Height="15" />
+                    <TextBlock Text="Load" VerticalAlignment="Center" />
                 </StackPanel>
+            </Button>
+            <Button Grid.Column="3" Classes="skua-button w84" Command="{Binding SavePlaylistCommand}" ToolTip.Tip="Save this playlist">
+                <StackPanel Orientation="Horizontal" Spacing="6">
+                    <materialIcons:MaterialIcon Kind="ContentSave" Width="15" Height="15" />
+                    <TextBlock Text="Save" VerticalAlignment="Center" />
+                </StackPanel>
+            </Button>
+            <Button Grid.Column="4" Classes="skua-button w140" Command="{Binding OpenScriptRepoCommand}" ToolTip.Tip="Queue scripts from Search Scripts">
+                <StackPanel Orientation="Horizontal" Spacing="6">
+                    <materialIcons:MaterialIcon Kind="Plus" Width="15" Height="15" />
+                    <TextBlock Text="Add scripts" VerticalAlignment="Center" />
+                </StackPanel>
+            </Button>
+        </Grid>
+
+        <Border Grid.Row="1" Classes="option-list">
+            <Grid RowDefinitions="Auto,*">
+                <Border Grid.Row="0" Height="30" Background="{DynamicResource SkuaSurfaceAltBrush}"
+                        BorderBrush="{DynamicResource SkuaBorderBrush}" BorderThickness="0,0,0,1">
+                    <!-- Same columns as the rows below -->
+                    <Grid ColumnDefinitions="40,*,120,100,44">
+                        <TextBlock Grid.Column="0" Classes="section-label" Text="#" HorizontalAlignment="Center" />
+                        <TextBlock Grid.Column="1" Classes="section-label" Text="SCRIPT" Margin="12,0" />
+                        <TextBlock Grid.Column="2" Classes="section-label" Text="STATUS" Margin="12,0" />
+                        <TextBlock Grid.Column="3" Classes="section-label" Text="TIME" Margin="12,0" HorizontalAlignment="Right" />
+                    </Grid>
+                </Border>
+
+                <ListBox Grid.Row="1"
+                         x:Name="QueueList"
+                         ItemsSource="{Binding ScriptQueue}"
+                         SelectedItem="{Binding SelectedScript}"
+                         ContainerPrepared="QueueList_ContainerPrepared"
+                         ContainerIndexChanged="QueueList_ContainerIndexChanged"
+                         Background="Transparent"
+                         BorderThickness="0"
+                         Padding="0"
+                         Margin="0,0,0,-1"
+                         ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                    <ListBox.Styles>
+                        <Style Selector="ListBoxItem">
+                            <Setter Property="Padding" Value="0" />
+                            <Setter Property="MinHeight" Value="38" />
+                            <Setter Property="Margin" Value="0" />
+                            <Setter Property="CornerRadius" Value="0" />
+                            <Setter Property="BorderThickness" Value="0,0,0,1" />
+                            <Setter Property="BorderBrush" Value="{DynamicResource SkuaBorderBrush}" />
+                            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                        </Style>
+                        <Style Selector="ListBoxItem /template/ ContentPresenter#PART_ContentPresenter">
+                            <Setter Property="CornerRadius" Value="0" />
+                        </Style>
+                        <Style Selector="ListBoxItem:selected /template/ ContentPresenter#PART_ContentPresenter">
+                            <Setter Property="BorderBrush" Value="{DynamicResource SkuaBorderBrush}" />
+                        </Style>
+                        <!-- Finished scripts step back -->
+                        <Style Selector="TextBlock.done">
+                            <Setter Property="Foreground" Value="{DynamicResource SkuaMutedTextBrush}" />
+                        </Style>
+                    </ListBox.Styles>
+                    <ListBox.ItemTemplate>
+                        <DataTemplate x:DataType="vms:ScriptItemViewModel">
+                            <Grid ColumnDefinitions="40,*,120,100,44" Background="Transparent">
+                                <Grid.ContextMenu>
+                                    <ContextMenu>
+                                        <MenuItem Header="Move up" Command="{Binding #Root.((vms:ScriptSchedulerViewModel)DataContext).MoveScriptUpCommand}" CommandParameter="{Binding}">
+                                            <MenuItem.Icon>
+                                                <materialIcons:MaterialIcon Kind="ArrowUp" Width="14" Height="14" />
+                                            </MenuItem.Icon>
+                                        </MenuItem>
+                                        <MenuItem Header="Move down" Command="{Binding #Root.((vms:ScriptSchedulerViewModel)DataContext).MoveScriptDownCommand}" CommandParameter="{Binding}">
+                                            <MenuItem.Icon>
+                                                <materialIcons:MaterialIcon Kind="ArrowDown" Width="14" Height="14" />
+                                            </MenuItem.Icon>
+                                        </MenuItem>
+                                        <MenuItem Header="Script options" Command="{Binding #Root.((vms:ScriptSchedulerViewModel)DataContext).EditScriptConfigCommand}" CommandParameter="{Binding}">
+                                            <MenuItem.Icon>
+                                                <materialIcons:MaterialIcon Kind="TuneVariant" Width="14" Height="14" />
+                                            </MenuItem.Icon>
+                                        </MenuItem>
+                                        <Separator />
+                                        <MenuItem Header="Remove" Command="{Binding #Root.((vms:ScriptSchedulerViewModel)DataContext).RemoveScriptCommand}" CommandParameter="{Binding}">
+                                            <MenuItem.Icon>
+                                                <materialIcons:MaterialIcon Kind="Close" Width="14" Height="14" Foreground="{DynamicResource SkuaDangerBrush}" />
+                                            </MenuItem.Icon>
+                                        </MenuItem>
+                                    </ContextMenu>
+                                </Grid.ContextMenu>
+
+                                <TextBlock Grid.Column="0" Text="{Binding $parent[ListBoxItem].Tag}" FontSize="11" HorizontalAlignment="Center"
+                                           VerticalAlignment="Center" Foreground="{DynamicResource SkuaMutedTextBrush}" />
+
+                                <!-- Name: double-click to rename (Enter or leaving the box ends it, Escape undoes it) -->
+                                <Grid Grid.Column="1" Margin="12,0">
+                                    <TextBlock Text="{Binding Name}" FontWeight="SemiBold" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
+                                               Classes.done="{Binding IsDone}" ToolTip.Tip="{Binding Path}"
+                                               DoubleTapped="Name_DoubleTapped" />
+                                    <TextBox Text="{Binding Name}" IsVisible="False" Margin="-8,0" VerticalAlignment="Center"
+                                             LostFocus="NameBox_LostFocus" KeyDown="NameBox_KeyDown" />
+                                </Grid>
+
+                                <Border Grid.Column="2" Classes="chip" Margin="12,0" HorizontalAlignment="Left"
+                                        Classes.success="{Binding IsRunning}"
+                                        Classes.warning="{Binding IsStopped}"
+                                        Classes.danger="{Binding IsProblem}">
+                                    <TextBlock Text="{Binding Status}" />
+                                </Border>
+
+                                <TextBlock Grid.Column="3" Text="{Binding Duration}" Margin="12,0" HorizontalAlignment="Right" VerticalAlignment="Center"
+                                           FontFamily="JetBrains Mono,Consolas,Courier New,monospace" FontSize="11"
+                                           Classes.done="{Binding IsDone}" />
+
+                                <Button Grid.Column="4" Classes="icon icon-muted" HorizontalAlignment="Center" ToolTip.Tip="Move, options, remove">
+                                    <materialIcons:MaterialIcon Kind="DotsVertical" Width="16" Height="16" />
+                                    <Button.Flyout>
+                                        <MenuFlyout Placement="BottomEdgeAlignedRight">
+                                            <MenuItem Header="Move up" Command="{Binding #Root.((vms:ScriptSchedulerViewModel)DataContext).MoveScriptUpCommand}" CommandParameter="{Binding}">
+                                                <MenuItem.Icon>
+                                                    <materialIcons:MaterialIcon Kind="ArrowUp" Width="14" Height="14" />
+                                                </MenuItem.Icon>
+                                            </MenuItem>
+                                            <MenuItem Header="Move down" Command="{Binding #Root.((vms:ScriptSchedulerViewModel)DataContext).MoveScriptDownCommand}" CommandParameter="{Binding}">
+                                                <MenuItem.Icon>
+                                                    <materialIcons:MaterialIcon Kind="ArrowDown" Width="14" Height="14" />
+                                                </MenuItem.Icon>
+                                            </MenuItem>
+                                            <MenuItem Header="Script options" Command="{Binding #Root.((vms:ScriptSchedulerViewModel)DataContext).EditScriptConfigCommand}" CommandParameter="{Binding}">
+                                                <MenuItem.Icon>
+                                                    <materialIcons:MaterialIcon Kind="TuneVariant" Width="14" Height="14" />
+                                                </MenuItem.Icon>
+                                            </MenuItem>
+                                            <Separator />
+                                            <MenuItem Header="Remove" Command="{Binding #Root.((vms:ScriptSchedulerViewModel)DataContext).RemoveScriptCommand}" CommandParameter="{Binding}">
+                                                <MenuItem.Icon>
+                                                    <materialIcons:MaterialIcon Kind="Close" Width="14" Height="14" Foreground="{DynamicResource SkuaDangerBrush}" />
+                                                </MenuItem.Icon>
+                                            </MenuItem>
+                                        </MenuFlyout>
+                                    </Button.Flyout>
+                                </Button>
+                            </Grid>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+
+                <TextBlock Grid.Row="1" Text="The playlist is empty. Add scripts to queue them." FontSize="12"
+                           HorizontalAlignment="Center" VerticalAlignment="Center" Foreground="{DynamicResource SkuaMutedTextBrush}"
+                           IsVisible="{Binding !ScriptQueue.Count}" />
             </Grid>
         </Border>
 
-        <!-- Queue Items List -->
-        <Border Grid.Row="1"
-                Background="{DynamicResource SkuaPageBrush}"
-                BorderBrush="{DynamicResource SkuaBorderBrush}"
-                BorderThickness="1"
-                CornerRadius="8"
-                Padding="4">
-            <ListBox Classes="card-list" ItemsSource="{Binding ScriptQueue}"
-                     SelectedItem="{Binding SelectedScript}"
-                     Background="Transparent"
-                     BorderThickness="0"
-                     HorizontalAlignment="Stretch">
-                <ListBox.ItemTemplate>
-                    <DataTemplate>
-                        <Border Classes="list-card"
-                                BorderThickness="1"
-                                CornerRadius="6"
-                                Margin="0,0,0,4"
-                                Padding="10,8">
-                            <Border.ContextMenu>
-                                <ContextMenu>
-                                    <MenuItem Header="Move Up"
-                                              Command="{Binding DataContext.MoveScriptUpCommand, RelativeSource={RelativeSource AncestorType=ListBox}}"
-                                              CommandParameter="{Binding}">
-                                        <MenuItem.Icon>
-                                            <materialIcons:MaterialIcon Kind="ArrowUp" Width="14" Height="14" />
-                                        </MenuItem.Icon>
-                                    </MenuItem>
-                                    <MenuItem Header="Move Down"
-                                              Command="{Binding DataContext.MoveScriptDownCommand, RelativeSource={RelativeSource AncestorType=ListBox}}"
-                                              CommandParameter="{Binding}">
-                                        <MenuItem.Icon>
-                                            <materialIcons:MaterialIcon Kind="ArrowDown" Width="14" Height="14" />
-                                        </MenuItem.Icon>
-                                    </MenuItem>
-                                    <Separator />
-                                    <MenuItem Header="Edit Script Options"
-                                              Command="{Binding DataContext.EditScriptConfigCommand, RelativeSource={RelativeSource AncestorType=ListBox}}"
-                                              CommandParameter="{Binding}">
-                                        <MenuItem.Icon>
-                                            <materialIcons:MaterialIcon Kind="Cog" Width="14" Height="14" />
-                                        </MenuItem.Icon>
-                                    </MenuItem>
-                                    <Separator />
-                                    <MenuItem Header="Remove from Queue"
-                                              Command="{Binding DataContext.RemoveScriptCommand, RelativeSource={RelativeSource AncestorType=ListBox}}"
-                                              CommandParameter="{Binding}">
-                                        <MenuItem.Icon>
-                                            <materialIcons:MaterialIcon Kind="Close" Width="14" Height="14" Foreground="{DynamicResource SkuaDangerBrush}" />
-                                        </MenuItem.Icon>
-                                    </MenuItem>
-                                </ContextMenu>
-                            </Border.ContextMenu>
-                            <Grid ColumnDefinitions="3*,*,*,Auto,Auto,Auto,Auto" Margin="2" VerticalAlignment="Center">
-                                <TextBox Grid.Column="0"
-                                         Text="{Binding Name, UpdateSourceTrigger=PropertyChanged}"
-                                         VerticalAlignment="Center"
-                                         FontWeight="SemiBold"
-                                         FontFamily="JetBrains Mono,Consolas,Courier New,monospace"
-                                         FontSize="12"
-                                         TextWrapping="Wrap"
-                                         Background="Transparent"
-                                         BorderThickness="0"
-                                         Foreground="{DynamicResource SkuaTextBrush}"
-                                         CaretBrush="{DynamicResource SkuaTextBrush}"
-                                         ToolTip.Tip="Rename this script instance" />
-                                
-                                <Border Grid.Column="1"
-                                        Background="{DynamicResource SkuaSurfaceAltBrush}"
-                                        BorderBrush="{DynamicResource SkuaBorderBrush}"
-                                        BorderThickness="1"
-                                        CornerRadius="12"
-                                        Padding="8,2"
-                                        Margin="6,0"
-                                        HorizontalAlignment="Center"
-                                        VerticalAlignment="Center">
-                                    <TextBlock Text="{Binding Status}"
-                                               FontSize="11"
-                                               FontWeight="Bold"
-                                               Foreground="{DynamicResource SkuaTextBrush}"/>
-                                </Border>
-                                
-                                <TextBlock Grid.Column="2"
-                                           Text="{Binding Duration}"
-                                           VerticalAlignment="Center"
-                                           FontSize="11"
-                                           Margin="6,0"
-                                           Foreground="{DynamicResource SkuaMutedTextBrush}" />
-                                
-                                <Button Grid.Column="3" 
-                                        Classes="skua-button" 
-                                        Command="{Binding DataContext.MoveScriptUpCommand, RelativeSource={RelativeSource AncestorType=ListBox}}" 
-                                        CommandParameter="{Binding}" 
-                                        Width="30"
-                                        Height="30"
-                                        Padding="0"
-                                        Margin="6,0,0,0"
-                                        ToolTip.Tip="Move script up in playlist">
-                                    <materialIcons:MaterialIcon Kind="ArrowUp" Width="15" Height="15" />
-                                </Button>
-                                
-                                <Button Grid.Column="4" 
-                                        Classes="skua-button" 
-                                        Command="{Binding DataContext.MoveScriptDownCommand, RelativeSource={RelativeSource AncestorType=ListBox}}" 
-                                        CommandParameter="{Binding}" 
-                                        Width="30"
-                                        Height="30"
-                                        Padding="0"
-                                        Margin="4,0,0,0"
-                                        ToolTip.Tip="Move script down in playlist">
-                                    <materialIcons:MaterialIcon Kind="ArrowDown" Width="15" Height="15" />
-                                </Button>
-                                
-                                <Button Grid.Column="5" 
-                                        Classes="skua-button" 
-                                        Command="{Binding DataContext.EditScriptConfigCommand, RelativeSource={RelativeSource AncestorType=ListBox}}" 
-                                        CommandParameter="{Binding}" 
-                                        Width="30"
-                                        Height="30"
-                                        Padding="0"
-                                        Margin="4,0,0,0"
-                                        ToolTip.Tip="Edit Script Options">
-                                    <materialIcons:MaterialIcon Kind="Cog" Width="15" Height="15" />
-                                </Button>
-                                
-                                <Button Grid.Column="6" 
-                                        Classes="skua-button" 
-                                        Command="{Binding DataContext.RemoveScriptCommand, RelativeSource={RelativeSource AncestorType=ListBox}}" 
-                                        CommandParameter="{Binding}" 
-                                        Width="30"
-                                        Height="30"
-                                        Padding="0"
-                                        Margin="4,0,0,0"
-                                        ToolTip.Tip="Remove from queue">
-                                    <materialIcons:MaterialIcon Kind="Close" Width="15" Height="15" Foreground="{DynamicResource SkuaDangerBrush}" />
-                                </Button>
-                            </Grid>
-                        </Border>
-                    </DataTemplate>
-                </ListBox.ItemTemplate>
-            </ListBox>
-        </Border>
-
-        <!-- Bottom Action Bar -->
-        <StackPanel Grid.Row="2"
-                    Orientation="Horizontal"
-                    HorizontalAlignment="Right"
-                    Spacing="8">
-            <Button Command="{Binding LoadPlaylistCommand}"
-                    Classes="skua-button">
-                <StackPanel Orientation="Horizontal" Spacing="6">
-                    <materialIcons:MaterialIcon Kind="FolderOpen" Width="14" Height="14" />
-                    <TextBlock Text="Load Playlist" VerticalAlignment="Center" />
-                </StackPanel>
-            </Button>
-            
-            <Button Command="{Binding SavePlaylistCommand}"
-                    Classes="skua-button">
-                <StackPanel Orientation="Horizontal" Spacing="6">
-                    <materialIcons:MaterialIcon Kind="ContentSave" Width="14" Height="14" />
-                    <TextBlock Text="Save Playlist" VerticalAlignment="Center" />
-                </StackPanel>
-            </Button>
-            
-            <Button Command="{Binding OpenScriptRepoCommand}"
-                    Classes="skua-button">
-                <StackPanel Orientation="Horizontal" Spacing="6">
-                    <materialIcons:MaterialIcon Kind="FolderSearch" Width="14" Height="14" />
-                    <TextBlock Text="Search Scripts" VerticalAlignment="Center" />
-                </StackPanel>
-            </Button>
-            
-            <Button Command="{Binding ToggleQueueCommand}"
-                    Classes="skua-button w112"
-                    Classes.skua-danger="{Binding IsRunningQueue}"
-                    Classes.skua-primary="{Binding !IsRunningQueue}">
-                <StackPanel Orientation="Horizontal" Spacing="6">
-                    <materialIcons:MaterialIcon Kind="Play" Width="14" Height="14" IsVisible="{Binding !IsRunningQueue}" />
-                    <materialIcons:MaterialIcon Kind="Stop" Width="14" Height="14" IsVisible="{Binding IsRunningQueue}" />
-                    <TextBlock Text="{Binding ToggleQueueText}" VerticalAlignment="Center" FontWeight="Bold" />
-                </StackPanel>
-            </Button>
-        </StackPanel>
+        <TextBlock Grid.Row="2" Text="Double-click a name to rename it" FontSize="11" Foreground="{DynamicResource SkuaMutedTextBrush}" />
     </Grid>
 </UserControl>

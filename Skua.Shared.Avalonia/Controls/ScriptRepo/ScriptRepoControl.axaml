@@ -6,615 +6,264 @@
              x:Name="Root"
              Background="{DynamicResource SkuaPageBrush}"
              x:Class="Skua.Shared.Avalonia.Controls.ScriptRepo.ScriptRepoControl">
-    
-    <Grid RowDefinitions="Auto,*,Auto" Margin="10" RowSpacing="10">
-        
-        <!-- 1. Top Header & Control Hub Card -->
-        <Border Grid.Row="0"
-                Background="{DynamicResource SkuaSurfaceBrush}"
-                BorderBrush="{DynamicResource SkuaBorderBrush}"
-                BorderThickness="1"
-                CornerRadius="8"
-                Padding="12,10">
-            <StackPanel Spacing="8">
-                <!-- Search & Core Filters Row -->
-                <Grid ColumnDefinitions="*,Auto,Auto,Auto" ColumnSpacing="8" IsEnabled="{Binding !IsBusy}">
-                    <!-- Search Input with Search Icon -->
-                    <Grid Grid.Column="0">
-                        <TextBox Height="32"
-                                 CornerRadius="6"
-                                 VerticalContentAlignment="Center"
-                                 Padding="32,0,28,0"
-                                 Watermark="Search scripts by name, path, or tag..."
-                                 Text="{Binding SearchText, Mode=TwoWay}" />
-                        
-                        <materialIcons:MaterialIcon Kind="Magnify"
-                                                    Width="15" Height="15"
-                                                    Foreground="{DynamicResource SkuaMutedTextBrush}"
-                                                    HorizontalAlignment="Left"
-                                                    Margin="10,0,0,0"
-                                                    IsHitTestVisible="False" />
-                        
-                        <Button Classes="icon"
-                                Width="20" Height="20"
-                                HorizontalAlignment="Right"
-                                Margin="0,0,6,0"
-                                Command="{Binding ClearSearchCommand}"
-                                IsVisible="{Binding SearchText.Length}"
-                                ToolTip.Tip="Clear search">
-                            <materialIcons:MaterialIcon Kind="CloseCircle" Width="14" Height="14" Foreground="{DynamicResource SkuaMutedTextBrush}" />
-                        </Button>
-                    </Grid>
 
-                    <!-- Category Filter Dropdown -->
-                    <ComboBox Grid.Column="1"
-                              Width="120"
-                              Height="32"
-                              ItemsSource="{Binding FilterOptions}"
-                              SelectedItem="{Binding FilterBy, Mode=TwoWay}"
-                              ToolTip.Tip="Filter by Category" />
+    <!-- Search Scripts (client) / Script Repo (Manager): search row, one list (each row: name, full description, path
+         with size and date, all tags; Start / Load / Queue / more always on the right), and a footer with the repo
+         counts and the bulk actions. The Manager hides Start. -->
+    <Grid RowDefinitions="Auto,*,Auto" Margin="12" RowSpacing="10">
 
-                    <!-- Sort By Dropdown -->
-                    <ComboBox Grid.Column="2"
-                              Width="130"
-                              Height="32"
-                              ItemsSource="{Binding SortOptions}"
-                              SelectedItem="{Binding SortBy, Mode=TwoWay}"
-                              ToolTip.Tip="Sort criteria" />
+        <!-- 1. Search, what it looks in, category, name order -->
+        <Grid Grid.Row="0" ColumnDefinitions="*,Auto,Auto,Auto" ColumnSpacing="8" IsEnabled="{Binding !IsBusy}">
+            <TextBox Grid.Column="0" Watermark="Search scripts by name, path or tag" Text="{Binding SearchText, Mode=TwoWay}">
+                <TextBox.InnerLeftContent>
+                    <materialIcons:MaterialIcon Kind="Magnify" Width="15" Height="15" Margin="10,0,0,0" Foreground="{DynamicResource SkuaMutedTextBrush}" />
+                </TextBox.InnerLeftContent>
+                <TextBox.InnerRightContent>
+                    <Button Classes="icon icon-muted" Width="22" Height="22" Margin="0,0,6,0"
+                            Command="{Binding ClearSearchCommand}"
+                            IsVisible="{Binding SearchText.Length}"
+                            ToolTip.Tip="Clear search">
+                        <materialIcons:MaterialIcon Kind="CloseCircle" Width="14" Height="14" />
+                    </Button>
+                </TextBox.InnerRightContent>
+            </TextBox>
+            <ComboBox Grid.Column="1" Width="120" ItemsSource="{Binding SearchScopes}" SelectedItem="{Binding SearchScope, Mode=TwoWay}"
+                      ToolTip.Tip="Search in: all, name, tags, description or file path" />
+            <ComboBox Grid.Column="2" Width="140" ItemsSource="{Binding FilterOptions}" SelectedItem="{Binding FilterBy, Mode=TwoWay}"
+                      ToolTip.Tip="Category" />
+            <ToggleButton Grid.Column="3" Classes="app-toggle" Width="32" Padding="0" HorizontalContentAlignment="Center"
+                          IsChecked="{Binding SortDescending, Mode=TwoWay}"
+                          ToolTip.Tip="{Binding SortDirectionText, StringFormat='Order: {0}'}">
+                <materialIcons:MaterialIcon Kind="{Binding SortDirectionIcon}" Width="16" Height="16" />
+            </ToggleButton>
+        </Grid>
 
-                    <!-- Ascending / Descending Toggle -->
-                    <ToggleButton Grid.Column="3"
-                                  Height="32"
-                                  Classes="app-toggle w112"
-                                  IsChecked="{Binding SortDescending, Mode=TwoWay}"
-                                  ToolTip.Tip="Toggle Ascending / Descending sort order">
-                        <StackPanel Orientation="Horizontal" Spacing="4">
-                            <materialIcons:MaterialIcon Kind="{Binding SortDirectionIcon}" Width="14" Height="14" />
-                            <TextBlock Text="{Binding SortDirectionText}" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center" />
-                        </StackPanel>
-                    </ToggleButton>
-                </Grid>
-
-                <!-- Actions & Stats Sub-Bar -->
-                <Border Height="1" Background="{DynamicResource SkuaBorderBrush}" />
-
-                <Grid ColumnDefinitions="Auto,*,Auto" VerticalAlignment="Center">
-                    <!-- Action Buttons -->
-                    <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
-                        <Button Classes="skua-button"
-                                Height="28"
-                                Padding="10,0"
-                                Command="{Binding UpdateAllCommand}"
-                                IsEnabled="{Binding !IsBusy}"
-                                ToolTip.Tip="Download updates for all outdated scripts">
-                            <StackPanel Orientation="Horizontal" Spacing="5">
-                                <materialIcons:MaterialIcon Kind="CloudDownloadOutline" Width="14" Height="14" Foreground="{DynamicResource SkuaWarningBrush}" />
-                                <TextBlock Text="Update All" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center" />
-                            </StackPanel>
-                        </Button>
-                        
-                        <Button Classes="skua-button"
-                                Height="28"
-                                Padding="10,0"
-                                Command="{Binding DownloadAllCommand}"
-                                IsEnabled="{Binding !IsBusy}"
-                                ToolTip.Tip="Download all available and outdated scripts">
-                            <StackPanel Orientation="Horizontal" Spacing="5">
-                                <materialIcons:MaterialIcon Kind="DownloadMultiple" Width="14" Height="14" Foreground="{DynamicResource SkuaSuccessBrush}" />
-                                <TextBlock Text="Download All" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center" />
-                            </StackPanel>
-                        </Button>
-                        
-                        <Button Classes="skua-button"
-                                Height="28"
-                                Padding="8,0"
-                                Command="{Binding RefreshScriptsCommand}"
-                                IsEnabled="{Binding !IsBusy}"
-                                ToolTip.Tip="Fetch latest script listings from repository">
-                            <StackPanel Orientation="Horizontal" Spacing="4">
-                                <materialIcons:MaterialIcon Kind="Refresh" Width="14" Height="14" />
-                                <TextBlock Text="Refresh" FontSize="11" VerticalAlignment="Center" />
-                            </StackPanel>
-                        </Button>
-                        
-                        <Button Classes="skua-button"
-                                Height="28"
-                                Padding="8,0"
-                                Command="{Binding UpdateDatesCommand}"
-                                IsEnabled="{Binding !IsBusy}"
-                                ToolTip.Tip="Sync script creation dates from Git history">
-                            <StackPanel Orientation="Horizontal" Spacing="4">
-                                <materialIcons:MaterialIcon Kind="CalendarSyncOutline" Width="14" Height="14" />
-                                <TextBlock Text="Update Dates" FontSize="11" VerticalAlignment="Center" />
-                            </StackPanel>
-                        </Button>
-                    </StackPanel>
-
-                    <!-- Quick Stat Pills Strip -->
-                    <StackPanel Grid.Column="1"
-                                Orientation="Horizontal"
-                                Spacing="8"
-                                HorizontalAlignment="Center"
-                                VerticalAlignment="Center">
-                        <Border Background="{DynamicResource SkuaSurfaceAltBrush}"
-                                BorderBrush="{DynamicResource SkuaBorderBrush}"
-                                BorderThickness="1"
-                                CornerRadius="12"
-                                Padding="8,2">
-                            <TextBlock FontSize="10" FontWeight="Bold" Foreground="{DynamicResource SkuaTextBrush}">
-                                <Run Text="📦 " /><Run Text="{Binding ScriptQuantity}" /><Run Text=" Total" />
-                            </TextBlock>
-                        </Border>
-
-                        <Border Background="#451A03"
-                                BorderBrush="#D97706"
-                                BorderThickness="1"
-                                CornerRadius="12"
-                                Padding="8,2"
-                                IsVisible="{Binding PinnedQuantity}">
-                            <TextBlock FontSize="10" FontWeight="Bold" Foreground="#FBBF24">
-                                <Run Text="📌 " /><Run Text="{Binding PinnedQuantity}" /><Run Text=" Pinned" />
-                            </TextBlock>
-                        </Border>
-
-                        <Border Background="#064E3B"
-                                BorderBrush="#059669"
-                                BorderThickness="1"
-                                CornerRadius="12"
-                                Padding="8,2">
-                            <TextBlock FontSize="10" FontWeight="Bold" Foreground="#34D399">
-                                <Run Text="🟢 " /><Run Text="{Binding DownloadedQuantity}" /><Run Text=" Local" />
-                            </TextBlock>
-                        </Border>
-
-                        <Border Background="#451A03"
-                                BorderBrush="#D97706"
-                                BorderThickness="1"
-                                CornerRadius="12"
-                                Padding="8,2"
-                                IsVisible="{Binding OutdatedQuantity}">
-                            <TextBlock FontSize="10" FontWeight="Bold" Foreground="#FBBF24">
-                                <Run Text="⚠️ " /><Run Text="{Binding OutdatedQuantity}" /><Run Text=" Updates" />
-                            </TextBlock>
-                        </Border>
-                    </StackPanel>
-
-                    <!-- Custom Folders & Editor Tools -->
-                    <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
-                        <Button Classes="skua-button"
-                                Height="28"
-                                Width="30"
-                                Padding="0"
-                                Command="{Binding AddCustomFolderCommand}"
-                                ToolTip.Tip="Set custom scripts directory"
-                                IsEnabled="{Binding !IsBusy}">
-                            <materialIcons:MaterialIcon Kind="FolderPlus" Width="14" Height="14" />
-                        </Button>
-                        <Button Classes="skua-button"
-                                Height="28"
-                                Width="30"
-                                Padding="0"
-                                Command="{Binding ClearCustomFolderCommand}"
-                                ToolTip.Tip="Clear custom scripts folder"
-                                IsEnabled="{Binding !IsBusy}">
-                            <materialIcons:MaterialIcon Kind="FolderRemove" Width="14" Height="14" />
-                        </Button>
-                        <Button Classes="skua-button"
-                                Height="28"
-                                Width="30"
-                                Padding="0"
-                                Command="{Binding LoadLocalScriptCommand}"
-                                ToolTip.Tip="Load single custom script file"
-                                IsEnabled="{Binding !IsBusy}">
-                            <materialIcons:MaterialIcon Kind="FileDocumentPlus" Width="14" Height="14" />
-                        </Button>
-                        <Button Classes="skua-button"
-                                Height="28"
-                                Width="30"
-                                Padding="0"
-                                Command="{Binding OpenScriptFolderCommand}"
-                                ToolTip.Tip="Open Scripts folder in VS Code"
-                                IsEnabled="{Binding !IsBusy}">
-                            <materialIcons:MaterialIcon Kind="MicrosoftVisualStudioCode" Width="14" Height="14" />
-                        </Button>
-                    </StackPanel>
-                </Grid>
-            </StackPanel>
-        </Border>
-
-        <!-- 2. Main Scripts List / Virtualized Card View -->
+        <!-- 2. The scripts -->
         <Grid Grid.Row="1">
-            <ListBox ItemsSource="{Binding FilteredScripts}"
-                     SelectedItem="{Binding SelectedItem}"
-                     IsEnabled="{Binding !IsBusy}"
-                     BorderThickness="0"
-                     Background="Transparent"
-                     Padding="0"
-                     ScrollViewer.HorizontalScrollBarVisibility="Disabled"
-                     ScrollViewer.VerticalScrollBarVisibility="Auto">
-                <ListBox.ItemsPanel>
-                    <ItemsPanelTemplate>
-                        <VirtualizingStackPanel />
-                    </ItemsPanelTemplate>
-                </ListBox.ItemsPanel>
-                <ListBox.Styles>
-                    <Style Selector="ListBoxItem">
-                        <Setter Property="Padding" Value="0,0,0,6" />
-                        <Setter Property="Background" Value="Transparent" />
-                        <Setter Property="Cursor" Value="Hand" />
-                    </Style>
-                    <Style Selector="ListBoxItem:selected /template/ ContentPresenter#PART_ContentPresenter">
-                        <Setter Property="Background" Value="Transparent" />
-                    </Style>
-                    <Style Selector="ListBoxItem:pointerover /template/ ContentPresenter#PART_ContentPresenter">
-                        <Setter Property="Background" Value="Transparent" />
-                    </Style>
-                </ListBox.Styles>
+            <Border Classes="option-list">
+                <Grid>
+                    <ListBox x:Name="ScriptList"
+                             ItemsSource="{Binding FilteredScripts}"
+                             SelectedItem="{Binding SelectedItem}"
+                             IsEnabled="{Binding !IsBusy}"
+                             BorderThickness="0"
+                             Background="Transparent"
+                             Padding="0"
+                             Margin="0,0,0,-1"
+                             ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                             ScrollViewer.VerticalScrollBarVisibility="Auto">
+                        <ListBox.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <VirtualizingStackPanel />
+                            </ItemsPanelTemplate>
+                        </ListBox.ItemsPanel>
+                        <ListBox.Styles>
+                            <!-- Flat rows with a line between them, like the options lists -->
+                            <Style Selector="ListBoxItem">
+                                <Setter Property="Padding" Value="12,10" />
+                                <Setter Property="Margin" Value="0" />
+                                <Setter Property="CornerRadius" Value="0" />
+                                <Setter Property="BorderThickness" Value="0,0,0,1" />
+                                <Setter Property="BorderBrush" Value="{DynamicResource SkuaBorderBrush}" />
+                                <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                                <Setter Property="Cursor" Value="Hand" />
+                            </Style>
+                            <Style Selector="ListBoxItem /template/ ContentPresenter#PART_ContentPresenter">
+                                <Setter Property="CornerRadius" Value="0" />
+                            </Style>
+                            <Style Selector="ListBoxItem:selected /template/ ContentPresenter#PART_ContentPresenter">
+                                <Setter Property="BorderBrush" Value="{DynamicResource SkuaBorderBrush}" />
+                            </Style>
+                        </ListBox.Styles>
 
-                <ListBox.ContextMenu>
-                    <ContextMenu>
-                        <MenuItem Command="{Binding TogglePinCommand}"
-                                  CommandParameter="{Binding SelectedItem}"
-                                  Header="Pin / Unpin Script"
-                                  IsEnabled="{Binding SelectedItem, Converter={x:Static ObjectConverters.IsNotNull}}">
-                            <MenuItem.Icon>
-                                <materialIcons:MaterialIcon Kind="Pin" Width="14" Height="14" Foreground="{DynamicResource SkuaWarningBrush}" />
-                            </MenuItem.Icon>
-                        </MenuItem>
-                        <Separator />
-                        <MenuItem Command="{Binding DownloadCommand}"
-                                  Header="Download Script"
-                                  IsEnabled="{Binding SelectedItem.Downloaded, Converter={x:Static ObjectConverters.IsNull}, FallbackValue=True}">
-                            <MenuItem.Icon>
-                                <materialIcons:MaterialIcon Kind="Download" Width="14" Height="14" />
-                            </MenuItem.Icon>
-                        </MenuItem>
-                        <MenuItem Command="{Binding DeleteCommand}"
-                                  Header="Delete Script"
-                                  IsEnabled="{Binding SelectedItem.Downloaded, FallbackValue=False}">
-                            <MenuItem.Icon>
-                                <materialIcons:MaterialIcon Kind="TrashCanOutline" Width="14" Height="14" Foreground="{DynamicResource SkuaDangerBrush}" />
-                            </MenuItem.Icon>
-                        </MenuItem>
-                        <MenuItem Command="{Binding OpenScriptCommand}"
-                                  Header="Open in VS Code"
-                                  IsEnabled="{Binding SelectedItem.Downloaded, FallbackValue=False}">
-                            <MenuItem.Icon>
-                                <materialIcons:MaterialIcon Kind="MicrosoftVisualStudioCode" Width="14" Height="14" />
-                            </MenuItem.Icon>
-                        </MenuItem>
-                    </ContextMenu>
-                </ListBox.ContextMenu>
+                        <ListBox.ContextMenu>
+                            <ContextMenu>
+                                <MenuItem Command="{Binding TogglePinCommand}"
+                                          CommandParameter="{Binding SelectedItem}"
+                                          Header="Pin / Unpin Script"
+                                          IsEnabled="{Binding SelectedItem, Converter={x:Static ObjectConverters.IsNotNull}}">
+                                    <MenuItem.Icon>
+                                        <materialIcons:MaterialIcon Kind="Pin" Width="14" Height="14" Foreground="{DynamicResource SkuaWarningBrush}" />
+                                    </MenuItem.Icon>
+                                </MenuItem>
+                                <Separator />
+                                <MenuItem Command="{Binding DownloadCommand}"
+                                          Header="Download Script"
+                                          IsEnabled="{Binding SelectedItem.Downloaded, Converter={x:Static ObjectConverters.IsNull}, FallbackValue=True}">
+                                    <MenuItem.Icon>
+                                        <materialIcons:MaterialIcon Kind="Download" Width="14" Height="14" />
+                                    </MenuItem.Icon>
+                                </MenuItem>
+                                <MenuItem Command="{Binding DeleteCommand}"
+                                          Header="Delete Script"
+                                          IsEnabled="{Binding SelectedItem.Downloaded, FallbackValue=False}">
+                                    <MenuItem.Icon>
+                                        <materialIcons:MaterialIcon Kind="TrashCanOutline" Width="14" Height="14" Foreground="{DynamicResource SkuaDangerBrush}" />
+                                    </MenuItem.Icon>
+                                </MenuItem>
+                                <MenuItem Command="{Binding OpenScriptCommand}"
+                                          Header="Open in VS Code"
+                                          IsEnabled="{Binding SelectedItem.Downloaded, FallbackValue=False}">
+                                    <MenuItem.Icon>
+                                        <materialIcons:MaterialIcon Kind="MicrosoftVisualStudioCode" Width="14" Height="14" />
+                                    </MenuItem.Icon>
+                                </MenuItem>
+                            </ContextMenu>
+                        </ListBox.ContextMenu>
 
-                <ListBox.ItemTemplate>
-                    <DataTemplate x:DataType="scriptRepo:ScriptInfoViewModel">
-                        <Border Background="{DynamicResource SkuaSurfaceBrush}"
-                                BorderBrush="{DynamicResource SkuaBorderBrush}"
-                                BorderThickness="1"
-                                CornerRadius="8"
-                                Padding="14,10">
-                            <Border.ContextMenu>
-                                <ContextMenu>
-                                    <MenuItem Command="{Binding #Root.((scriptRepo:ScriptRepoViewModel)DataContext).TogglePinCommand}"
-                                              CommandParameter="{Binding .}"
-                                              Header="{Binding PinToolTip}">
-                                        <MenuItem.Icon>
-                                            <materialIcons:MaterialIcon Kind="{Binding PinIcon}" Width="14" Height="14" Foreground="{Binding PinColor}" />
-                                        </MenuItem.Icon>
-                                    </MenuItem>
-                                    <Separator />
-                                    <MenuItem Command="{Binding #Root.((scriptRepo:ScriptRepoViewModel)DataContext).DownloadCommand}"
-                                              CommandParameter="{Binding .}"
-                                              Header="Download Script"
-                                              IsEnabled="{Binding !Downloaded}">
-                                        <MenuItem.Icon>
-                                            <materialIcons:MaterialIcon Kind="Download" Width="14" Height="14" />
-                                        </MenuItem.Icon>
-                                    </MenuItem>
-                                    <MenuItem Command="{Binding #Root.((scriptRepo:ScriptRepoViewModel)DataContext).DeleteCommand}"
-                                              CommandParameter="{Binding .}"
-                                              Header="Delete Script"
-                                              IsEnabled="{Binding Downloaded}">
-                                        <MenuItem.Icon>
-                                            <materialIcons:MaterialIcon Kind="TrashCanOutline" Width="14" Height="14" Foreground="{DynamicResource SkuaDangerBrush}" />
-                                        </MenuItem.Icon>
-                                    </MenuItem>
-                                    <MenuItem Command="{Binding #Root.((scriptRepo:ScriptRepoViewModel)DataContext).OpenScriptCommand}"
-                                              CommandParameter="{Binding .}"
-                                              Header="Open in VS Code"
-                                              IsEnabled="{Binding Downloaded}">
-                                        <MenuItem.Icon>
-                                            <materialIcons:MaterialIcon Kind="MicrosoftVisualStudioCode" Width="14" Height="14" />
-                                        </MenuItem.Icon>
-                                    </MenuItem>
-                                </ContextMenu>
-                            </Border.ContextMenu>
-
-                            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="16" VerticalAlignment="Center">
-                                <!-- Left Meta Column -->
-                                <StackPanel Grid.Column="0" Spacing="5" VerticalAlignment="Center">
-                                    <!-- Title & Status Header Line -->
-                                    <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-                                        <!-- Status Badge Pill -->
-                                        <Border CornerRadius="12"
-                                                Padding="8,2"
-                                                Background="{Binding StatusBackground}"
-                                                BorderBrush="{Binding StatusColor}"
-                                                BorderThickness="1"
-                                                VerticalAlignment="Center">
-                                            <TextBlock Text="{Binding StatusText}"
-                                                       FontSize="10"
-                                                       FontWeight="Bold"
-                                                       Foreground="{Binding StatusColor}"
-                                                       VerticalAlignment="Center" />
-                                        </Border>
-
-                                        <!-- Custom Tag -->
-                                        <Border CornerRadius="10"
-                                                Padding="6,1"
-                                                Background="#2E1065"
-                                                BorderBrush="#8B5CF6"
-                                                BorderThickness="1"
-                                                IsVisible="{Binding IsCustom}"
-                                                VerticalAlignment="Center">
-                                            <TextBlock Text="LOCAL" FontSize="9" FontWeight="Bold" Foreground="#C4B5FD" VerticalAlignment="Center" />
-                                        </Border>
-
-                                        <!-- Pinned Tag -->
-                                        <Border CornerRadius="10"
-                                                Padding="6,1"
-                                                Background="#451A03"
-                                                BorderBrush="#F59E0B"
-                                                BorderThickness="1"
-                                                IsVisible="{Binding IsPinned}"
-                                                VerticalAlignment="Center">
-                                            <StackPanel Orientation="Horizontal" Spacing="3" VerticalAlignment="Center">
-                                                <materialIcons:MaterialIcon Kind="Pin" Width="10" Height="10" Foreground="#FBBF24" VerticalAlignment="Center" />
-                                                <TextBlock Text="PINNED" FontSize="9" FontWeight="Bold" Foreground="#FBBF24" VerticalAlignment="Center" />
-                                            </StackPanel>
-                                        </Border>
-
-                                        <!-- Script Name -->
-                                        <TextBlock Text="{Binding FileName}"
-                                                   FontWeight="Bold"
-                                                   FontSize="13"
-                                                   Foreground="{DynamicResource SkuaTextBrush}"
-                                                   VerticalAlignment="Center" />
-                                    </StackPanel>
-
-                                    <!-- Description -->
-                                    <TextBlock Text="{Binding Info.Description}"
-                                               FontSize="11"
-                                               Foreground="{DynamicResource SkuaMutedTextBrush}"
-                                               TextWrapping="Wrap"
-                                               MaxLines="2"
-                                               TextTrimming="CharacterEllipsis" />
-
-                                    <!-- Tags & File Path Meta Line -->
-                                    <WrapPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                        <!-- Tags Chips -->
-                                        <ItemsControl ItemsSource="{Binding InfoTags}">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate x:DataType="scriptRepo:ScriptInfoViewModel">
+                                <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12">
+                                    <Ellipse Grid.Column="0" Width="8" Height="8" Fill="{Binding StatusColor}" VerticalAlignment="Top" Margin="0,5,0,0"
+                                             ToolTip.Tip="{Binding StatusText}" />
+                                    <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
+                                        <StackPanel Orientation="Horizontal" Spacing="6">
+                                            <TextBlock Text="{Binding FileName}" FontWeight="SemiBold" VerticalAlignment="Center" />
+                                            <materialIcons:MaterialIcon Kind="Pin" Width="13" Height="13" Foreground="{DynamicResource SkuaGoldBrush}"
+                                                                        IsVisible="{Binding IsPinned}" VerticalAlignment="Center" />
+                                            <Border Classes="chip warning" IsVisible="{Binding Outdated}">
+                                                <TextBlock Text="Update" />
+                                            </Border>
+                                            <Border Classes="chip accent" IsVisible="{Binding IsCustom}">
+                                                <TextBlock Text="Local" />
+                                            </Border>
+                                        </StackPanel>
+                                        <TextBlock Text="{Binding Info.Description}" FontSize="11" TextWrapping="Wrap"
+                                                   Foreground="{DynamicResource SkuaMutedTextBrush}" />
+                                        <!-- Path (never trimmed; wraps at folders), then size and date -->
+                                        <Grid ColumnDefinitions="Auto,*" ColumnSpacing="4" Margin="0,2,0,0">
+                                            <materialIcons:MaterialIcon Grid.Column="0" Kind="FolderOutline" Width="12" Height="12" VerticalAlignment="Top" Margin="0,1,0,0"
+                                                                        Foreground="{DynamicResource SkuaMutedTextBrush}" />
+                                            <TextBlock Grid.Column="1" FontSize="10.5" TextWrapping="Wrap" Foreground="{DynamicResource SkuaMutedTextBrush}"
+                                                       ToolTip.Tip="{Binding DisplayPath}">
+                                                <Run Text="{Binding WrappablePath}" FontFamily="JetBrains Mono,Consolas,Courier New,monospace" />
+                                                <Run Text="{Binding ListMeta}" />
+                                            </TextBlock>
+                                        </Grid>
+                                        <ItemsControl ItemsSource="{Binding InfoTags}" Margin="0,4,0,0">
                                             <ItemsControl.ItemsPanel>
                                                 <ItemsPanelTemplate>
-                                                    <WrapPanel Orientation="Horizontal" />
+                                                    <WrapPanel ItemSpacing="4" LineSpacing="4" />
                                                 </ItemsPanelTemplate>
                                             </ItemsControl.ItemsPanel>
                                             <ItemsControl.ItemTemplate>
                                                 <DataTemplate>
-                                                    <Border Margin="0,2,6,2"
-                                                            Padding="6,1"
-                                                            Background="{DynamicResource SkuaSurfaceAltBrush}"
-                                                            BorderThickness="1"
-                                                            BorderBrush="{DynamicResource SkuaBorderBrush}"
-                                                            CornerRadius="10">
-                                                        <TextBlock Text="{Binding}"
-                                                                   FontSize="9"
-                                                                   FontWeight="SemiBold"
-                                                                   Foreground="{DynamicResource SkuaTextBrush}" />
+                                                    <Border Classes="chip" Height="18">
+                                                        <TextBlock Text="{Binding}" />
                                                     </Border>
                                                 </DataTemplate>
                                             </ItemsControl.ItemTemplate>
                                         </ItemsControl>
+                                    </StackPanel>
 
-                                        <!-- Path Pill -->
-                                        <Border Margin="0,2,6,2"
-                                                Padding="6,1"
-                                                Background="Transparent"
-                                                BorderThickness="1"
-                                                BorderBrush="{DynamicResource SkuaBorderBrush}"
-                                                CornerRadius="4">
-                                            <StackPanel Orientation="Horizontal" Spacing="4">
-                                                <materialIcons:MaterialIcon Kind="FolderOutline" Width="11" Height="11" Foreground="{DynamicResource SkuaMutedTextBrush}" VerticalAlignment="Center" />
-                                                <TextBlock Text="{Binding DisplayPath}"
-                                                           FontSize="9"
-                                                           FontFamily="JetBrains Mono,Consolas,Courier New,monospace"
-                                                           Foreground="{DynamicResource SkuaMutedTextBrush}"
-                                                           VerticalAlignment="Center" />
+                                    <!-- Always there, so nothing moves on hover. 90x30: a little larger than the small buttons, still clear of the text -->
+                                    <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                                        <Button Classes="skua-button skua-primary w90" Height="30" MinHeight="30"
+                                                IsVisible="{Binding #Root.((scriptRepo:ScriptRepoViewModel)DataContext).ShowStartButton}"
+                                                Command="{Binding StartScriptCommand}" CommandParameter="{Binding .}"
+                                                IsEnabled="{Binding Downloaded}" ToolTip.Tip="Start this script now">
+                                            <StackPanel Orientation="Horizontal" Spacing="5">
+                                                <materialIcons:MaterialIcon Kind="Play" Width="15" Height="15" />
+                                                <TextBlock Text="Start" VerticalAlignment="Center" />
                                             </StackPanel>
-                                        </Border>
-
-                                        <!-- Size Pill -->
-                                        <Border Margin="0,2,6,2"
-                                                Padding="6,1"
-                                                Background="Transparent"
-                                                BorderThickness="1"
-                                                BorderBrush="{DynamicResource SkuaBorderBrush}"
-                                                CornerRadius="4">
-                                            <StackPanel Orientation="Horizontal" Spacing="4">
-                                                <materialIcons:MaterialIcon Kind="FileDocumentOutline" Width="11" Height="11" Foreground="{DynamicResource SkuaMutedTextBrush}" VerticalAlignment="Center" />
-                                                <TextBlock Text="{Binding FormattedSize}"
-                                                           FontSize="9"
-                                                           FontFamily="JetBrains Mono,Consolas,Courier New,monospace"
-                                                           Foreground="{DynamicResource SkuaMutedTextBrush}"
-                                                           VerticalAlignment="Center" />
+                                        </Button>
+                                        <Button Classes="skua-button w90" Height="30" MinHeight="30"
+                                                Command="{Binding LoadScriptCommand}" CommandParameter="{Binding .}"
+                                                IsEnabled="{Binding Downloaded}" ToolTip.Tip="Load into the Script Loader">
+                                            <StackPanel Orientation="Horizontal" Spacing="5">
+                                                <materialIcons:MaterialIcon Kind="FolderOpenOutline" Width="15" Height="15" />
+                                                <TextBlock Text="Load" VerticalAlignment="Center" />
                                             </StackPanel>
-                                        </Border>
-
-                                        <!-- Date Pill -->
-                                        <Border Margin="0,2,6,2"
-                                                Padding="6,1"
-                                                Background="Transparent"
-                                                BorderThickness="1"
-                                                BorderBrush="{DynamicResource SkuaBorderBrush}"
-                                                CornerRadius="4">
-                                            <StackPanel Orientation="Horizontal" Spacing="4">
-                                                <materialIcons:MaterialIcon Kind="CalendarOutline" Width="11" Height="11" Foreground="{DynamicResource SkuaMutedTextBrush}" VerticalAlignment="Center" />
-                                                <TextBlock Text="{Binding FormattedCreationDate}"
-                                                           FontSize="9"
-                                                           FontFamily="JetBrains Mono,Consolas,Courier New,monospace"
-                                                           Foreground="{DynamicResource SkuaMutedTextBrush}"
-                                                           VerticalAlignment="Center" />
+                                        </Button>
+                                        <Button Classes="skua-button w90" Height="30" MinHeight="30"
+                                                Command="{Binding QueueScriptCommand}" CommandParameter="{Binding .}"
+                                                IsEnabled="{Binding Downloaded}" ToolTip.Tip="Add to the Scheduler queue">
+                                            <StackPanel Orientation="Horizontal" Spacing="5">
+                                                <materialIcons:MaterialIcon Kind="PlaylistPlus" Width="15" Height="15" />
+                                                <TextBlock Text="Queue" VerticalAlignment="Center" />
                                             </StackPanel>
-                                        </Border>
-                                    </WrapPanel>
-                                </StackPanel>
+                                        </Button>
+                                        <Button Classes="skua-button" Width="30" Height="30" MinHeight="30" Padding="0" HorizontalContentAlignment="Center"
+                                                ToolTip.Tip="Pin, download, update, VS Code, delete">
+                                            <materialIcons:MaterialIcon Kind="DotsHorizontal" Width="16" Height="16" />
+                                            <Button.Flyout>
+                                                <MenuFlyout Placement="BottomEdgeAlignedRight">
+                                                    <MenuItem Header="{Binding PinToolTip}"
+                                                              Command="{Binding #Root.((scriptRepo:ScriptRepoViewModel)DataContext).TogglePinCommand}" CommandParameter="{Binding .}">
+                                                        <MenuItem.Icon>
+                                                            <materialIcons:MaterialIcon Kind="{Binding PinIcon}" Width="14" Height="14" Foreground="{Binding PinColor}" />
+                                                        </MenuItem.Icon>
+                                                    </MenuItem>
+                                                    <Separator />
+                                                    <!-- Download when it isn't local yet; Update re-downloads a local repo script, newer or not
+                                                         (greyed out for custom scripts, which aren't in the repo) -->
+                                                    <MenuItem Header="Download" IsVisible="{Binding !Downloaded}"
+                                                              Command="{Binding #Root.((scriptRepo:ScriptRepoViewModel)DataContext).DownloadCommand}" CommandParameter="{Binding .}">
+                                                        <MenuItem.Icon>
+                                                            <materialIcons:MaterialIcon Kind="Download" Width="14" Height="14" />
+                                                        </MenuItem.Icon>
+                                                    </MenuItem>
+                                                    <MenuItem Header="Update" IsVisible="{Binding Downloaded}" IsEnabled="{Binding CanUpdate}"
+                                                              Command="{Binding #Root.((scriptRepo:ScriptRepoViewModel)DataContext).DownloadCommand}" CommandParameter="{Binding .}">
+                                                        <MenuItem.Icon>
+                                                            <materialIcons:MaterialIcon Kind="Update" Width="14" Height="14" />
+                                                        </MenuItem.Icon>
+                                                    </MenuItem>
+                                                    <MenuItem Header="Open in VS Code" IsEnabled="{Binding Downloaded}"
+                                                              Command="{Binding #Root.((scriptRepo:ScriptRepoViewModel)DataContext).OpenScriptCommand}" CommandParameter="{Binding .}">
+                                                        <MenuItem.Icon>
+                                                            <materialIcons:MaterialIcon Kind="MicrosoftVisualStudioCode" Width="14" Height="14" />
+                                                        </MenuItem.Icon>
+                                                    </MenuItem>
+                                                    <Separator />
+                                                    <MenuItem Header="Delete" IsEnabled="{Binding Downloaded}"
+                                                              Command="{Binding #Root.((scriptRepo:ScriptRepoViewModel)DataContext).DeleteCommand}" CommandParameter="{Binding .}">
+                                                        <MenuItem.Icon>
+                                                            <materialIcons:MaterialIcon Kind="TrashCanOutline" Width="14" Height="14" Foreground="{DynamicResource SkuaDangerBrush}" />
+                                                        </MenuItem.Icon>
+                                                    </MenuItem>
+                                                </MenuFlyout>
+                                            </Button.Flyout>
+                                        </Button>
+                                    </StackPanel>
+                                </Grid>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
 
-                                <!-- Right Action Buttons Stack -->
-                                <StackPanel Grid.Column="1"
-                                            Orientation="Horizontal"
-                                            Spacing="5"
-                                            VerticalAlignment="Center">
-                                    <!-- Pin / Unpin Button -->
-                                    <Button Classes="skua-button"
-                                            Height="28"
-                                            Width="30"
-                                            Padding="0"
-                                            Command="{Binding #Root.((scriptRepo:ScriptRepoViewModel)DataContext).TogglePinCommand}"
-                                            CommandParameter="{Binding .}"
-                                            ToolTip.Tip="{Binding PinToolTip}">
-                                        <materialIcons:MaterialIcon Kind="{Binding PinIcon}" Width="14" Height="14" Foreground="{Binding PinColor}" />
-                                    </Button>
-
-                                    <!-- Start Script Button -->
-                                    <Button Classes="skua-button skua-primary"
-                                            Height="28"
-                                            Padding="10,0"
-                                            FontSize="11"
-                                            FontWeight="Bold"
-                                            IsVisible="{Binding #Root.((scriptRepo:ScriptRepoViewModel)DataContext).ShowStartButton}"
-                                            Command="{Binding StartScriptCommand}"
-                                            CommandParameter="{Binding .}"
-                                            IsEnabled="{Binding Downloaded}"
-                                            ToolTip.Tip="Execute script immediately">
-                                        <StackPanel Orientation="Horizontal" Spacing="4">
-                                            <materialIcons:MaterialIcon Kind="Play" Width="12" Height="12" VerticalAlignment="Center" />
-                                            <TextBlock Text="Start" VerticalAlignment="Center" />
-                                        </StackPanel>
-                                    </Button>
-
-                                    <!-- Load Script Button -->
-                                    <Button Classes="skua-button"
-                                            Height="28"
-                                            Padding="8,0"
-                                            FontSize="11"
-                                            Command="{Binding LoadScriptCommand}"
-                                            CommandParameter="{Binding .}"
-                                            IsEnabled="{Binding Downloaded}"
-                                            ToolTip.Tip="Load into Script Loader">
-                                        <StackPanel Orientation="Horizontal" Spacing="4">
-                                            <materialIcons:MaterialIcon Kind="FolderOpenOutline" Width="12" Height="12" VerticalAlignment="Center" />
-                                            <TextBlock Text="Load" VerticalAlignment="Center" />
-                                        </StackPanel>
-                                    </Button>
-
-                                    <!-- Queue Script Button -->
-                                    <Button Classes="skua-button"
-                                            Height="28"
-                                            Padding="8,0"
-                                            FontSize="11"
-                                            Command="{Binding QueueScriptCommand}"
-                                            CommandParameter="{Binding .}"
-                                            IsEnabled="{Binding Downloaded}"
-                                            ToolTip.Tip="Add to Script Manager queue">
-                                        <StackPanel Orientation="Horizontal" Spacing="4">
-                                            <materialIcons:MaterialIcon Kind="PlaylistPlus" Width="12" Height="12" VerticalAlignment="Center" />
-                                            <TextBlock Text="Queue" VerticalAlignment="Center" />
-                                        </StackPanel>
-                                    </Button>
-
-                                    <!-- Download Action Button (When not downloaded) -->
-                                    <Button Classes="skua-button"
-                                            Height="28"
-                                            Width="30"
-                                            Padding="0"
-                                            IsVisible="{Binding !Downloaded}"
-                                            Command="{Binding #Root.((scriptRepo:ScriptRepoViewModel)DataContext).DownloadCommand}"
-                                            CommandParameter="{Binding .}"
-                                            ToolTip.Tip="Download script to local computer">
-                                        <materialIcons:MaterialIcon Kind="Download" Width="14" Height="14" Foreground="{DynamicResource SkuaSuccessBrush}" />
-                                    </Button>
-
-                                    <!-- VS Code Action Button (When downloaded) -->
-                                    <Button Classes="skua-button"
-                                            Height="28"
-                                            Width="30"
-                                            Padding="0"
-                                            IsVisible="{Binding Downloaded}"
-                                            Command="{Binding #Root.((scriptRepo:ScriptRepoViewModel)DataContext).OpenScriptCommand}"
-                                            CommandParameter="{Binding .}"
-                                            ToolTip.Tip="Open in Visual Studio Code">
-                                        <materialIcons:MaterialIcon Kind="MicrosoftVisualStudioCode" Width="13" Height="13" />
-                                    </Button>
-
-                                    <!-- Delete Action Button (When downloaded) -->
-                                    <Button Classes="skua-button"
-                                            Height="28"
-                                            Width="30"
-                                            Padding="0"
-                                            IsVisible="{Binding Downloaded}"
-                                            Command="{Binding #Root.((scriptRepo:ScriptRepoViewModel)DataContext).DeleteCommand}"
-                                            CommandParameter="{Binding .}"
-                                            ToolTip.Tip="Delete local copy">
-                                        <materialIcons:MaterialIcon Kind="TrashCanOutline" Width="13" Height="13" Foreground="{DynamicResource SkuaDangerBrush}" />
-                                    </Button>
-                                </StackPanel>
-                            </Grid>
-                        </Border>
-                    </DataTemplate>
-                </ListBox.ItemTemplate>
-            </ListBox>
-
-            <!-- Empty Search Results State -->
-            <Border Background="{DynamicResource SkuaSurfaceBrush}"
-                    BorderBrush="{DynamicResource SkuaBorderBrush}"
-                    BorderThickness="1"
-                    CornerRadius="8"
-                    Padding="32"
-                    HorizontalAlignment="Center"
-                    VerticalAlignment="Center"
-                    IsVisible="{Binding !FilteredScripts.Count}">
-                <StackPanel Spacing="10" HorizontalAlignment="Center">
-                    <materialIcons:MaterialIcon Kind="FolderSearchOutline"
-                                                Width="48" Height="48"
-                                                Foreground="{DynamicResource SkuaMutedTextBrush}"
-                                                HorizontalAlignment="Center" />
-                    <TextBlock Text="No Scripts Found"
-                               FontSize="16"
-                               FontWeight="Bold"
-                               Foreground="{DynamicResource SkuaTextBrush}"
-                               HorizontalAlignment="Center" />
-                    <TextBlock Text="No scripts match your current search query or category filter."
-                               FontSize="12"
-                               Foreground="{DynamicResource SkuaMutedTextBrush}"
-                               HorizontalAlignment="Center" />
-                    <Button Classes="skua-button"
-                            Height="30"
-                            Padding="14,0"
-                            HorizontalAlignment="Center"
-                            Command="{Binding ClearSearchCommand}">
-                        <StackPanel Orientation="Horizontal" Spacing="6">
-                            <materialIcons:MaterialIcon Kind="FilterRemoveOutline" Width="14" Height="14" />
-                            <TextBlock Text="Clear Search &amp; Filters" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center" />
+                    <!-- Still loading the list -->
+                    <Panel IsVisible="{Binding IsLoadingScripts}">
+                        <StackPanel Spacing="12" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                    IsVisible="{Binding !FilteredScripts.Count}">
+                            <materialIcons:MaterialIcon Kind="CloudDownloadOutline" Width="40" Height="40" Foreground="{DynamicResource SkuaMutedTextBrush}" />
+                            <TextBlock Text="Loading scripts..." FontSize="14" FontWeight="Bold" HorizontalAlignment="Center" />
+                            <ProgressBar IsIndeterminate="True" Height="4" Width="200" HorizontalAlignment="Center" />
+                            <TextBlock Text="Getting the script list, this can take a few seconds." FontSize="12" Foreground="{DynamicResource SkuaMutedTextBrush}"
+                                       HorizontalAlignment="Center" />
                         </StackPanel>
-                    </Button>
-                </StackPanel>
+                    </Panel>
+
+                    <!-- Nothing matches -->
+                    <Panel IsVisible="{Binding !IsLoadingScripts}">
+                        <StackPanel Spacing="10" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                    IsVisible="{Binding !FilteredScripts.Count}">
+                            <materialIcons:MaterialIcon Kind="FolderSearchOutline" Width="40" Height="40" Foreground="{DynamicResource SkuaMutedTextBrush}" />
+                            <TextBlock Text="No scripts found" FontSize="14" FontWeight="Bold" HorizontalAlignment="Center" />
+                            <TextBlock Text="Nothing matches the search or category." FontSize="12" Foreground="{DynamicResource SkuaMutedTextBrush}"
+                                       HorizontalAlignment="Center" />
+                            <Button Classes="skua-button w140" HorizontalAlignment="Center" Command="{Binding ClearSearchCommand}">
+                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                    <materialIcons:MaterialIcon Kind="FilterRemoveOutline" Width="15" Height="15" />
+                                    <TextBlock Text="Clear search" VerticalAlignment="Center" />
+                                </StackPanel>
+                            </Button>
+                        </StackPanel>
+                    </Panel>
+                </Grid>
             </Border>
 
-            <!-- Busy Blocking Overlay -->
-            <Border Background="#B0000000"
-                    IsVisible="{Binding IsBusy}"
-                    HorizontalAlignment="Stretch"
-                    VerticalAlignment="Stretch">
+            <!-- Busy: blocks the list until the task ends or is cancelled -->
+            <Border Background="#B0000000" CornerRadius="8" IsVisible="{Binding IsBusy}">
                 <Border Background="{DynamicResource SkuaSurfaceBrush}"
                         BorderBrush="{DynamicResource SkuaBorderBrush}"
                         BorderThickness="1"
@@ -629,17 +278,12 @@
                         <TextBlock Text="{Binding ProgressReportMessage, FallbackValue='Processing...'}"
                                    FontSize="12"
                                    FontWeight="SemiBold"
-                                   Foreground="{DynamicResource SkuaTextBrush}"
                                    TextAlignment="Center"
                                    TextWrapping="Wrap" />
-                        <Button Classes="skua-button skua-danger"
-                                Height="30"
-                                Padding="16,0"
-                                HorizontalAlignment="Center"
-                                Command="{Binding CancelTaskCommand}">
+                        <Button Classes="skua-button skua-danger w112" HorizontalAlignment="Center" Command="{Binding CancelTaskCommand}">
                             <StackPanel Orientation="Horizontal" Spacing="6">
                                 <materialIcons:MaterialIcon Kind="Cancel" Width="14" Height="14" />
-                                <TextBlock Text="Cancel Task" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center" />
+                                <TextBlock Text="Cancel" VerticalAlignment="Center" />
                             </StackPanel>
                         </Button>
                     </StackPanel>
@@ -647,49 +291,77 @@
             </Border>
         </Grid>
 
-        <!-- 3. Bottom Modern Status Strip -->
-        <Border Grid.Row="2"
-                Background="{DynamicResource SkuaSurfaceBrush}"
-                BorderBrush="{DynamicResource SkuaBorderBrush}"
-                BorderThickness="1"
-                CornerRadius="8"
-                Height="36"
-                Padding="12,0">
-            <Grid ColumnDefinitions="Auto,*,Auto" VerticalAlignment="Center">
-                <!-- Activity & Progress Report -->
-                <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-                    <Ellipse Width="6" Height="6"
-                             Fill="{DynamicResource SkuaSuccessBrush}"
-                             VerticalAlignment="Center"
-                             IsVisible="{Binding !IsBusy}" />
-                    
-                    <ProgressBar IsIndeterminate="True"
-                                 Width="40" Height="4"
-                                 VerticalAlignment="Center"
-                                 IsVisible="{Binding IsBusy}" />
-
-                    <TextBlock Text="{Binding ProgressReportMessage, FallbackValue='Ready'}"
-                               FontSize="11"
-                               FontWeight="SemiBold"
-                               Foreground="{DynamicResource SkuaTextBrush}"
-                               VerticalAlignment="Center"
-                               TextTrimming="CharacterEllipsis" />
+        <!-- 3. Repo counts and bulk actions -->
+        <Grid Grid.Row="2" ColumnDefinitions="*,Auto,Auto,Auto,Auto" ColumnSpacing="6" IsEnabled="{Binding !IsBusy}">
+            <TextBlock Grid.Column="0" FontSize="11" VerticalAlignment="Center" Foreground="{DynamicResource SkuaMutedTextBrush}"
+                       TextTrimming="CharacterEllipsis">
+                <Run Text="{Binding ScriptQuantity, StringFormat='{}{0:N0} scripts'}" />
+                <Run Text="·" />
+                <Run Text="{Binding DownloadedQuantity, StringFormat='{}{0:N0} local'}" />
+                <Run Text="·" />
+                <Run Text="{Binding PinnedQuantity, StringFormat='{}{0:N0} pinned'}" />
+                <Run Text="·" />
+                <Run Text="{Binding OutdatedQuantity, StringFormat='{}{0:N0} updates'}" Foreground="{DynamicResource SkuaWarningBrush}" />
+            </TextBlock>
+            <Button Grid.Column="1" Classes="skua-button small w112" Command="{Binding UpdateAllCommand}"
+                    ToolTip.Tip="Download every script that has an update">
+                <StackPanel Orientation="Horizontal" Spacing="5">
+                    <materialIcons:MaterialIcon Kind="Update" Width="14" Height="14" />
+                    <TextBlock Text="Update all" VerticalAlignment="Center" />
                 </StackPanel>
-
-                <!-- Cancel Button When Busy -->
-                <Button Grid.Column="2"
-                        Classes="skua-button skua-danger"
-                        Height="24"
-                        Padding="10,0"
-                        FontSize="10"
-                        Command="{Binding CancelTaskCommand}"
-                        IsVisible="{Binding IsBusy}">
-                    <StackPanel Orientation="Horizontal" Spacing="4">
-                        <materialIcons:MaterialIcon Kind="Cancel" Width="12" Height="12" />
-                        <TextBlock Text="Cancel" VerticalAlignment="Center" />
-                    </StackPanel>
-                </Button>
-            </Grid>
-        </Border>
+            </Button>
+            <Button Grid.Column="2" Classes="skua-button small w112" Command="{Binding DownloadAllCommand}"
+                    ToolTip.Tip="Download every script you don't have, and every update">
+                <StackPanel Orientation="Horizontal" Spacing="5">
+                    <materialIcons:MaterialIcon Kind="DownloadMultiple" Width="14" Height="14" />
+                    <TextBlock Text="Download all" VerticalAlignment="Center" />
+                </StackPanel>
+            </Button>
+            <Button Grid.Column="3" Classes="skua-button small" Width="26" Padding="0" HorizontalContentAlignment="Center"
+                    Command="{Binding RefreshScriptsCommand}" ToolTip.Tip="Fetch the latest script list from the repo">
+                <materialIcons:MaterialIcon Kind="Refresh" Width="14" Height="14" />
+            </Button>
+            <Button Grid.Column="4" Classes="skua-button small" Width="26" Padding="0" HorizontalContentAlignment="Center"
+                    ToolTip.Tip="More">
+                <materialIcons:MaterialIcon Kind="DotsHorizontal" Width="14" Height="14" />
+                <Button.Flyout>
+                    <MenuFlyout Placement="TopEdgeAlignedRight">
+                        <MenuItem Header="Download / Update UltrasLW" Command="{Binding InstallUltrasCommand}"
+                                  ToolTip.Tip="Download the latest UltrasLW into Skua/Scripts/UltrasLW. Every click downloads it again.">
+                            <MenuItem.Icon>
+                                <materialIcons:MaterialIcon Kind="CloudDownloadOutline" Width="14" Height="14" />
+                            </MenuItem.Icon>
+                        </MenuItem>
+                        <MenuItem Header="Update dates from Git" Command="{Binding UpdateDatesCommand}">
+                            <MenuItem.Icon>
+                                <materialIcons:MaterialIcon Kind="CalendarSyncOutline" Width="14" Height="14" />
+                            </MenuItem.Icon>
+                        </MenuItem>
+                        <Separator />
+                        <MenuItem Header="Set custom scripts folder..." Command="{Binding AddCustomFolderCommand}">
+                            <MenuItem.Icon>
+                                <materialIcons:MaterialIcon Kind="FolderPlus" Width="14" Height="14" />
+                            </MenuItem.Icon>
+                        </MenuItem>
+                        <MenuItem Header="Clear custom scripts folder" Command="{Binding ClearCustomFolderCommand}">
+                            <MenuItem.Icon>
+                                <materialIcons:MaterialIcon Kind="FolderRemove" Width="14" Height="14" />
+                            </MenuItem.Icon>
+                        </MenuItem>
+                        <MenuItem Header="Load a script file..." Command="{Binding LoadLocalScriptCommand}">
+                            <MenuItem.Icon>
+                                <materialIcons:MaterialIcon Kind="FileDocumentPlus" Width="14" Height="14" />
+                            </MenuItem.Icon>
+                        </MenuItem>
+                        <Separator />
+                        <MenuItem Header="Open the Scripts folder in VS Code" Command="{Binding OpenScriptFolderCommand}">
+                            <MenuItem.Icon>
+                                <materialIcons:MaterialIcon Kind="MicrosoftVisualStudioCode" Width="14" Height="14" />
+                            </MenuItem.Icon>
+                        </MenuItem>
+                    </MenuFlyout>
+                </Button.Flyout>
+            </Button>
+        </Grid>
     </Grid>
 </UserControl>

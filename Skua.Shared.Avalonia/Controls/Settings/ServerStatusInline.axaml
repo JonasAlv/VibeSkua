@@ -8,9 +8,9 @@
                FontSize="11"
                Foreground="{DynamicResource SkuaMutedTextBrush}" />
     <TextBlock Text=" - " FontSize="11" Foreground="{DynamicResource SkuaMutedTextBrush}" />
-    <TextBlock Text="{Binding Server, ElementName=Root, Converter={StaticResource ServerPingTextConverter}}"
+    <TextBlock Text="{Binding Server.PingText, ElementName=Root}"
                FontSize="11"
-               Foreground="{DynamicResource SkuaMutedTextBrush}" />
+               Foreground="{Binding Server.PingLevel, ElementName=Root, Converter={StaticResource ServerPingBrushConverter}}" />
     <StackPanel Orientation="Horizontal"
                 IsVisible="{Binding Server.Online, ElementName=Root}"
                 Spacing="4">

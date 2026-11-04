@@ -19,7 +19,7 @@
             <conv:AccountGridItemWidthConverter x:Key="AccountGridItemWidthConverter" />
             <conv:IntGreaterThanZeroConverter x:Key="IntGreaterThanZeroConverter" />
             <conv:ServerMembershipTextConverter x:Key="ServerMembershipTextConverter" />
-            <conv:ServerPingTextConverter x:Key="ServerPingTextConverter" />
+            <conv:ServerPingBrushConverter x:Key="ServerPingBrushConverter" />
         </ResourceDictionary>
     </Application.Resources>
     <Application.Styles>

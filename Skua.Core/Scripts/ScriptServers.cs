@@ -352,6 +352,9 @@ public partial class ScriptServers : ObservableRecipient, IScriptServers
             && (attemptedServers is null || !attemptedServers.Contains(x.Name ?? string.Empty)));
     }
 
+    // Not on IScriptOption, so anything that isn't the concrete ScriptOption counts as off
+    private bool ReloginFallbackEnabled => Options is ScriptOption { ReloginFallback: true };
+
     private Server? SelectReloginServer(string? preferredName = null, HashSet<string>? attemptedServers = null)
     {
         List<Server> candidates = BuildReloginCandidates();
@@ -359,6 +362,16 @@ public partial class ScriptServers : ObservableRecipient, IScriptServers
             return null;
 
         HashSet<string> triedServers = attemptedServers ?? new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        if (!ReloginFallbackEnabled)
+        {
+            // Without the Relogin Fallback option there is no hop to whichever server is free: the preferred and
+            // Relogin Server picks are retried even after a failed attempt, and null makes the caller wait and retry
+            Server? preferredServer = FindByName(candidates, preferredName, true);
+            if (preferredServer is null && Options.AutoReloginAny)
+                preferredServer = candidates.Find(x => x.IP != LastIP && !triedServers.Contains(x.Name ?? string.Empty));
+            return preferredServer ?? FindByName(candidates, Options.ReloginServer, true);
+        }
 
         // Servers where a login just got stuck count as tried, as long as some other server is left.
         HashSet<string> avoid = new(triedServers, StringComparer.OrdinalIgnoreCase);
@@ -553,15 +566,25 @@ public partial class ScriptServers : ObservableRecipient, IScriptServers
         token.ThrowIfCancellationRequested();
         // Back to the server the account was on (the stuck-server list still applies).
         Server? server = SelectReloginServer(Options.AutoReloginAny ? null : PreferredReloginServer);
+        string? preferredName = server?.Name;
         if (server is null)
         {
-            ReloginLog("No eligible servers available for auto relogin.");
-            return false;
+            if (ReloginFallbackEnabled)
+            {
+                ReloginLog("No eligible servers available for auto relogin.");
+                return false;
+            }
+
+            // Without the fallback the Relogin Server being full or offline is expected: keep trying for it
+            preferredName = Options.ReloginServer;
+            ReloginLog($"Relogin server {preferredName} is not eligible right now; retrying until it is or the tries run out.");
+        }
+        else
+        {
+            ReloginLog($"Auto relogin started. Preferred server: {server.Name}.");
         }
 
-        ReloginLog($"Auto relogin started. Preferred server: {server.Name}.");
-
-        return await EnsureLogin(server, token);
+        return await EnsureLogin(preferredName, token);
     }
 
     public async Task<bool> EnsureRelogin(string serverName, CancellationToken token)
@@ -571,15 +594,20 @@ public partial class ScriptServers : ObservableRecipient, IScriptServers
         await GetServers(true);
         token.ThrowIfCancellationRequested();
         Server? server = SelectReloginServerByName(serverName, true) ?? SelectReloginServer();
-        if (server is null)
+        if (server is null && ReloginFallbackEnabled)
         {
             ReloginLog($"No eligible servers available for requested relogin target {serverName}.");
             return false;
         }
 
-        ReloginLog($"Auto relogin started for target {serverName}. Preferred server: {server.Name}.");
+        // Without the fallback the requested server stays the target for every retry, eligible now or not
+        string? preferredName = ReloginFallbackEnabled ? server?.Name : serverName;
+        if (server is null)
+            ReloginLog($"Requested relogin target {serverName} is not eligible right now; retrying until it is or the tries run out.");
+        else
+            ReloginLog($"Auto relogin started for target {serverName}. Preferred server: {server.Name}.");
 
-        return await EnsureLogin(server, token);
+        return await EnsureLogin(preferredName, token);
     }
 
     private async Task WaitReloginDelay(CancellationToken token)
@@ -657,11 +685,11 @@ public partial class ScriptServers : ObservableRecipient, IScriptServers
         return success;
     }
 
-    private async Task<bool> EnsureLogin(Server server, CancellationToken token)
+    private async Task<bool> EnsureLogin(string? preferredName, CancellationToken token)
     {
         int tries = 0;
         HashSet<string> attemptedServers = new(StringComparer.OrdinalIgnoreCase);
-        string? preferredServerName = server.Name;
+        string? preferredServerName = preferredName;
         try
         {
             while (!token.IsCancellationRequested && !Manager.ShouldExit && !Player.Playing && tries < Options.ReloginTries)
@@ -704,7 +732,8 @@ public partial class ScriptServers : ObservableRecipient, IScriptServers
                 if (!await WaitForServerListReady(token))
                 {
                     ReloginLog($"Attempt {tries}/{Options.ReloginTries}: server list screen not ready.");
-                    preferredServerName = null;
+                    if (ReloginFallbackEnabled)
+                        preferredServerName = null;
                     if (tries < Options.ReloginTries)
                         await WaitReloginDelay(token);
                     continue;
@@ -764,7 +793,8 @@ public partial class ScriptServers : ObservableRecipient, IScriptServers
                 }
 
                 ReloginLog($"Attempt {tries}/{Options.ReloginTries} failed on {targetServer.Name}. Watchdog aborting attempt.");
-                preferredServerName = null;
+                if (ReloginFallbackEnabled)
+                    preferredServerName = null;
                 DisconnectForRelogin();
 
                 if (tries < Options.ReloginTries)

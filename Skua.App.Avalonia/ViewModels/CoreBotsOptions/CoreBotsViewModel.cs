@@ -5,7 +5,6 @@ using Skua.Core.Models;
 using Skua.Shared.Avalonia.ViewModels;
 using System;
 using System.Collections.Generic;
-using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -15,7 +14,7 @@ namespace Skua.App.Avalonia.ViewModels.CoreBotsOptions;
 public partial class CoreBotsViewModel : BotControlViewModelBase
 {
     public CoreBotsViewModel(List<TabItemViewModel> tabs, IScriptPlayer player, IDialogService dialogService)
-        : base("CoreBots Options", 800, 650)
+        : base("CoreBots Options", 800, 608)
     {
         CoreBotsTabs = tabs;
         _selectedTab = CoreBotsTabs[0];
@@ -25,15 +24,16 @@ public partial class CoreBotsViewModel : BotControlViewModelBase
 
     protected override void OnActivated()
     {
-        // Always open on the account logged in here
-        SetProfileSilently(_player.Username);
-        Load();
+        // Opening the window while logged out just shows "Not Logged In"; only the Load button explains why.
+        SetAccountPolling(true);
+        LoadInternal(showDialog: false);
     }
 
     protected override void OnDeactivated()
     {
+        SetAccountPolling(false);
         // Auto-save when closing the window
-        if (!string.IsNullOrEmpty(ProfileName))
+        if (!string.IsNullOrEmpty(TargetName))
         {
             SaveInternal(showDialog: false);
         }
@@ -42,59 +42,20 @@ public partial class CoreBotsViewModel : BotControlViewModelBase
 
     private readonly IScriptPlayer _player;
     private readonly IDialogService _dialogService;
-    private bool _switchingProfile;
+    private Dictionary<string, Dictionary<string, string>> _readValues = new();
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsOptionsTabSelected))]
     private TabItemViewModel _selectedTab;
+
+    // The Options tab's search sits on the tab row, shown while that tab is open
+    public CBOptionsViewModel? OptionsTab => CoreBotsTabs.Select(t => t.Content).OfType<CBOptionsViewModel>().FirstOrDefault();
+    public bool IsOptionsTabSelected => SelectedTab?.Content is CBOptionsViewModel;
 
     [ObservableProperty]
     private string _currentPlayer = string.Empty;
 
-    /// <summary>
-    /// Accounts whose CBO file can be edited here: the one logged in on this tab and the ones logged in on the other open tabs.
-    /// </summary>
-    public ObservableCollection<string> Profiles { get; } = new();
-
-    [ObservableProperty]
-    private string? _selectedProfile;
-
     public List<TabItemViewModel> CoreBotsTabs { get; }
-
-    private string ProfileName => string.IsNullOrEmpty(SelectedProfile) ? _player.Username : SelectedProfile;
-
-    // Keeps the edits of the profile being left and shows the chosen one
-    partial void OnSelectedProfileChanged(string? oldValue, string? newValue)
-    {
-        if (_switchingProfile || string.IsNullOrEmpty(newValue))
-            return;
-
-        if (!string.IsNullOrEmpty(oldValue))
-            SaveInternal(showDialog: false, oldValue);
-        LoadProfile(newValue, resetIfMissing: true);
-    }
-
-    public void RefreshProfiles() => SetProfileSilently(SelectedProfile);
-
-    private void SetProfileSilently(string? selected)
-    {
-        _switchingProfile = true;
-        try
-        {
-            Profiles.Clear();
-            foreach (string name in ConnectedAccounts.Get(_player.Username))
-                Profiles.Add(name);
-            // A profile chosen earlier stays selectable even if its tab was closed meanwhile
-            if (!string.IsNullOrEmpty(selected) && !Profiles.Contains(selected, StringComparer.OrdinalIgnoreCase))
-                Profiles.Add(selected);
-            // Nothing chosen: this tab's account, or none while logged out so Load still asks to login
-            SelectedProfile = Profiles.FirstOrDefault(p => p.Equals(selected, StringComparison.OrdinalIgnoreCase))
-                ?? (string.IsNullOrEmpty(_player.Username) ? null : Profiles.FirstOrDefault());
-        }
-        finally
-        {
-            _switchingProfile = false;
-        }
-    }
 
     [RelayCommand]
     private void Save()
@@ -102,10 +63,9 @@ public partial class CoreBotsViewModel : BotControlViewModelBase
         SaveInternal(showDialog: true);
     }
 
-    private void SaveInternal(bool showDialog, string? profile = null)
+    private void SaveInternal(bool showDialog)
     {
-        profile ??= ProfileName;
-        if (string.IsNullOrEmpty(profile))
+        if (string.IsNullOrEmpty(TargetName))
         {
             if (showDialog)
             {
@@ -126,43 +86,60 @@ public partial class CoreBotsViewModel : BotControlViewModelBase
         if (!Directory.Exists(optionsDir))
             Directory.CreateDirectory(optionsDir);
 
-        string filePath = Path.Combine(optionsDir, $"CBO_Storage({profile}).txt");
+        string filePath = Path.Combine(optionsDir, $"CBO_Storage({TargetName}).txt");
         File.WriteAllText(filePath, bob.ToString());
 
         if (showDialog)
         {
-            _dialogService.ShowMessageBox($@"Saved to \options\CBO_Storage({profile}).txt", "Save Successful!");
+            _dialogService.ShowMessageBox($@"Saved to \options\CBO_Storage({TargetName}).txt", "Save Successful!");
         }
+        _readValues[TargetName] = ReadValues(File.ReadAllLines(filePath));
     }
 
     [RelayCommand]
     private void Load()
     {
-        if (string.IsNullOrEmpty(ProfileName))
+        LoadInternal(showDialog: true);
+    }
+
+    private void LoadInternal(bool showDialog)
+    {
+        if (string.IsNullOrEmpty(TargetName))
         {
-            _dialogService.ShowMessageBox("Login first so that we can fetch your username to load the options file.", "Load");
+            if (showDialog)
+                _dialogService.ShowMessageBox("Login first so that we can fetch your username to load the options file.", "Load");
             CurrentPlayer = string.Empty;
             return;
         }
 
-        RefreshProfiles();
-        LoadProfile(ProfileName, resetIfMissing: false);
+        CurrentPlayer = TargetName;
+        if (_readValues.ContainsKey(TargetName))
+        {
+            SetValues(_readValues[TargetName]);
+            return;
+        }
+
+        string filePath = Path.Combine(ClientFileSources.SkuaOptionsDIR, $"CBO_Storage({TargetName}).txt");
+        if (!File.Exists(filePath))
+            return;
+
+        Dictionary<string, string> optionsDict = ReadValues(File.ReadAllLines(filePath));
+
+        SetValues(optionsDict);
+
+        _readValues.Add(TargetName, optionsDict);
     }
 
-    // Always read from disk: another tab may have saved this profile since it was last shown
-    private void LoadProfile(string profile, bool resetIfMissing)
-    {
-        CurrentPlayer = profile;
-
-        Dictionary<string, string>? values = ReadProfile(profile);
-        // Don't show the previous account's values under a profile that has no file yet
-        if (values != null || resetIfMissing)
-            SetValues(values ?? new());
-    }
-
+    // Refreshes the class and equipment lists from the logged-in character's inventory, keeping the
+    // selections already made in the window.
     [RelayCommand]
     private void LoadCharacter()
     {
+        if (!IsSelfAccount)
+        {
+            _dialogService.ShowMessageBox("Load character reads the character this window is logged in as. Pick this window's account in the Account box first.", "Load Character");
+            return;
+        }
         if (string.IsNullOrEmpty(_player.Username))
         {
             _dialogService.ShowMessageBox("Login first so that we can read your character's classes and equipment.", "Load Character");
@@ -188,26 +165,16 @@ public partial class CoreBotsViewModel : BotControlViewModelBase
         SetValues(selections);
     }
 
-    private static Dictionary<string, string> ReadValues(IEnumerable<string> lines)
+    private Dictionary<string, string> ReadValues(IEnumerable<string> lines)
     {
         Dictionary<string, string> optionsDict = new();
         foreach (string option in lines)
         {
             ReadOnlySpan<string> value = option.Split(_separator, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
             if (value.Length == 2)
-                optionsDict.TryAdd(value[0], value[1]);
+                optionsDict.Add(value[0], value[1]);
         }
         return optionsDict;
-    }
-
-    /// <returns>The saved options of <paramref name="profile"/>, or null if it has no CBO file.</returns>
-    public static Dictionary<string, string>? ReadProfile(string profile)
-    {
-        string filePath = Path.Combine(ClientFileSources.SkuaOptionsDIR, $"CBO_Storage({profile}).txt");
-        if (!File.Exists(filePath))
-            return null;
-
-        return ReadValues(File.ReadAllLines(filePath));
     }
 
     private void SetValues(Dictionary<string, string> options)
@@ -219,7 +186,7 @@ public partial class CoreBotsViewModel : BotControlViewModelBase
         }
     }
 
-    private const char _separator = ':';
+    private readonly char _separator = ':';
 }
 
 internal interface IManageCBOptions

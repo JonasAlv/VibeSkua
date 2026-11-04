@@ -1,3 +1,4 @@
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
@@ -16,6 +17,34 @@ public partial class LogTabUserControl : UserControl
     // The tab whose Logs we listen to. The view is reused across log tabs, so the old tab has to be
     // unsubscribed when the DataContext changes, not the new one.
     private LogTabViewModel? _subscribed;
+
+    // For narrow hosts (the Script Loader): wrap long lines, and drop the copy hint that doesn't fit
+    public static readonly StyledProperty<bool> WrapLinesProperty =
+        AvaloniaProperty.Register<LogTabUserControl, bool>(nameof(WrapLines));
+
+    public static readonly StyledProperty<bool> ShowCopyHintProperty =
+        AvaloniaProperty.Register<LogTabUserControl, bool>(nameof(ShowCopyHint), defaultValue: true);
+
+    public bool WrapLines
+    {
+        get => GetValue(WrapLinesProperty);
+        set => SetValue(WrapLinesProperty, value);
+    }
+
+    public bool ShowCopyHint
+    {
+        get => GetValue(ShowCopyHintProperty);
+        set => SetValue(ShowCopyHintProperty, value);
+    }
+
+    protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
+    {
+        base.OnPropertyChanged(change);
+        if (change.Property == WrapLinesProperty)
+            LogsListBox.Classes.Set("wrap", WrapLines);
+        else if (change.Property == ShowCopyHintProperty)
+            CopyHint.IsVisible = ShowCopyHint;
+    }
 
     public LogTabUserControl()
     {
@@ -91,6 +120,11 @@ public partial class LogTabUserControl : UserControl
             vm.CopyLogCommand.Execute(null);
     }
 
+    public void DeselectAll()
+    {
+        LogsListBox.SelectedItems?.Clear();
+    }
+
     private void LogsListBox_SelectionChanged(object? sender, SelectionChangedEventArgs e)
     {
         UpdateCountText();
@@ -109,13 +143,25 @@ public partial class LogTabUserControl : UserControl
         await CopySelectedLogsAsync();
     }
 
+    // Every copy handler is async void, so a clipboard failure (another app holding it open) is caught here and
+    // shown in the count line instead of escaping as an unhandled UI exception.
     private async Task CopySelectedLogsAsync()
     {
         if (LogsListBox.SelectedItems is { Count: > 0 } items)
         {
             string text = string.Join(Environment.NewLine, items.Cast<object>().Select(x => x.ToString()));
             if (TopLevel.GetTopLevel(this)?.Clipboard is { } clipboard)
-                await clipboard.SetTextAsync(text);
+            {
+                try
+                {
+                    await clipboard.SetTextAsync(text);
+                    UpdateCountText();
+                }
+                catch (Exception)
+                {
+                    CountText.Text = "Couldn't copy: the clipboard is busy, try again";
+                }
+            }
         }
     }
 }
