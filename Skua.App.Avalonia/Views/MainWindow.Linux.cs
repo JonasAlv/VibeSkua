@@ -726,25 +726,31 @@ public partial class MainWindow : Window
     {
         IScriptOption options = Ioc.Default.GetRequiredService<IScriptOption>();
         bool want = false;
-        if (options.AutoHeadless)
+        try
         {
-            want = _tabVisibility switch
+            if (options.AutoHeadless)
             {
-                1 => options.AutoHeadlessBackgroundTabs,
-                3 => options.AutoHeadlessGridView && options.AutoHeadlessBackgroundTabs,
-                // Minimizing the host removes every client from the screen, so all
-                // clients must enter headless mode regardless of the optional UI flag.
-                4 => true,
-                _ => false
-            };
-            if (want) _autoHeadlessHeld = true;
-            else if (_tabVisibility is 0 or 2 && _autoHeadlessHeld && !options.AutoHeadlessLiftOnFocus) want = true;
-            else _autoHeadlessHeld = false;
+                bool shown = _tabVisibility is 0 or 2;
+                want = _tabVisibility switch
+                {
+                    1 => options.AutoHeadlessBackgroundTabs,
+                    3 => !options.AutoHeadlessGridView && options.AutoHeadlessBackgroundTabs,
+                    4 => options.AutoHeadlessWhenMinimized,
+                    _ => false
+                };
+                if (want)
+                    _autoHeadlessHeld = true;
+                else if (shown && _autoHeadlessHeld && !options.AutoHeadlessLiftOnFocus)
+                    want = true;
+                else
+                    _autoHeadlessHeld = false;
+            }
+            else
+            {
+                _autoHeadlessHeld = false;
+            }
         }
-        else
-        {
-            _autoHeadlessHeld = false;
-        }
+        catch { }
         options.SetAutoHeadless(want);
     }
 

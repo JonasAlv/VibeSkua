@@ -119,7 +119,7 @@ public partial class TabbedHostWindow : Window
             return;
 
         IScriptOption? options = CommunityToolkit.Mvvm.DependencyInjection.Ioc.Default.GetService<IScriptOption>();
-        if (options is null || !options.AutoHeadless || !options.AutoHeadlessGridView || !options.AutoHeadlessLiftOnFocus)
+        if (options is null || !options.AutoHeadless || !options.AutoHeadlessLiftOnFocus)
             return;
 
         IntPtr display = GetDisplay();

@@ -2435,19 +2435,14 @@ public partial class TabbedHostWindow : Window
             int visibility;
             if (_isGridViewEnabled)
             {
-                IScriptOption? options = Ioc.Default.GetService<IScriptOption>();
-                bool autoHeadlessGrid = options?.AutoHeadless == true && options.AutoHeadlessGridView;
-                bool liftFocusedGrid = autoHeadlessGrid && options!.AutoHeadlessLiftOnFocus;
-                visibility = liftFocusedGrid && _gridFocusedChild != IntPtr.Zero && info.ChildHwnd == _gridFocusedChild
-                    ? 2
-                    : autoHeadlessGrid ? 3 : (i == selectedGridIndex ? 2 : 3);
+                bool isSelectedTile = (_gridFocusedChild != IntPtr.Zero && info.ChildHwnd == _gridFocusedChild)
+                    || (_gridFocusedChild == IntPtr.Zero && i == selectedGridIndex);
+                visibility = isSelectedTile ? 2 : 3;
             }
             else
             {
                 visibility = selectedTab != null && _tabs.TryGetValue(selectedTab, out TabInfo? activeInfo) && ReferenceEquals(info, activeInfo) ? 0 : 1;
             }
-            // The grid mapping above deliberately keeps every client headless until
-            // X11 focus identifies the tile the user clicked.
             PostChildMessage(info.ChildHwnd, HotKeys.WM_SKUA_VISIBILITY, new IntPtr(visibility), IntPtr.Zero);
         }
     }
