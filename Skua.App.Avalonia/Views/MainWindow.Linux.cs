@@ -730,11 +730,11 @@ public partial class MainWindow : Window
         {
             if (options.AutoHeadless)
             {
-                bool shown = _tabVisibility is 0 or 2;
+                bool shown = _tabVisibility == 0 || (_tabVisibility == 2 && options.AutoHeadlessGridView);
                 want = _tabVisibility switch
                 {
                     1 => options.AutoHeadlessBackgroundTabs,
-                    3 => !options.AutoHeadlessGridView && options.AutoHeadlessBackgroundTabs,
+                    2 or 3 => !options.AutoHeadlessGridView,
                     4 => options.AutoHeadlessWhenMinimized,
                     _ => false
                 };

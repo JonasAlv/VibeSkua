@@ -24,7 +24,7 @@ internal class Options
         [nameof(IScriptOption.HeadlessMode)] = ("Headless Mode", "Manual. Hides this client's game and drops it to 2 fps until you turn it off. Automatic headless never turns it off."),
         [nameof(IScriptOption.AutoHeadless)] = ("Auto Headless", "Master switch. Puts this client in headless by itself while its tab is not showing, following the switches below. Off, nothing below does anything."),
         [nameof(IScriptOption.AutoHeadlessBackgroundTabs)] = ("Headless for background tabs", "Needs Auto Headless. A tab that is not the selected one goes headless."),
-        [nameof(IScriptOption.AutoHeadlessGridView)] = ("Grid View counts as showing", "Needs Auto Headless. While Grid View is on, every tile stays live. Off, the tiles other than the selected one go headless like background tabs."),
+        [nameof(IScriptOption.AutoHeadlessGridView)] = ("Grid View counts as showing", "Needs Auto Headless. While Grid View is on, every tile stays live. Off, Grid View does not count as showing and forces headless mode during Grid View."),
         [nameof(IScriptOption.AutoHeadlessWhenMinimized)] = ("Headless when minimized or in the tray", "Needs Auto Headless. All tabs go headless while the tab window is minimized or hidden in the tray."),
         [nameof(IScriptOption.AutoHeadlessLiftOnFocus)] = ("Showing a tab ends headless", "Needs Auto Headless. Selecting a tab takes it out of automatic headless. Off, it stays headless until Auto Headless is turned off or you switch Headless Mode off.")
     };
