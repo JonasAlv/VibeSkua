@@ -10,16 +10,19 @@ public class ClientUpdateService : IClientUpdateService
 {
     private const string RepoOwner = "JonasAlv";
     private const string RepoName = "BonxieMux";
-    private const string ClientAppImageAssetName = "BonxieMux-x86_64.AppImage";
-    private const string ManagerAppImageAssetName = "BonxieMux-Manager-x86_64.AppImage";
+    private const string ClientPrefix = "BonxieMux-";
+    private const string ManagerPrefix = "BonxieMux-Manager-";
+    private const string AppImageSuffix = "-x86_64.AppImage";
 
     private readonly IDialogService _dialogService;
     private readonly ISettingsService _settingsService;
 
     private string? _remoteTagName;
+    private string? _remoteClientFileName;
     private string? _remoteClientUrl;
     private string? _remoteClientDigest;
     private long _remoteClientSize;
+    private string? _remoteManagerFileName;
     private string? _remoteManagerUrl;
     private string? _remoteManagerDigest;
     private long _remoteManagerSize;
@@ -40,9 +43,11 @@ public class ClientUpdateService : IClientUpdateService
     {
         UpdateAvailable = false;
         _remoteTagName = null;
+        _remoteClientFileName = null;
         _remoteClientUrl = null;
         _remoteClientDigest = null;
         _remoteClientSize = 0;
+        _remoteManagerFileName = null;
         _remoteManagerUrl = null;
         _remoteManagerDigest = null;
         _remoteManagerSize = 0;
@@ -75,22 +80,27 @@ public class ClientUpdateService : IClientUpdateService
                         ? nameEl.GetString() ?? string.Empty
                         : string.Empty;
 
-                    if (name.Equals(ClientAppImageAssetName, StringComparison.OrdinalIgnoreCase))
+                    if (name.StartsWith(ManagerPrefix, StringComparison.OrdinalIgnoreCase) &&
+                        name.EndsWith(AppImageSuffix, StringComparison.OrdinalIgnoreCase))
                     {
-                        _remoteClientUrl = asset.TryGetProperty("browser_download_url", out JsonElement urlEl) ? urlEl.GetString() : null;
-                        _remoteClientDigest = asset.TryGetProperty("digest", out JsonElement digestEl) ? digestEl.GetString() : null;
-                        _remoteClientSize = asset.TryGetProperty("size", out JsonElement sizeEl) ? sizeEl.GetInt64() : 0;
-                    }
-                    else if (name.Equals(ManagerAppImageAssetName, StringComparison.OrdinalIgnoreCase))
-                    {
+                        _remoteManagerFileName = name;
                         _remoteManagerUrl = asset.TryGetProperty("browser_download_url", out JsonElement urlEl) ? urlEl.GetString() : null;
                         _remoteManagerDigest = asset.TryGetProperty("digest", out JsonElement digestEl) ? digestEl.GetString() : null;
                         _remoteManagerSize = asset.TryGetProperty("size", out JsonElement sizeEl) ? sizeEl.GetInt64() : 0;
                     }
+                    else if (name.StartsWith(ClientPrefix, StringComparison.OrdinalIgnoreCase) &&
+                             !name.StartsWith(ManagerPrefix, StringComparison.OrdinalIgnoreCase) &&
+                             name.EndsWith(AppImageSuffix, StringComparison.OrdinalIgnoreCase))
+                    {
+                        _remoteClientFileName = name;
+                        _remoteClientUrl = asset.TryGetProperty("browser_download_url", out JsonElement urlEl) ? urlEl.GetString() : null;
+                        _remoteClientDigest = asset.TryGetProperty("digest", out JsonElement digestEl) ? digestEl.GetString() : null;
+                        _remoteClientSize = asset.TryGetProperty("size", out JsonElement sizeEl) ? sizeEl.GetInt64() : 0;
+                    }
                 }
             }
 
-            if (string.IsNullOrEmpty(_remoteClientUrl))
+            if (string.IsNullOrEmpty(_remoteClientUrl) || string.IsNullOrEmpty(_remoteClientFileName))
                 return;
 
             _remoteTagName = tagName;
@@ -111,10 +121,10 @@ public class ClientUpdateService : IClientUpdateService
 
     public async Task DownloadUpdateAsync(IProgress<string>? progress)
     {
-        if (string.IsNullOrEmpty(_remoteClientUrl))
+        if (string.IsNullOrEmpty(_remoteClientUrl) || string.IsNullOrEmpty(_remoteClientFileName))
             await CheckForUpdateAsync();
 
-        if (!UpdateAvailable || string.IsNullOrEmpty(_remoteClientUrl))
+        if (!UpdateAvailable || string.IsNullOrEmpty(_remoteClientUrl) || string.IsNullOrEmpty(_remoteClientFileName))
         {
             progress?.Report("You have the latest version.");
             return;
@@ -137,10 +147,10 @@ public class ClientUpdateService : IClientUpdateService
 
             var assetsToDownload = new List<(string Name, string Url, string? Digest, long Size)>
             {
-                (ClientAppImageAssetName, _remoteClientUrl, _remoteClientDigest, _remoteClientSize)
+                (_remoteClientFileName, _remoteClientUrl, _remoteClientDigest, _remoteClientSize)
             };
-            if (!string.IsNullOrEmpty(_remoteManagerUrl))
-                assetsToDownload.Add((ManagerAppImageAssetName, _remoteManagerUrl, _remoteManagerDigest, _remoteManagerSize));
+            if (!string.IsNullOrEmpty(_remoteManagerUrl) && !string.IsNullOrEmpty(_remoteManagerFileName))
+                assetsToDownload.Add((_remoteManagerFileName, _remoteManagerUrl, _remoteManagerDigest, _remoteManagerSize));
 
             using (HttpClient client = new())
             {
@@ -148,7 +158,7 @@ public class ClientUpdateService : IClientUpdateService
                 long totalBytesAll = assetsToDownload.Sum(a => a.Size);
                 long totalReadAll = 0;
 
-                foreach (var (name, url, digest, size) in assetsToDownload)
+                foreach (var (name, url, digest, _) in assetsToDownload)
                 {
                     string filePath = Path.Combine(tempDir, name);
                     using HttpResponseMessage resp = await client.GetAsync(url, HttpCompletionOption.ResponseHeadersRead);
@@ -184,6 +194,9 @@ public class ClientUpdateService : IClientUpdateService
 
             foreach (string downloaded in Directory.GetFiles(tempDir, "*.AppImage"))
             {
+                string fileName = Path.GetFileName(downloaded);
+                bool isManager = fileName.StartsWith(ManagerPrefix, StringComparison.OrdinalIgnoreCase);
+
                 try
                 {
                     File.SetUnixFileMode(downloaded,
@@ -193,41 +206,37 @@ public class ClientUpdateService : IClientUpdateService
                 }
                 catch { }
 
-                string destination = Path.Combine(targetDir, Path.GetFileName(downloaded));
-                string backupOld = destination + ".old";
-                if (File.Exists(destination))
+                // Remove any older versioned AppImages of the same component in targetDir
+                foreach (string existing in Directory.GetFiles(targetDir, "*.AppImage"))
                 {
-                    try
+                    string existingName = Path.GetFileName(existing);
+                    bool existingIsManager = existingName.StartsWith(ManagerPrefix, StringComparison.OrdinalIgnoreCase);
+                    bool existingIsClient = existingName.StartsWith(ClientPrefix, StringComparison.OrdinalIgnoreCase) && !existingIsManager;
+
+                    if ((isManager && existingIsManager) || (!isManager && existingIsClient))
                     {
-                        if (File.Exists(backupOld))
-                            File.Delete(backupOld);
-                        File.Move(destination, backupOld);
-                    }
-                    catch
-                    {
-                        try { File.Delete(destination); } catch { }
+                        try { File.Delete(existing); } catch { }
                     }
                 }
 
+                string destination = Path.Combine(targetDir, fileName);
                 try
                 {
-                    File.Move(downloaded, destination);
+                    File.Move(downloaded, destination, overwrite: true);
                 }
                 catch
                 {
                     File.Copy(downloaded, destination, overwrite: true);
                     try { File.Delete(downloaded); } catch { }
                 }
-
-                try { if (File.Exists(backupOld)) File.Delete(backupOld); } catch { }
             }
 
             try { Directory.Delete(tempDir, true); } catch { }
 
             progress?.Report("Installing update and restarting...");
-            string restartPath = !string.IsNullOrEmpty(runningAppImage) && File.Exists(runningAppImage)
-                ? runningAppImage
-                : Path.Combine(targetDir, ManagerAppImageAssetName);
+            string restartPath = !string.IsNullOrEmpty(_remoteManagerFileName)
+                ? Path.Combine(targetDir, _remoteManagerFileName)
+                : Path.Combine(targetDir, _remoteClientFileName);
 
             if (File.Exists(restartPath))
             {

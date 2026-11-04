@@ -152,13 +152,13 @@ fi
 echo "Compressing binary release archives..."
 (
     cd "$BUILD_DIR"
-    rm -f "BonxieMux-x86_64.zip" "BonxieMux-x86_64.tar.gz"
+    rm -f "BonxieMux-${APP_VERSION}-x86_64.zip" "BonxieMux-${APP_VERSION}-x86_64.tar.gz"
     if command -v zip &>/dev/null; then
-        zip -q -r "BonxieMux-x86_64.zip" "BonxieMux-x86_64"
+        zip -q -r "BonxieMux-${APP_VERSION}-x86_64.zip" "BonxieMux-${APP_VERSION}-x86_64"
     elif command -v bsdtar &>/dev/null; then
-        bsdtar -a -cf "BonxieMux-x86_64.zip" "BonxieMux-x86_64"
+        bsdtar -a -cf "BonxieMux-${APP_VERSION}-x86_64.zip" "BonxieMux-${APP_VERSION}-x86_64"
     fi
-    tar -czf "BonxieMux-x86_64.tar.gz" "BonxieMux-x86_64"
+    tar -czf "BonxieMux-${APP_VERSION}-x86_64.tar.gz" "BonxieMux-${APP_VERSION}-x86_64"
 )
 
 echo "=== Binary Packaging Complete! ==="

@@ -1,5 +1,7 @@
 using System;
 using System.IO;
+using System.Linq;
+using Skua.Core.Models;
 
 namespace Skua.Manager.Avalonia.Services;
 
@@ -10,6 +12,40 @@ internal static class SkuaExecutableLocator
     public static string WorkingDirectory =>
         Path.GetDirectoryName(ExecutablePath) ?? AppContext.BaseDirectory;
 
+    private static string? TryFindInDirectory(string dir, string? excludePath = null)
+    {
+        if (!Directory.Exists(dir))
+            return null;
+
+        string currentVersionAppImage = $"BonxieMux-{ClientFileSources.ClientVersion}-x86_64.AppImage";
+        string exactVersionPath = Path.Combine(dir, currentVersionAppImage);
+        if (File.Exists(exactVersionPath) && !string.Equals(exactVersionPath, excludePath, StringComparison.Ordinal))
+            return exactVersionPath;
+
+        try
+        {
+            string? matchedAppImage = Directory.EnumerateFiles(dir, "BonxieMux-*-x86_64.AppImage")
+                .Where(p => !Path.GetFileName(p).StartsWith("BonxieMux-Manager-", StringComparison.OrdinalIgnoreCase) &&
+                            !string.Equals(p, excludePath, StringComparison.Ordinal))
+                .OrderByDescending(p => p, StringComparer.OrdinalIgnoreCase)
+                .FirstOrDefault();
+
+            if (!string.IsNullOrEmpty(matchedAppImage))
+                return matchedAppImage;
+        }
+        catch { }
+
+        string[] directCandidates = [ "BonxieMux.AppImage", "BonxieMux" ];
+        foreach (string name in directCandidates)
+        {
+            string p = Path.Combine(dir, name);
+            if (File.Exists(p) && !string.Equals(p, excludePath, StringComparison.Ordinal))
+                return p;
+        }
+
+        return null;
+    }
+
     private static string Resolve()
     {
         // If running inside an AppImage, check if a BonxieMux AppImage exists next to this manager AppImage
@@ -19,30 +55,22 @@ internal static class SkuaExecutableLocator
             string? hostDir = Path.GetDirectoryName(appImageEnv);
             if (!string.IsNullOrEmpty(hostDir))
             {
-                string[] appImageCandidates = [ "BonxieMux-x86_64.AppImage", "BonxieMux.AppImage", "BonxieMux" ];
-                foreach (string name in appImageCandidates)
-                {
-                    string p = Path.Combine(hostDir, name);
-                    if (File.Exists(p) && !string.Equals(p, appImageEnv, StringComparison.Ordinal))
-                        return p;
-                }
+                string? foundInHost = TryFindInDirectory(hostDir, appImageEnv);
+                if (!string.IsNullOrEmpty(foundInHost))
+                    return foundInHost;
             }
         }
 
-        string[] directCandidates = [ "BonxieMux-x86_64.AppImage", "BonxieMux.AppImage", "BonxieMux" ];
-
-        foreach (string name in directCandidates)
-        {
-            string p = Path.Combine(AppContext.BaseDirectory, name);
-            if (File.Exists(p))
-                return p;
-        }
+        string? foundInBase = TryFindInDirectory(AppContext.BaseDirectory, appImageEnv);
+        if (!string.IsNullOrEmpty(foundInBase))
+            return foundInBase;
 
         // Check standard Linux user directories where AppImages might be placed
         string userHome = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
         string[] searchDirs =
         [
-            Path.Combine(userHome, "Games", "BonxieMux-x86_64"),
+            Path.Combine(userHome, "Games", $"BonxieMux-{ClientFileSources.ClientVersion}-x86_64"),
+            Path.Combine(userHome, "Games", "BonxieMux"),
             Path.Combine(userHome, "Applications"),
             Path.Combine(userHome, "Desktop"),
             Path.Combine(userHome, "Downloads"),
@@ -53,15 +81,9 @@ internal static class SkuaExecutableLocator
 
         foreach (string dir in searchDirs)
         {
-            if (!Directory.Exists(dir))
-                continue;
-
-            foreach (string name in directCandidates)
-            {
-                string p = Path.Combine(dir, name);
-                if (File.Exists(p))
-                    return p;
-            }
+            string? found = TryFindInDirectory(dir, appImageEnv);
+            if (!string.IsNullOrEmpty(found))
+                return found;
         }
 
         // Check system PATH
@@ -70,21 +92,20 @@ internal static class SkuaExecutableLocator
         {
             foreach (string dir in pathEnv.Split(Path.PathSeparator, StringSplitOptions.RemoveEmptyEntries))
             {
-                foreach (string name in directCandidates)
-                {
-                    string candidate = Path.Combine(dir, name);
-                    if (File.Exists(candidate))
-                        return candidate;
-                }
+                string? found = TryFindInDirectory(dir, appImageEnv);
+                if (!string.IsNullOrEmpty(found))
+                    return found;
             }
         }
 
         // Check repository build paths
         string repositoryRoot = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", ".."));
+        string? foundInBuild = TryFindInDirectory(Path.Combine(repositoryRoot, "Build"), appImageEnv);
+        if (!string.IsNullOrEmpty(foundInBuild))
+            return foundInBuild;
+
         string[] candidates =
         [
-            Path.Combine(repositoryRoot, "Build", "BonxieMux-x86_64.AppImage"),
-            Path.Combine(repositoryRoot, "Build", "BonxieMux"),
             Path.Combine(repositoryRoot, "Skua.App.Avalonia", "bin", "Release", "net10.0", "BonxieMux"),
             Path.Combine(repositoryRoot, "Skua.App.Avalonia", "bin", "Debug", "net10.0", "BonxieMux")
         ];

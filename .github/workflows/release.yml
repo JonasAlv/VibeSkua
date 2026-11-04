@@ -64,12 +64,13 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAG: ${{ steps.get_version.outputs.tag }}
+          VERSION: ${{ steps.get_version.outputs.version }}
         run: |
           ASSETS=(
-            "Build/BonxieMux-x86_64.AppImage"
-            "Build/BonxieMux-Manager-x86_64.AppImage"
-            "Build/BonxieMux-x86_64.tar.gz"
-            "Build/BonxieMux-x86_64.zip"
+            "Build/BonxieMux-${VERSION}-x86_64.AppImage"
+            "Build/BonxieMux-Manager-${VERSION}-x86_64.AppImage"
+            "Build/BonxieMux-${VERSION}-x86_64.tar.gz"
+            "Build/BonxieMux-${VERSION}-x86_64.zip"
           )
           for asset in "${ASSETS[@]}"; do
             if [ ! -f "$asset" ]; then

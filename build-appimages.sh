@@ -165,27 +165,27 @@ ln -sf "../current/BonxieMux.Manager" "$mgr_appdir/usr/bin/BonxieMux-Manager"
 chmod -R a+rX "$skua_appdir" "$mgr_appdir"
 
 export APPIMAGE_EXTRACT_AND_RUN=1
-ARCH=x86_64 "$appimagetool_cmd" -n "$skua_appdir" "$BUILD_DIR/BonxieMux-x86_64.AppImage"
-ARCH=x86_64 "$appimagetool_cmd" -n "$mgr_appdir" "$BUILD_DIR/BonxieMux-Manager-x86_64.AppImage"
-chmod +x "$BUILD_DIR/BonxieMux-x86_64.AppImage" "$BUILD_DIR/BonxieMux-Manager-x86_64.AppImage"
+ARCH=x86_64 "$appimagetool_cmd" -n "$skua_appdir" "$BUILD_DIR/BonxieMux-${APP_VERSION}-x86_64.AppImage"
+ARCH=x86_64 "$appimagetool_cmd" -n "$mgr_appdir" "$BUILD_DIR/BonxieMux-Manager-${APP_VERSION}-x86_64.AppImage"
+chmod +x "$BUILD_DIR/BonxieMux-${APP_VERSION}-x86_64.AppImage" "$BUILD_DIR/BonxieMux-Manager-${APP_VERSION}-x86_64.AppImage"
 
 rm -rf "$skua_appdir" "$mgr_appdir"
 
 rm -rf "$APPIMAGE_BUNDLE_DIR"
 mkdir -p "$APPIMAGE_BUNDLE_DIR"
-cp -f "$BUILD_DIR/BonxieMux-x86_64.AppImage" "$APPIMAGE_BUNDLE_DIR/"
-cp -f "$BUILD_DIR/BonxieMux-Manager-x86_64.AppImage" "$APPIMAGE_BUNDLE_DIR/"
+cp -f "$BUILD_DIR/BonxieMux-${APP_VERSION}-x86_64.AppImage" "$APPIMAGE_BUNDLE_DIR/"
+cp -f "$BUILD_DIR/BonxieMux-Manager-${APP_VERSION}-x86_64.AppImage" "$APPIMAGE_BUNDLE_DIR/"
 
 echo "Compressing AppImage release archives..."
 (
     cd "$BUILD_DIR"
-    rm -f "BonxieMux-x86_64.zip" "BonxieMux-x86_64.tar.gz"
+    rm -f "BonxieMux-${APP_VERSION}-x86_64.zip" "BonxieMux-${APP_VERSION}-x86_64.tar.gz"
     if command -v zip &>/dev/null; then
-        zip -q -r "BonxieMux-x86_64.zip" "BonxieMux-x86_64"
+        zip -q -r "BonxieMux-${APP_VERSION}-x86_64.zip" "BonxieMux-${APP_VERSION}-x86_64"
     elif command -v bsdtar &>/dev/null; then
-        bsdtar -a -cf "BonxieMux-x86_64.zip" "BonxieMux-x86_64"
+        bsdtar -a -cf "BonxieMux-${APP_VERSION}-x86_64.zip" "BonxieMux-${APP_VERSION}-x86_64"
     fi
-    tar -czf "BonxieMux-x86_64.tar.gz" "BonxieMux-x86_64"
+    tar -czf "BonxieMux-${APP_VERSION}-x86_64.tar.gz" "BonxieMux-${APP_VERSION}-x86_64"
 )
 
 echo "=== AppImage Packaging Complete! ==="

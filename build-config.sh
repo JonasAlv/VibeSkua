@@ -10,8 +10,6 @@ fi
 
 BUILD_DIR="$SCRIPT_DIR/Build"
 CURRENT_DIR="$BUILD_DIR/payload/current"
-BINARY_DIR="$BUILD_DIR/BonxieMux-x86_64"
-APPIMAGE_BUNDLE_DIR="$BUILD_DIR/BonxieMux-x86_64"
 
 APP_BIN="$SCRIPT_DIR/Skua.App.Avalonia/bin/Release/net10.0"
 MGR_BIN="$SCRIPT_DIR/Skua.Manager.Avalonia/bin/Release/net10.0"
@@ -29,10 +27,13 @@ read_prop() {
     sed -n "s:.*<${name}[^>]*>\\([^<]*\\)</${name}>.*:\\1:p" "$PROPS_FILE" | head -n 1
 }
 
-APP_VERSION="$(read_prop Version)"
+APP_VERSION="${Version:-$(read_prop Version)}"
 SKUA_PLAYER_VERSION="$(read_prop SkuaPlayerVersion)"
 SKUA_PLAYER_OS="$(read_prop SkuaPlayerOs)"
 WATCHDOG_VERSION="$(read_prop WatchDogVersion)"
+
+BINARY_DIR="$BUILD_DIR/BonxieMux-${APP_VERSION}-x86_64"
+APPIMAGE_BUNDLE_DIR="$BUILD_DIR/BonxieMux-${APP_VERSION}-x86_64"
 
 if [[ -z "$APP_VERSION" || -z "$SKUA_PLAYER_VERSION" || -z "$SKUA_PLAYER_OS" || -z "$WATCHDOG_VERSION" ]]; then
     echo "Error: Directory.Build.props is missing required version properties (Version, SkuaPlayerVersion, SkuaPlayerOs, or WatchDogVersion)." >&2

@@ -34,16 +34,19 @@ jobs:
           dotnet-version: 10.0.x
 
       - name: Build portable Linux binaries
+        id: build_bin
         run: |
           sudo apt-get update
           sudo apt-get install -y curl file gcc gzip tar zip
           chmod +x ./build-binaries.sh ./build-config.sh
+          source ./build-config.sh
+          echo "version=$APP_VERSION" >> "$GITHUB_OUTPUT"
           ./build-binaries.sh
 
       - name: Upload build
         uses: actions/upload-artifact@v4
         with:
-          name: BonxieMux-x86_64
+          name: BonxieMux-${{ steps.build_bin.outputs.version }}-x86_64
           path: |
-            Build/BonxieMux-x86_64.tar.gz
-            Build/BonxieMux-x86_64.zip
+            Build/BonxieMux-${{ steps.build_bin.outputs.version }}-x86_64.tar.gz
+            Build/BonxieMux-${{ steps.build_bin.outputs.version }}-x86_64.zip

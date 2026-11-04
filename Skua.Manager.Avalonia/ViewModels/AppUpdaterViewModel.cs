@@ -19,8 +19,9 @@ public partial class AppUpdaterViewModel : ObservableObject
     private readonly IDispatcherService _dispatcherService;
     private const string RepoOwner = "JonasAlv";
     private const string RepoName = "BonxieMux";
-    private const string ClientAppImageAssetName = "BonxieMux-x86_64.AppImage";
-    private const string ManagerAppImageAssetName = "BonxieMux-Manager-x86_64.AppImage";
+    private const string ClientPrefix = "BonxieMux-";
+    private const string ManagerPrefix = "BonxieMux-Manager-";
+    private const string AppImageSuffix = "-x86_64.AppImage";
 
     public AppUpdaterViewModel(IDispatcherService dispatcherService)
     {
@@ -40,9 +41,11 @@ public partial class AppUpdaterViewModel : ObservableObject
     private int _progressValue;
 
     private string? _remoteTagName;
+    private string? _remoteClientFileName;
     private string? _remoteClientUrl;
     private string? _remoteClientDigest;
     private long _remoteClientSize;
+    private string? _remoteManagerFileName;
     private string? _remoteManagerUrl;
     private string? _remoteManagerDigest;
     private long _remoteManagerSize;
@@ -58,9 +61,11 @@ public partial class AppUpdaterViewModel : ObservableObject
         });
 
         _remoteTagName = null;
+        _remoteClientFileName = null;
         _remoteClientUrl = null;
         _remoteClientDigest = null;
         _remoteClientSize = 0;
+        _remoteManagerFileName = null;
         _remoteManagerUrl = null;
         _remoteManagerDigest = null;
         _remoteManagerSize = 0;
@@ -112,20 +117,10 @@ public partial class AppUpdaterViewModel : ObservableObject
                         ? nameEl.GetString() ?? string.Empty
                         : string.Empty;
 
-                    if (name.Equals(ClientAppImageAssetName, StringComparison.OrdinalIgnoreCase))
+                    if (name.StartsWith(ManagerPrefix, StringComparison.OrdinalIgnoreCase) &&
+                        name.EndsWith(AppImageSuffix, StringComparison.OrdinalIgnoreCase))
                     {
-                        _remoteClientUrl = asset.TryGetProperty("browser_download_url", out JsonElement urlEl)
-                            ? urlEl.GetString()
-                            : null;
-                        _remoteClientDigest = asset.TryGetProperty("digest", out JsonElement digestEl)
-                            ? digestEl.GetString()
-                            : null;
-                        _remoteClientSize = asset.TryGetProperty("size", out JsonElement sizeEl)
-                            ? sizeEl.GetInt64()
-                            : 0;
-                    }
-                    else if (name.Equals(ManagerAppImageAssetName, StringComparison.OrdinalIgnoreCase))
-                    {
+                        _remoteManagerFileName = name;
                         _remoteManagerUrl = asset.TryGetProperty("browser_download_url", out JsonElement urlEl)
                             ? urlEl.GetString()
                             : null;
@@ -136,14 +131,29 @@ public partial class AppUpdaterViewModel : ObservableObject
                             ? sizeEl.GetInt64()
                             : 0;
                     }
+                    else if (name.StartsWith(ClientPrefix, StringComparison.OrdinalIgnoreCase) &&
+                             !name.StartsWith(ManagerPrefix, StringComparison.OrdinalIgnoreCase) &&
+                             name.EndsWith(AppImageSuffix, StringComparison.OrdinalIgnoreCase))
+                    {
+                        _remoteClientFileName = name;
+                        _remoteClientUrl = asset.TryGetProperty("browser_download_url", out JsonElement urlEl)
+                            ? urlEl.GetString()
+                            : null;
+                        _remoteClientDigest = asset.TryGetProperty("digest", out JsonElement digestEl)
+                            ? digestEl.GetString()
+                            : null;
+                        _remoteClientSize = asset.TryGetProperty("size", out JsonElement sizeEl)
+                            ? sizeEl.GetInt64()
+                            : 0;
+                    }
                 }
             }
 
-            if (string.IsNullOrEmpty(_remoteClientUrl))
+            if (string.IsNullOrEmpty(_remoteClientUrl) || string.IsNullOrEmpty(_remoteClientFileName))
             {
                 _dispatcherService.Invoke(() =>
                 {
-                    UpdateStatus = $"Release {tagName} found, but {ClientAppImageAssetName} is missing.";
+                    UpdateStatus = $"Release {tagName} found, but AppImage asset is missing.";
                     UpdateAvailable = false;
                 });
                 return;
@@ -203,7 +213,7 @@ public partial class AppUpdaterViewModel : ObservableObject
 
     public async Task DownloadAndInstallAsync()
     {
-        if (string.IsNullOrEmpty(_remoteClientUrl))
+        if (string.IsNullOrEmpty(_remoteClientUrl) || string.IsNullOrEmpty(_remoteClientFileName))
             return;
 
         _dispatcherService.Invoke(() =>
@@ -230,10 +240,10 @@ public partial class AppUpdaterViewModel : ObservableObject
 
             var assetsToDownload = new List<(string Name, string Url, string? Digest, long Size)>
             {
-                (ClientAppImageAssetName, _remoteClientUrl, _remoteClientDigest, _remoteClientSize)
+                (_remoteClientFileName, _remoteClientUrl, _remoteClientDigest, _remoteClientSize)
             };
-            if (!string.IsNullOrEmpty(_remoteManagerUrl))
-                assetsToDownload.Add((ManagerAppImageAssetName, _remoteManagerUrl, _remoteManagerDigest, _remoteManagerSize));
+            if (!string.IsNullOrEmpty(_remoteManagerUrl) && !string.IsNullOrEmpty(_remoteManagerFileName))
+                assetsToDownload.Add((_remoteManagerFileName, _remoteManagerUrl, _remoteManagerDigest, _remoteManagerSize));
 
             using (HttpClient client = new())
             {
@@ -291,7 +301,7 @@ public partial class AppUpdaterViewModel : ObservableObject
             foreach (string downloaded in Directory.GetFiles(tempDir, "*.AppImage"))
             {
                 string fileName = Path.GetFileName(downloaded);
-                string destination = Path.Combine(targetDir, fileName);
+                bool isManager = fileName.StartsWith(ManagerPrefix, StringComparison.OrdinalIgnoreCase);
 
                 try
                 {
@@ -302,37 +312,29 @@ public partial class AppUpdaterViewModel : ObservableObject
                 }
                 catch { }
 
-                string backupOld = destination + ".old";
-                if (File.Exists(destination))
+                // Remove any older versioned AppImages of the same component in targetDir
+                foreach (string existing in Directory.GetFiles(targetDir, "*.AppImage"))
                 {
-                    try
+                    string existingName = Path.GetFileName(existing);
+                    bool existingIsManager = existingName.StartsWith(ManagerPrefix, StringComparison.OrdinalIgnoreCase);
+                    bool existingIsClient = existingName.StartsWith(ClientPrefix, StringComparison.OrdinalIgnoreCase) && !existingIsManager;
+
+                    if ((isManager && existingIsManager) || (!isManager && existingIsClient))
                     {
-                        if (File.Exists(backupOld))
-                            File.Delete(backupOld);
-                        File.Move(destination, backupOld);
-                    }
-                    catch
-                    {
-                        try { File.Delete(destination); } catch { }
+                        try { File.Delete(existing); } catch { }
                     }
                 }
 
+                string destination = Path.Combine(targetDir, fileName);
                 try
                 {
-                    File.Move(downloaded, destination);
+                    File.Move(downloaded, destination, overwrite: true);
                 }
                 catch
                 {
                     File.Copy(downloaded, destination, overwrite: true);
                     try { File.Delete(downloaded); } catch { }
                 }
-
-                try
-                {
-                    if (File.Exists(backupOld))
-                        File.Delete(backupOld);
-                }
-                catch { }
             }
 
             try { Directory.Delete(tempDir, true); } catch { }
@@ -345,9 +347,9 @@ public partial class AppUpdaterViewModel : ObservableObject
 
             await Task.Delay(1000);
 
-            string restartPath = !string.IsNullOrEmpty(runningAppImage) && File.Exists(runningAppImage)
-                ? runningAppImage
-                : Path.Combine(targetDir, ManagerAppImageAssetName);
+            string restartPath = !string.IsNullOrEmpty(_remoteManagerFileName)
+                ? Path.Combine(targetDir, _remoteManagerFileName)
+                : Path.Combine(targetDir, _remoteClientFileName);
 
             if (File.Exists(restartPath))
             {
