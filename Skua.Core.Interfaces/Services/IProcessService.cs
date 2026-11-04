@@ -1,4 +1,4 @@
-﻿namespace Skua.Core.Interfaces;
+namespace Skua.Core.Interfaces;
 
 public interface IProcessService
 {
@@ -7,4 +7,6 @@ public interface IProcessService
     void OpenVSC();
 
     void OpenVSC(string path);
+
+    void OpenFolder(string path);
 }

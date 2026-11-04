@@ -1,6 +1,8 @@
 using Skua.Core.Interfaces;
 using Skua.Core.Models;
+using System;
 using System.Diagnostics;
+using System.IO;
 
 namespace Skua.Core.Services;
 
@@ -19,56 +21,271 @@ public class ProcessStartService : IProcessService
 
     public void OpenLink(string link)
     {
-        ProcessStartInfo ps = new(link)
+        if (string.IsNullOrWhiteSpace(link))
+            return;
+
+        try
         {
-            UseShellExecute = true,
-            Verb = "open"
-        };
-        Process.Start(ps);
+            ProcessStartInfo ps = new("xdg-open")
+            {
+                UseShellExecute = false,
+                CreateNoWindow = true
+            };
+            ps.ArgumentList.Add(link);
+            Process.Start(ps);
+        }
+        catch (Exception ex)
+        {
+            _dialogService.ShowMessageBox($"Could not open link:\r\n{ex.Message}", "Open Link Error");
+        }
+    }
+
+    public void OpenFolder(string path)
+    {
+        if (string.IsNullOrWhiteSpace(path))
+            return;
+
+        try
+        {
+            if (!Directory.Exists(path))
+                Directory.CreateDirectory(path);
+
+            ProcessStartInfo psi = new("xdg-open")
+            {
+                UseShellExecute = false,
+                CreateNoWindow = true
+            };
+            psi.ArgumentList.Add(path);
+            Process.Start(psi);
+            return;
+        }
+        catch { }
+
+        // Distro fallback if xdg-open fails
+        string[] fileManagers = { "nautilus", "dolphin", "thunar", "nemo", "pcmanfm", "caja" };
+        foreach (string fm in fileManagers)
+        {
+            if (FindInPath(fm) is { } exe)
+            {
+                try
+                {
+                    ProcessStartInfo psi = new(exe)
+                    {
+                        UseShellExecute = false,
+                        CreateNoWindow = true
+                    };
+                    psi.ArgumentList.Add(path);
+                    Process.Start(psi);
+                    return;
+                }
+                catch { }
+            }
+        }
+
+        _dialogService.ShowMessageBox($"Could not open file manager for folder:\r\n{path}", "File Manager Error");
     }
 
     public void OpenVSC()
     {
-        if (_settingsService.Get("UseLocalVSC", false))
+        if (!Directory.Exists(_scriptsPath))
+            Directory.CreateDirectory(_scriptsPath);
+
+        if (_settingsService.Get("UseLocalVSC", false) && File.Exists(_vscPath))
         {
-            Process.Start(_vscPath, _scriptsPath);
+            try
+            {
+                Process.Start(new ProcessStartInfo(_vscPath)
+                {
+                    UseShellExecute = false,
+                    CreateNoWindow = true,
+                    ArgumentList = { _scriptsPath }
+                });
+                return;
+            }
+            catch { }
+        }
+
+        var vsc = FindVSCode();
+        if (vsc == null)
+        {
+            _dialogService.ShowMessageBox(
+                "Visual Studio Code is not installed on this system or 'code' was not found in your PATH.",
+                "VSCode Not Found");
             return;
         }
+
         try
         {
-            VSCode(string.Empty);
+            ProcessStartInfo psi = new(vsc.Value.Exe)
+            {
+                UseShellExecute = false,
+                CreateNoWindow = true
+            };
+            if (vsc.Value.PrefixArgs != null)
+            {
+                foreach (string arg in vsc.Value.PrefixArgs)
+                    psi.ArgumentList.Add(arg);
+            }
+            psi.ArgumentList.Add(_scriptsPath);
+            Process.Start(psi);
         }
-        catch
+        catch (Exception ex)
         {
-            _dialogService.ShowMessageBox("VSCode was not found. If you have VSCode, reinstall it and be sure to check it to install in you PATH folder.", "VSCode not found");
+            _dialogService.ShowMessageBox($"Failed to launch VSCode:\r\n{ex.Message}", "VSCode Launch Error");
         }
     }
 
     public void OpenVSC(string path)
     {
-        if (_settingsService.Get("UseLocalVSC", false))
-        {
-            Process.Start(_vscPath, new[] { _scriptsPath, path, "--reuse-window" });
+        if (string.IsNullOrWhiteSpace(path))
             return;
-        }
-        try
+
+        if (_settingsService.Get("UseLocalVSC", false) && File.Exists(_vscPath))
         {
-            VSCode(path);
+            try
+            {
+                Process.Start(new ProcessStartInfo(_vscPath)
+                {
+                    UseShellExecute = false,
+                    CreateNoWindow = true,
+                    ArgumentList = { _scriptsPath, path, "--reuse-window" }
+                });
+                return;
+            }
+            catch { }
         }
-        catch
+
+        var vsc = FindVSCode();
+        if (vsc != null)
         {
-            Process.Start("xdg-open", path);
+            try
+            {
+                ProcessStartInfo psi = new(vsc.Value.Exe)
+                {
+                    UseShellExecute = false,
+                    CreateNoWindow = true
+                };
+                if (vsc.Value.PrefixArgs != null)
+                {
+                    foreach (string arg in vsc.Value.PrefixArgs)
+                        psi.ArgumentList.Add(arg);
+                }
+                psi.ArgumentList.Add("--reuse-window");
+                psi.ArgumentList.Add(path);
+                Process.Start(psi);
+                return;
+            }
+            catch { }
         }
+
+        // VSCode not found or failed to launch: fallback to any system text editor
+        OpenFileInTextEditor(path);
     }
 
-    private void VSCode(string path)
+    private void OpenFileInTextEditor(string path)
     {
-        ProcessStartInfo psi = new("code", $"{_scriptsPath} {path}")
+        try
         {
-            UseShellExecute = true,
-            CreateNoWindow = true
+            ProcessStartInfo psi = new("xdg-open")
+            {
+                UseShellExecute = false,
+                CreateNoWindow = true
+            };
+            psi.ArgumentList.Add(path);
+            Process.Start(psi);
+            return;
+        }
+        catch { }
+
+        string[] editors = { "gedit", "gnome-text-editor", "kate", "kwrite", "mousepad", "xed", "pluma", "geany", "leafpad" };
+        foreach (string editor in editors)
+        {
+            if (FindInPath(editor) is { } exe)
+            {
+                try
+                {
+                    ProcessStartInfo psi = new(exe)
+                    {
+                        UseShellExecute = false,
+                        CreateNoWindow = true
+                    };
+                    psi.ArgumentList.Add(path);
+                    Process.Start(psi);
+                    return;
+                }
+                catch { }
+            }
+        }
+
+        _dialogService.ShowMessageBox(
+            $"Neither Visual Studio Code nor a system text editor could be opened for:\r\n{path}",
+            "Editor Not Found");
+    }
+
+    private static (string Exe, string[]? PrefixArgs)? FindVSCode()
+    {
+        string[] cmds = { "code", "codium", "code-oss" };
+        foreach (string cmd in cmds)
+        {
+            if (FindInPath(cmd) is { } found)
+                return (found, null);
+        }
+
+        string[] directPaths =
+        {
+            "/usr/bin/code",
+            "/usr/local/bin/code",
+            "/snap/bin/code",
+            Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".local/bin/code"),
+            "/var/lib/flatpak/exports/bin/com.visualstudio.code",
+            Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".local/share/flatpak/exports/bin/com.visualstudio.code")
         };
 
-        Process.Start(psi);
+        foreach (string p in directPaths)
+        {
+            if (File.Exists(p))
+                return (p, null);
+        }
+
+        if (FindInPath("flatpak") != null)
+        {
+            try
+            {
+                using Process p = Process.Start(new ProcessStartInfo
+                {
+                    FileName = "flatpak",
+                    ArgumentList = { "info", "com.visualstudio.code" },
+                    UseShellExecute = false,
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    CreateNoWindow = true
+                })!;
+                p.WaitForExit();
+                if (p.ExitCode == 0)
+                    return ("flatpak", new[] { "run", "com.visualstudio.code" });
+            }
+            catch { }
+        }
+
+        return null;
+    }
+
+    private static string? FindInPath(string binaryName)
+    {
+        string? pathEnv = Environment.GetEnvironmentVariable("PATH");
+        if (string.IsNullOrEmpty(pathEnv))
+            return null;
+
+        foreach (string dir in pathEnv.Split(':', StringSplitOptions.RemoveEmptyEntries))
+        {
+            try
+            {
+                string full = Path.Combine(dir.Trim(), binaryName);
+                if (File.Exists(full))
+                    return full;
+            }
+            catch { }
+        }
+        return null;
     }
 }

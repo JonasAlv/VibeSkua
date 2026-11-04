@@ -83,11 +83,12 @@
             <!-- Load Script -->
             <Button Grid.Row="0" Grid.Column="0"
                     Classes="skua-button"
-                    Height="34"
+                    Height="32"
                     Padding="8,0"
                     HorizontalAlignment="Stretch"
                     HorizontalContentAlignment="Center"
-                    Command="{Binding LoadScriptForAccountCommand}">
+                    Command="{Binding LoadScriptForAccountCommand}"
+                    ToolTip.Tip="Select and load a script for the active account">
                 <StackPanel Orientation="Horizontal" Spacing="6" HorizontalAlignment="Center">
                     <materialIcons:MaterialIcon Kind="FolderOpen" Width="15" Height="15" />
                     <TextBlock Text="Load Script" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center" />
@@ -101,7 +102,8 @@
                     Padding="8,0"
                     HorizontalAlignment="Stretch"
                     HorizontalContentAlignment="Center"
-                    Command="{Binding OpenVSCodeCommand}">
+                    Command="{Binding OpenVSCodeCommand}"
+                    ToolTip.Tip="Open the local scripts folder in Visual Studio Code">
                 <StackPanel Orientation="Horizontal" Spacing="6" HorizontalAlignment="Center">
                     <materialIcons:MaterialIcon Kind="MicrosoftVisualStudioCode" Width="15" Height="15" />
                     <TextBlock Text="Open VSCode" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center" />
@@ -115,7 +117,8 @@
                     Padding="8,0"
                     HorizontalAlignment="Stretch"
                     HorizontalContentAlignment="Center"
-                    Command="{Binding EditScriptCommand}">
+                    Command="{Binding EditScriptCommand}"
+                    ToolTip.Tip="Open the loaded script in VSCode (or system text editor)">
                 <StackPanel Orientation="Horizontal" Spacing="6" HorizontalAlignment="Center">
                     <materialIcons:MaterialIcon Kind="FileEdit" Width="15" Height="15" />
                     <TextBlock Text="Edit Script" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center" />

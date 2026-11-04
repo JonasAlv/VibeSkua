@@ -155,18 +155,20 @@ public partial class ScriptLoaderViewModel
         catch { }
     }
 
-    /// <summary>Load Script button: on this client as before, or on the picked account.</summary>
+    /// <summary>Load Script button: opens the file picker in the local scripts directory and loads the script for the selected account.</summary>
     [RelayCommand]
     private void LoadScriptForAccount()
     {
+        string? path = _fileDialog.OpenFile(_scriptPath, "Skua Scripts (*.cs)|*.cs");
+        if (string.IsNullOrWhiteSpace(path))
+            return;
+
         if (!IsOtherAccount)
         {
-            LoadScript();
+            LoadScript(path);
             return;
         }
-        string? path = _fileDialog.OpenFile(_scriptPath, "Skua Scripts (*.cs)|*.cs");
-        if (path is null)
-            return;
+
         SendLoadToAccount(path);
     }
 

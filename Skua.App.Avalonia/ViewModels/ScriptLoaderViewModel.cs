@@ -182,7 +182,7 @@ public partial class ScriptLoaderViewModel : BotControlViewModelBase
         if (string.IsNullOrWhiteSpace(path))
         {
             path = _fileDialog.OpenFile(_scriptPath, "Skua Scripts (*.cs)|*.cs");
-            if (path is null)
+            if (string.IsNullOrWhiteSpace(path))
                 return;
         }
 
@@ -194,10 +194,17 @@ public partial class ScriptLoaderViewModel : BotControlViewModelBase
     [RelayCommand]
     private void EditScript(string? path = null)
     {
-        if (path is null && string.IsNullOrEmpty(ScriptManager.LoadedScript))
-            return;
+        string? target = path;
+        if (string.IsNullOrWhiteSpace(target))
+            target = IsOtherAccount ? _remoteScriptPath : ScriptManager.LoadedScript;
 
-        _processService.OpenVSC(path ?? ScriptManager.LoadedScript);
+        if (string.IsNullOrWhiteSpace(target))
+        {
+            _dialogService.ShowMessageBox("No script is currently loaded to edit. Please load a script first.", "No Script Loaded");
+            return;
+        }
+
+        _processService.OpenVSC(target);
     }
 
     [RelayCommand]
